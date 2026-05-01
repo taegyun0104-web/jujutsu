@@ -1,7 +1,10 @@
 const {
   Client,
   GatewayIntentBits,
-  EmbedBuilder
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } = require('discord.js');
 
 const client = new Client({
@@ -13,177 +16,228 @@ const client = new Client({
 });
 
 // ─────────────────────────────
-// 캐릭터 데이터
+// 캐릭터
 // ─────────────────────────────
 const CHAR = {
-  gojo: {
-    name: "고죠 사토루",
-    grade: "S",
-    maxHp: 2000,
-    atk: 120,
-    def: 100,
-    energy: Infinity, // 🔥 무한 주력
-    skills: [
-      { name: "무한", req: 0, dmg: 1.2 },
-      { name: "허식", req: 10, dmg: 1.8 },
-      { name: "적", req: 30, dmg: 2.5 },
-      { name: "무량공처", req: 60, dmg: 4.0 },
-    ]
-  },
-
   itadori: {
-    name: "이타도리 유지",
-    grade: "A",
-    maxHp: 1200,
+    name: "이타도리",
+    hp: 1200,
     atk: 90,
     def: 70,
     energy: 100,
     skills: [
-      { name: "주먹", req: 0, dmg: 1 },
-      { name: "흑섬", req: 15, dmg: 1.6 },
-      { name: "연격", req: 35, dmg: 2.2 },
+      { name: "주먹", dmg: 1.0, req: 0 },
+      { name: "흑섬", dmg: 1.6, req: 20 },
+      { name: "연격", dmg: 2.2, req: 50 },
     ]
   },
-
-  sukuna: {
-    name: "스쿠나",
-    grade: "S",
-    maxHp: 2200,
-    atk: 130,
-    def: 90,
-    energy: 120,
+  gojo: {
+    name: "고죠",
+    hp: 2000,
+    atk: 120,
+    def: 100,
+    energy: Infinity,
     skills: [
-      { name: "참격", req: 0, dmg: 1.3 },
-      { name: "해체", req: 20, dmg: 2.0 },
-      { name: "영역전개", req: 60, dmg: 3.8 },
+      { name: "무한", dmg: 1.2, req: 0 },
+      { name: "적", dmg: 2.0, req: 20 },
+      { name: "무량공처", dmg: 4.0, req: 60 },
     ]
   }
 };
 
 // ─────────────────────────────
-// 플레이어 DB
+// 플레이어
 // ─────────────────────────────
 const players = new Map();
+const battles = new Map();
+const dungeons = new Map();
 
 function getPlayer(id) {
   if (!players.has(id)) {
     players.set(id, {
-      hp: 1000,
-      maxHp: 1000,
-      energy: 100,
       char: "itadori",
+      hp: 1200,
+      energy: 100,
       owned: ["itadori"],
-      mastery: { itadori: 0 },
-      crystals: 500
+      mastery: { itadori: 0 }
     });
   }
   return players.get(id);
 }
 
-// ─────────────────────────────
-// 가챠
-// ─────────────────────────────
-function gacha() {
-  const pool = ["itadori", "sukuna", "gojo"];
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-// ─────────────────────────────
-// 숙련도 스킬
-// ─────────────────────────────
-function getSkill(charId, mastery) {
-  const skills = CHAR[charId].skills;
-  let current = skills[0];
-  for (const s of skills) {
-    if (mastery >= s.req) current = s;
+function getSkill(player, charId) {
+  const mastery = player.mastery[charId] || 0;
+  let skill = CHAR[charId].skills[0];
+  for (const s of CHAR[charId].skills) {
+    if (mastery >= s.req) skill = s;
   }
-  return current;
+  return skill;
 }
 
 // ─────────────────────────────
-// 메시지
+// 턴 계산
 // ─────────────────────────────
-client.on("messageCreate", (msg) => {
+function enemyTurn(state, player, char) {
+  const dmg = Math.max(1,
+    Math.floor(state.enemy.atk - char.def * 0.3)
+  );
+  state.pHp -= dmg;
+  return `💥 적 공격! -${dmg} HP`;
+}
+
+// ─────────────────────────────
+// 전투 시작
+// ─────────────────────────────
+client.on("messageCreate", async (msg) => {
   if (msg.author.bot) return;
-
   const p = getPlayer(msg.author.id);
-  const input = msg.content;
 
-  // ───────── 프로필 ─────────
-  if (input === "!프로필") {
-    const c = CHAR[p.char];
-    const skill = getSkill(p.char, p.mastery[p.char]);
+  // ───── 전투 ─────
+  if (msg.content === "!전투") {
+    const enemy = {
+      name: "저주령",
+      hp: 800,
+      atk: 60,
+      def: 40
+    };
+
+    battles.set(msg.author.id, {
+      enemy,
+      pHp: p.hp,
+      eHp: enemy.hp,
+      turn: "player"
+    });
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("atk")
+        .setLabel("공격")
+        .setStyle(ButtonStyle.Danger),
+
+      new ButtonBuilder()
+        .setCustomId("skill")
+        .setLabel("술식")
+        .setStyle(ButtonStyle.Primary),
+
+      new ButtonBuilder()
+        .setCustomId("heal")
+        .setLabel("회복")
+        .setStyle(ButtonStyle.Success),
+    );
 
     return msg.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setTitle(`${c.name} 프로필`)
-          .addFields(
-            { name: "HP", value: `${p.hp}/${c.maxHp}` },
-            { name: "주력", value: c.energy === Infinity ? "∞ (무한)" : `${p.energy}` },
-            { name: "숙련도", value: `${p.mastery[p.char]}` },
-            { name: "현재 스킬", value: skill.name }
-          )
-      ]
+      content: "⚔️ 전투 시작!",
+      components: [row]
     });
   }
 
-  // ───────── 가챠 ─────────
-  if (input === "!가챠") {
-    const result = gacha();
+  // ───── 던전 ─────
+  if (msg.content === "!던전") {
+    const stages = [
+      { name: "저급 저주", hp: 300, atk: 30 },
+      { name: "중급 저주", hp: 600, atk: 60 },
+      { name: "보스", hp: 1200, atk: 100 },
+    ];
 
-    if (!p.owned.includes(result)) {
-      p.owned.push(result);
-      p.mastery[result] = 0;
-    }
+    dungeons.set(msg.author.id, {
+      stage: 0,
+      enemy: stages[0],
+      pHp: p.hp
+    });
 
-    p.char = result;
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("d_atk")
+        .setLabel("공격")
+        .setStyle(ButtonStyle.Danger),
 
-    return msg.reply(`🎲 획득: ${CHAR[result].name}`);
-  }
-
-  // ───────── 숙련도 올리기 테스트 ─────────
-  if (input === "!훈련") {
-    p.mastery[p.char] = (p.mastery[p.char] || 0) + 10;
-    return msg.reply(`🔥 숙련도 +10`);
-  }
-
-  // ───────── 공격 ─────────
-  if (input === "!공격") {
-    const c = CHAR[p.char];
-    const mastery = p.mastery[p.char] || 0;
-    const skill = getSkill(p.char, mastery);
-
-    // 주력 소모 (고죠 제외)
-    if (c.energy !== Infinity) {
-      if (p.energy < 20) return msg.reply("❌ 주력 부족!");
-      p.energy -= 20;
-    }
-
-    const dmg = Math.floor(c.atk * skill.dmg * (1 + mastery / 100));
-
-    return msg.reply(
-      `⚔️ ${c.name} 사용: ${skill.name}\n💥 데미지: ${dmg}\n⚡ 주력: ${c.energy === Infinity ? "∞" : p.energy}`
+      new ButtonBuilder()
+        .setCustomId("d_next")
+        .setLabel("다음층")
+        .setStyle(ButtonStyle.Primary)
     );
-  }
 
-  // ───────── 주력 회복 ─────────
-  if (input === "!회복") {
-    const c = CHAR[p.char];
-
-    if (c.energy === Infinity)
-      return msg.reply("고죠는 주력이 무한이다.");
-
-    p.energy = Math.min(100, p.energy + 40);
-    return msg.reply(`💙 주력 회복 +40 (현재 ${p.energy})`);
+    return msg.reply({
+      content: "🏯 던전 입장!",
+      components: [row]
+    });
   }
 });
 
 // ─────────────────────────────
-// 시작
+// 버튼 처리
 // ─────────────────────────────
+client.on("interactionCreate", async (i) => {
+  const p = getPlayer(i.user.id);
+
+  // ───── 전투 ─────
+  if (battles.has(i.user.id)) {
+    const b = battles.get(i.user.id);
+    const char = CHAR[p.char];
+    const skill = getSkill(p, p.char);
+
+    if (i.customId === "atk") {
+      const dmg = Math.floor(char.atk * 1.0);
+      b.eHp -= dmg;
+      const log = `👊 공격 -${dmg}`;
+
+      const enemyLog = enemyTurn(b, p, char);
+
+      return i.reply(`${log}\n${enemyLog}`);
+    }
+
+    if (i.customId === "skill") {
+      const dmg = Math.floor(char.atk * skill.dmg);
+      b.eHp -= dmg;
+
+      const enemyLog = enemyTurn(b, p, char);
+
+      return i.reply(`✨ ${skill.name} -${dmg}\n${enemyLog}`);
+    }
+
+    if (i.customId === "heal") {
+      const heal = 200;
+      b.pHp += heal;
+      return i.reply(`💚 회복 +${heal}`);
+    }
+  }
+
+  // ───── 던전 ─────
+  if (dungeons.has(i.user.id)) {
+    const d = dungeons.get(i.user.id);
+    const enemy = d.enemy;
+
+    if (i.customId === "d_atk") {
+      const dmg = 100;
+      enemy.hp -= dmg;
+
+      let text = `⚔️ 던전 공격 -${dmg}`;
+
+      if (enemy.hp <= 0) {
+        d.stage++;
+
+        if (d.stage >= 3) {
+          dungeons.delete(i.user.id);
+          return i.reply("🏆 던전 클리어!");
+        }
+
+        const next = [
+          { name: "중급", hp: 600, atk: 60 },
+          { name: "보스", hp: 1200, atk: 100 },
+        ];
+
+        d.enemy = next[d.stage - 1];
+        return i.reply("⬆️ 다음 층 이동!");
+      }
+
+      return i.reply(text);
+    }
+
+    if (i.customId === "d_next") {
+      return i.reply("➡️ 이동 중...");
+    }
+  }
+});
+
 client.once("ready", () => {
-  console.log(`로그인 완료: ${client.user.tag}`);
-});
-
-client.login("MTQ5OTQ0OTM2MDM0MDA5NDk4Ng.GNcceq.jpyat_0O2KdsV5toeYyXOvVYcFkeit2wQbA7s8");
+  console.log("BOT ON
