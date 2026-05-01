@@ -293,7 +293,7 @@ client.on('messageCreate', async (message) => {
       player.hp = 0;
       player.losses++;
       activeBattles.delete(message.author.id);
-      log.push(`\n💀 **${ch.name}** 쓰러짐... !전투로 재도전 시 HP 일부 회복`);
+      log.push(`\n💀 **${ch.name}** 쓰러짐... !전투로 재도전 시 HP 일부 회복`;
     }
 
     const embed = new EmbedBuilder()
