@@ -1,20 +1,16 @@
 require("dotenv").config();
 
-const fs = require("fs");
 const express = require("express");
 const app = express();
+
 app.get("/", (_, res) => res.send("OK"));
 app.listen(process.env.PORT || 3000);
 
-// ─────────────────────
-// SAFE GUARD (CRASH PREVENT)
-// ─────────────────────
-process.on("uncaughtException", (e) => console.log("ERR:", e));
-process.on("unhandledRejection", (e) => console.log("PROMISE:", e));
+// ───────── SAFE GUARD ─────────
+process.on("uncaughtException", console.log);
+process.on("unhandledRejection", console.log);
 
-// ─────────────────────
-// DISCORD IMPORT
-// ─────────────────────
+// ───────── DISCORD ─────────
 const {
   Client,
   GatewayIntentBits,
@@ -23,21 +19,6 @@ const {
   ButtonStyle,
 } = require("discord.js");
 
-// ─────────────────────
-// ⚠️ TOKEN SAFE CHECK (중복 실행 방지 핵심)
-// ─────────────────────
-const TOKEN = process.env.DISCORD_TOKEN;
-
-if (!TOKEN) {
-  console.log("❌ TOKEN 없음");
-  process.exit(1);
-}
-
-let alreadyLoggedIn = false;
-
-// ─────────────────────
-// BOT
-// ─────────────────────
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -46,133 +27,128 @@ const client = new Client({
   ],
 });
 
-// ─────────────────────
-// SAVE SYSTEM
-// ─────────────────────
-const SAVE_FILE = "./db.json";
+const TOKEN = process.env.DISCORD_TOKEN;
+if (!TOKEN) process.exit(1);
 
-function loadDB() {
-  try {
-    return JSON.parse(fs.readFileSync(SAVE_FILE));
-  } catch {
-    return { players: {} };
-  }
-}
-
-function saveDB() {
-  fs.writeFileSync(SAVE_FILE, JSON.stringify(DB, null, 2));
-}
-
-let DB = loadDB();
-if (!DB.players) DB.players = {};
-
-// ─────────────────────
-// DEV
-// ─────────────────────
-const DEV_IDS = new Set(["1499743296023691395"]);
-const isDev = (id) => DEV_IDS.has(id);
-
-// ─────────────────────
-// CHAR
-// ─────────────────────
-const CHARACTERS = {
-  gojo: { name: "고죠", reversal: true, domain: "무량공처", skills: ["허식무라사키"] },
-  sukuna: { name: "스쿠나", reversal: false, domain: "복마어주자", skills: ["참격"] },
-  itadori: { name: "이타도리", reversal: false, domain: null, skills: ["돌진"] },
+// ───────── DB ─────────
+const DB = {
+  players: {},
+  battles: {},
+  pvp: {},
 };
 
-// ─────────────────────
-// PLAYER
-// ─────────────────────
+// ───────── CHAR ─────────
+const CHAR = {
+  gojo: { name: "고죠", domain: "무량공처", skills: ["허식무라사키"] },
+  sukuna: { name: "스쿠나", domain: "복마어주자", skills: ["참격"] },
+  itadori: { name: "이타도리", domain: null, skills: ["돌진"] },
+};
+
+// ───────── PLAYER ─────────
 function getPlayer(id) {
   if (!DB.players[id]) {
     DB.players[id] = {
       id,
       char: "itadori",
       hp: 1200,
-      maxHp: 1200,
-      xp: 0,
-
-      party: ["itadori"],
-
-      reversalOutput: 1,
-      cursedTool: false,
 
       skillsCooldown: {},
       domainCooldown: 0,
-      domainActive: false,
-      domainPower: 0,
     };
-
-    saveDB();
   }
 
   const p = DB.players[id];
   p.skillsCooldown ??= {};
+  p.domainCooldown ??= 0;
+
   return p;
 }
 
-// ─────────────────────
-// DAMAGE
-// ─────────────────────
-function dmg(a) {
-  const bf = Math.random() < 0.1;
-  return { d: bf ? a * 2.5 : a };
+// ───────── DAMAGE ─────────
+function dmg(x) {
+  return Math.floor(x + Math.random() * 50);
 }
 
-// ─────────────────────
-// BUTTON UI
-// ─────────────────────
+// ───────── UI ─────────
 function ui() {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("attack").setLabel("⚔ 공격").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId("atk").setLabel("⚔ 공격").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("skill").setLabel("🌀 술식").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId("domain").setLabel("🌌 영역").setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId("run").setLabel("🏃 도주").setStyle(ButtonStyle.Secondary)
   );
 }
 
-// ─────────────────────
-// MESSAGE
-// ─────────────────────
-client.on("messageCreate", async (msg) => {
+// ───────── MESSAGE ─────────
+client.on("messageCreate", (msg) => {
   if (!msg || msg.author.bot) return;
 
   const p = getPlayer(msg.author.id);
 
+  // ⚔ PvE 전투
   if (msg.content === "!전투") {
+    DB.battles[msg.author.id] = { enemyHp: 1200, turn: msg.author.id };
+
     return msg.reply({
       content: "⚔️ 전투 시작",
       components: [ui()],
     });
   }
 
-  if (msg.content === "!랭킹") {
-    const list = Object.values(DB.players)
-      .sort((a, b) => b.xp - a.xp)
-      .slice(0, 5);
+  // ⚔ PvP 시작
+  if (msg.content.startsWith("!pvp")) {
+    const t = msg.mentions.users.first();
+    if (!t) return msg.reply("멘션 필요");
 
-    return msg.reply(list.map((u, i) => `${i + 1}. <@${u.id}> ${u.xp}`).join("\n"));
+    DB.pvp[msg.author.id] = {
+      a: msg.author.id,
+      b: t.id,
+      hp: {
+        [msg.author.id]: 1200,
+        [t.id]: 1200,
+      },
+      turn: msg.author.id,
+    };
+
+    return msg.reply("⚔️ PvP 시작");
   }
 });
 
-// ─────────────────────
-// BUTTON SYSTEM
-// ─────────────────────
+// ───────── BUTTON ─────────
 client.on("interactionCreate", async (i) => {
   if (!i.isButton()) return;
 
   const p = getPlayer(i.user.id);
+  const battle = DB.battles[i.user.id];
+  const pvp = Object.values(DB.pvp).find(v => v.a === i.user.id || v.b === i.user.id);
 
-  // ⚔ ATTACK
-  if (i.customId === "attack") {
-    const r = dmg(100);
-    return i.reply(`⚔️ ${r.d}`);
+  // ❌ 아무 전투 없음
+  if (!battle && !pvp) {
+    return i.reply({ content: "전투 없음", ephemeral: true });
   }
 
-  // 🌀 SKILL
+  const enemyId = pvp
+    ? pvp.a === i.user.id ? pvp.b : pvp.a
+    : null;
+
+  // ───────── ATTACK ─────────
+  if (i.customId === "atk") {
+    const d = dmg(100);
+
+    if (battle) {
+      battle.enemyHp -= d;
+      return i.reply(`⚔️ -${d} / HP ${battle.enemyHp}`);
+    }
+
+    if (pvp) {
+      pvp.hp[enemyId] -= d;
+      return i.reply(`⚔️ PvP -${d}`);
+    }
+  }
+
+  // ───────── SKILL ─────────
   if (i.customId === "skill") {
-    const c = CHARACTERS[p.char];
+    const c = CHAR[p.char];
     const skill = c.skills[Math.floor(Math.random() * c.skills.length)];
 
     if (p.skillsCooldown[skill] > Date.now()) {
@@ -181,36 +157,68 @@ client.on("interactionCreate", async (i) => {
 
     p.skillsCooldown[skill] = Date.now() + 5000;
 
-    return i.reply(`🌀 ${skill}`);
+    let d = 120;
+    if (skill === "허식무라사키") d = 300;
+
+    if (battle) battle.enemyHp -= d;
+    if (pvp) pvp.hp[enemyId] -= d;
+
+    return i.reply(`🌀 ${skill} -${d}`);
   }
 
-  // 🌌 DOMAIN
+  // ───────── DOMAIN (핵심 추가) ─────────
   if (i.customId === "domain") {
-    const c = CHARACTERS[p.char];
-    if (!c.domain) return i.reply("❌ 없음");
+    const c = CHAR[p.char];
 
-    if (p.domainCooldown > Date.now()) return i.reply("쿨타임");
+    if (!c.domain) return i.reply("❌ 영역 없음");
+
+    if (p.domainCooldown > Date.now()) {
+      return i.reply("쿨타임");
+    }
 
     p.domainCooldown = Date.now() + 20000;
-    p.domainActive = true;
-    p.domainPower = p.reversalOutput * 100;
 
-    return i.reply(`🌌 ${c.domain}`);
+    const power = 200 + p.hp * 0.1;
+
+    // PvP 영역
+    if (pvp) {
+      const enemy = getPlayer(enemyId);
+
+      const enemyPower = 200 + enemy.hp * 0.1;
+
+      if (power > enemyPower) {
+        pvp.hp[enemyId] -= 500;
+        return i.reply(`🌌 영역 승리`);
+      } else {
+        pvp.hp[i.user.id] -= 500;
+        return i.reply(`💥 영역 패배`);
+      }
+    }
+
+    // PvE
+    if (battle) {
+      battle.enemyHp -= 400;
+    }
+
+    return i.reply(`🌌 ${c.domain} 발동`);
   }
 
-  // 🏃 RUN
+  // ───────── RUN ─────────
   if (i.customId === "run") {
-    return i.reply("🏃 도주 성공");
+    const ok = Math.random() < 0.7;
+
+    if (ok) {
+      delete DB.battles[i.user.id];
+      return i.reply("🏃 도주 성공");
+    }
+
+    return i.reply("❌ 실패");
   }
 });
 
-// ─────────────────────
-// LOGIN (CRASH FIX 핵심)
-// ─────────────────────
-if (!alreadyLoggedIn) {
-  alreadyLoggedIn = true;
+// ───────── LOGIN ─────────
+client.once("ready", () => {
+  console.log("ONLINE:", client.user.tag);
+});
 
-  client.login(TOKEN).then(() => {
-    console.log("ONLINE:", client.user.tag);
-  });
-}
+client.login(TOKEN);
