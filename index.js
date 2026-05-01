@@ -1,15 +1,13 @@
+require("dotenv").config();
+
 const {
   Client,
   GatewayIntentBits,
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
 
-// ─────────────────────────────
-// 안정 세팅 (Railway 필수)
-// ─────────────────────────────
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -22,46 +20,34 @@ process.on("unhandledRejection", console.error);
 process.on("uncaughtException", console.error);
 
 // ─────────────────────────────
-// 캐릭터
+// DEV SYSTEM
+// ─────────────────────────────
+const DEV_ID = process.env.DEV_ID;
+const isDev = (id) => id === DEV_ID;
+
+// ─────────────────────────────
+// CHARACTER
 // ─────────────────────────────
 const CHAR = {
   itadori: {
-    name: "이타도리",
-    hp: 1200,
+    name: "이타도리 유지",
     atk: 90,
-    def: 70,
-    energy: 100,
-    skills: [
-      { name: "주먹", req: 0, dmg: 1 },
-      { name: "흑섬", req: 20, dmg: 1.6 },
-      { name: "연격", req: 50, dmg: 2.2 },
-    ],
+    hp: 1200,
+    reversal: false,
   },
 
   gojo: {
-    name: "고죠",
-    hp: 2000,
+    name: "고죠 사토루",
     atk: 120,
-    def: 100,
-    energy: Infinity, // 🔥 무한 주력
-    skills: [
-      { name: "무한", req: 0, dmg: 1.2 },
-      { name: "적", req: 20, dmg: 2.0 },
-      { name: "무량공처", req: 60, dmg: 4.0 },
-    ],
+    hp: 2000,
+    reversal: true,
   },
 
   sukuna: {
-    name: "스쿠나",
-    hp: 2200,
+    name: "료멘 스쿠나",
     atk: 130,
-    def: 90,
-    energy: 120,
-    skills: [
-      { name: "참격", req: 0, dmg: 1.3 },
-      { name: "해체", req: 20, dmg: 2.0 },
-      { name: "영역전개", req: 60, dmg: 3.8 },
-    ],
+    hp: 2200,
+    reversal: false,
   },
 };
 
@@ -70,16 +56,17 @@ const CHAR = {
 // ─────────────────────────────
 const players = new Map();
 const battles = new Map();
-const dungeons = new Map();
+const pvpBattles = new Map();
 
+// ─────────────────────────────
+// PLAYER
+// ─────────────────────────────
 function getPlayer(id) {
   if (!players.has(id)) {
     players.set(id, {
       char: "itadori",
       hp: 1200,
-      energy: 100,
       owned: ["itadori"],
-      mastery: { itadori: 0 },
       crystals: 500,
     });
   }
@@ -87,172 +74,196 @@ function getPlayer(id) {
 }
 
 // ─────────────────────────────
-// 스킬 계산
+// 🔥 DAMAGE SYSTEM (흑섬)
 // ─────────────────────────────
-function getSkill(p, charId) {
-  const m = p.mastery[charId] || 0;
-  let skill = CHAR[charId].skills[0];
-  for (const s of CHAR[charId].skills) {
-    if (m >= s.req) skill = s;
+function calcDamage(char, atk, mult = 1) {
+  let dmg = atk * mult;
+
+  // ⚡ 흑섬 확률
+  const isBlackFlash = Math.random() < 0.12;
+
+  if (isBlackFlash) {
+    dmg *= 2.5;
+    return {
+      dmg: Math.floor(dmg),
+      blackFlash: true,
+    };
   }
-  return skill;
+
+  return {
+    dmg: Math.floor(dmg),
+    blackFlash: false,
+  };
 }
 
 // ─────────────────────────────
-// 가챠
-// ─────────────────────────────
-function gacha() {
-  const pool = ["itadori", "gojo", "sukuna"];
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-// ─────────────────────────────
-// 메시지
+// MESSAGE
 // ─────────────────────────────
 client.on("messageCreate", async (msg) => {
-  try {
-    if (msg.author.bot) return;
+  if (msg.author.bot) return;
 
-    const p = getPlayer(msg.author.id);
+  const p = getPlayer(msg.author.id);
 
-    // ───────── 가챠 ─────────
-    if (msg.content === "!가챠") {
-      const r = gacha();
+  // 🎲 가챠
+  if (msg.content === "!가챠") {
+    const pool = ["itadori", "gojo", "sukuna"];
+    const r = pool[Math.floor(Math.random() * pool.length)];
 
-      if (!p.owned.includes(r)) {
-        p.owned.push(r);
-        p.mastery[r] = 0;
-      }
+    if (!p.owned.includes(r)) p.owned.push(r);
+    p.char = r;
 
-      p.char = r;
-      return msg.reply(`🎲 획득: ${CHAR[r].name}`);
-    }
-
-    // ───────── 전투 ─────────
-    if (msg.content === "!전투") {
-      const enemy = { name: "저주령", hp: 800, atk: 60, def: 40 };
-
-      battles.set(msg.author.id, {
-        enemy,
-        eHp: enemy.hp,
-        turn: "player",
-      });
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("atk").setLabel("공격").setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId("skill").setLabel("술식").setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId("heal").setLabel("회복").setStyle(ButtonStyle.Success)
-      );
-
-      return msg.reply({
-        content: "⚔️ 전투 시작!",
-        components: [row],
-      });
-    }
-
-    // ───────── 던전 ─────────
-    if (msg.content === "!던전") {
-      dungeons.set(msg.author.id, {
-        stage: 0,
-        enemy: { name: "저급 저주", hp: 300, atk: 30 },
-      });
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("d_atk").setLabel("공격").setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId("d_next").setLabel("다음층").setStyle(ButtonStyle.Primary)
-      );
-
-      return msg.reply({
-        content: "🏯 던전 시작!",
-        components: [row],
-      });
-    }
-  } catch (e) {
-    console.error("MESSAGE ERROR:", e);
+    return msg.reply(`🎲 ${CHAR[r].name} 획득!`);
   }
-});
 
-// ─────────────────────────────
-// 버튼
-// ─────────────────────────────
-client.on("interactionCreate", async (i) => {
-  try {
-    const p = getPlayer(i.user.id);
+  // ⚔️ 전투 시작
+  if (msg.content === "!전투") {
+    const enemy = { hp: 800, atk: 60 };
+
+    battles.set(msg.author.id, {
+      enemy,
+      eHp: enemy.hp,
+    });
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("atk").setLabel("공격").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("skill").setLabel("스킬").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("heal").setLabel("반전술식").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("run").setLabel("도주").setStyle(ButtonStyle.Secondary)
+    );
+
+    return msg.reply({ content: "⚔️ 전투 시작!", components: [row] });
+  }
+
+  // 🏃 도주
+  if (msg.content === "!도주") {
+    if (battles.has(msg.author.id)) {
+      battles.delete(msg.author.id);
+      return msg.reply("🏃 전투 도주!");
+    }
+
+    if (pvpBattles.has(msg.author.id)) {
+      const battle = pvpBattles.get(msg.author.id);
+      const enemy = battle.p1 === msg.author.id ? battle.p2 : battle.p1;
+
+      pvpBattles.delete(battle.p1);
+      pvpBattles.delete(battle.p2);
+
+      return msg.reply("🏃 PvP 도주 (패배 처리)");
+    }
+
+    return msg.reply("❌ 전투 중 아님");
+  }
+
+  // ⚔️ PvP
+  if (msg.content === "!pvp") {
+    const id = msg.author.id;
+
+    const battle = {
+      p1: id,
+      p2: "enemy",
+      turn: id,
+      hp: { [id]: 1000, enemy: 1000 },
+    };
+
+    pvpBattles.set(id, battle);
+
+    return msg.reply("⚔️ PvP 시작!");
+  }
+
+  // ⚔️ PvP 액션
+  if (["!공격", "!스킬", "!반전술식"].includes(msg.content)) {
+    const battle = pvpBattles.get(msg.author.id);
+    if (!battle) return;
 
     const char = CHAR[p.char];
-    const skill = getSkill(p, p.char);
+    const enemyId = battle.p1 === msg.author.id ? battle.p2 : battle.p1;
 
-    // ───────── 전투 ─────────
-    if (battles.has(i.user.id)) {
-      const b = battles.get(i.user.id);
+    let result;
 
-      if (i.customId === "atk") {
-        const dmg = Math.floor(char.atk);
-        b.eHp -= dmg;
-
-        const enemyDmg = Math.max(1, b.enemy.atk - char.def * 0.3);
-        p.hp -= enemyDmg;
-
-        return i.reply(`👊 -${dmg} / 💥 -${enemyDmg}`);
-      }
-
-      if (i.customId === "skill") {
-        const dmg = Math.floor(char.atk * skill.dmg);
-        b.eHp -= dmg;
-
-        const enemyDmg = Math.max(1, b.enemy.atk - char.def * 0.3);
-        p.hp -= enemyDmg;
-
-        // 🔥 주력 소모 (고죠 제외)
-        if (char.energy !== Infinity) p.energy -= 20;
-
-        return i.reply(`✨ ${skill.name} -${dmg}`);
-      }
-
-      if (i.customId === "heal") {
-        p.hp += 200;
-        return i.reply("💚 회복 +200");
-      }
+    if (msg.content === "!공격") {
+      result = calcDamage(char, char.atk, 1);
+      battle.hp[enemyId] -= result.dmg;
     }
 
-    // ───────── 던전 ─────────
-    if (dungeons.has(i.user.id)) {
-      const d = dungeons.get(i.user.id);
-
-      if (i.customId === "d_atk") {
-        d.enemy.hp -= 120;
-
-        if (d.enemy.hp <= 0) {
-          d.stage++;
-
-          if (d.stage >= 3) {
-            dungeons.delete(i.user.id);
-            return i.reply("🏆 던전 클리어!");
-          }
-
-          d.enemy = { name: "상위 저주", hp: 600, atk: 60 };
-          return i.reply("⬆️ 다음 층!");
-        }
-
-        return i.reply("⚔️ 공격!");
-      }
-
-      if (i.customId === "d_next") {
-        return i.reply("➡️ 이동");
-      }
+    if (msg.content === "!스킬") {
+      result = calcDamage(char, char.atk, 1.6);
+      battle.hp[enemyId] -= result.dmg;
     }
-  } catch (e) {
-    console.error("INTERACTION ERROR:", e);
+
+    if (msg.content === "!반전술식") {
+      if (!char.reversal)
+        return msg.reply("❌ 반전술식 불가");
+
+      battle.hp[msg.author.id] += 300;
+      return msg.reply("💚 반전술식 +300");
+    }
+
+    if (result?.blackFlash) {
+      return msg.reply(`⚡🔥 흑섬! ${result.dmg}`);
+    }
+
+    return msg.reply(`⚔️ ${result.dmg}`);
+  }
+
+  // 🛠 DEV
+  if (msg.content === "!dev") {
+    if (!isDev(msg.author.id)) return;
+    return msg.reply("🛠 DEV ON");
   }
 });
 
 // ─────────────────────────────
-// 시작
+// BUTTON
 // ─────────────────────────────
-client.once("ready", () => {
-  console.log(`BOT ONLINE: ${client.user.tag}`);
+client.on("interactionCreate", async (i) => {
+  const p = getPlayer(i.user.id);
+  const battle = battles.get(i.user.id);
+
+  if (!battle) return;
+
+  const char = CHAR[p.char];
+
+  if (i.customId === "atk") {
+    const r = calcDamage(char, char.atk);
+    battle.eHp -= r.dmg;
+
+    return i.reply(
+      r.blackFlash
+        ? `⚡🔥 흑섬 ${r.dmg}`
+        : `👊 ${r.dmg}`
+    );
+  }
+
+  if (i.customId === "skill") {
+    const r = calcDamage(char, char.atk, 1.5);
+    battle.eHp -= r.dmg;
+
+    return i.reply(
+      r.blackFlash
+        ? `⚡🔥 흑섬 스킬 ${r.dmg}`
+        : `✨ ${r.dmg}`
+    );
+  }
+
+  if (i.customId === "heal") {
+    if (!char.reversal)
+      return i.reply("❌ 반전술식 불가");
+
+    p.hp += 200;
+    return i.reply("💚 반전술식 +200");
+  }
+
+  if (i.customId === "run") {
+    battles.delete(i.user.id);
+    return i.reply("🏃 도주");
+  }
 });
 
-// 🔥 Railway 핵심
+// ─────────────────────────────
+// READY
+// ─────────────────────────────
+client.once("ready", () => {
+  console.log(`✅ ONLINE ${client.user.tag}`);
+});
+
 client.login(process.env.DISCORD_TOKEN);
-DISCORD_TOKEN =MTQ5OTQ0OTM2MDM0MDA5NDk4Ng.GNcceq.jpyat_0O2KdsV5toeYyXOvVYcFkeit2wQbA7s8
