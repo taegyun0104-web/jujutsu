@@ -2,15 +2,9 @@ require("dotenv").config();
 
 const express = require("express");
 const app = express();
-
 app.get("/", (_, res) => res.send("OK"));
 app.listen(process.env.PORT || 3000);
 
-// ───────── SAFE GUARD ─────────
-process.on("uncaughtException", console.log);
-process.on("unhandledRejection", console.log);
-
-// ───────── DISCORD ─────────
 const {
   Client,
   GatewayIntentBits,
@@ -34,14 +28,25 @@ if (!TOKEN) process.exit(1);
 const DB = {
   players: {},
   battles: {},
-  pvp: {},
 };
 
 // ───────── CHAR ─────────
 const CHAR = {
-  gojo: { name: "고죠", domain: "무량공처", skills: ["허식무라사키"] },
-  sukuna: { name: "스쿠나", domain: "복마어주자", skills: ["참격"] },
-  itadori: { name: "이타도리", domain: null, skills: ["돌진"] },
+  gojo: {
+    name: "고죠",
+    domain: "무량공처",
+    skills: ["허식무라사키", "무한"],
+  },
+  sukuna: {
+    name: "스쿠나",
+    domain: "복마어주자",
+    skills: ["참격"],
+  },
+  itadori: {
+    name: "이타도리",
+    domain: null,
+    skills: ["돌진"],
+  },
 };
 
 // ───────── PLAYER ─────────
@@ -51,66 +56,80 @@ function getPlayer(id) {
       id,
       char: "itadori",
       hp: 1200,
+      xp: 0,
+
+      cursedTool: false,
+
+      // 🧠 숙련도
+      skillMastery: {
+        돌진: 0,
+      },
+
+      // ♻ 반전술식
+      reverseOutput: 1,
 
       skillsCooldown: {},
-      domainCooldown: 0,
     };
   }
 
-  const p = DB.players[id];
-  p.skillsCooldown ??= {};
-  p.domainCooldown ??= 0;
-
-  return p;
+  return DB.players[id];
 }
 
 // ───────── DAMAGE ─────────
-function dmg(x) {
-  return Math.floor(x + Math.random() * 50);
+const dmg = (x) => Math.floor(x + Math.random() * 60);
+
+// ───────── SKILL SYSTEM ─────────
+// 숙련도에 따라 새 술식 해금
+function getUnlockedSkills(p) {
+  const base = CHAR[p.char].skills;
+
+  const mastery = p.skillMastery || {};
+
+  const extra = [];
+
+  // 예시 확장 시스템
+  if ((mastery["돌진"] || 0) >= 3) extra.push("고속돌진");
+  if ((mastery["돌진"] || 0) >= 5) extra.push("연속돌진");
+
+  return [...base, ...extra];
 }
 
 // ───────── UI ─────────
-function ui() {
+function battleUI(p) {
+  const skills = getUnlockedSkills(p);
+
+  const skillLabel = skills.length
+    ? `🌀 술식(${skills.length})`
+    : "🌀 술식";
+
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("atk").setLabel("⚔ 공격").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("skill").setLabel("🌀 술식").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("attack").setLabel("⚔ 공격").setStyle(ButtonStyle.Danger),
+
+    new ButtonBuilder().setCustomId("skill").setLabel(skillLabel).setStyle(ButtonStyle.Primary),
+
     new ButtonBuilder().setCustomId("domain").setLabel("🌌 영역").setStyle(ButtonStyle.Success),
+
+    new ButtonBuilder().setCustomId("reverse").setLabel("♻ 반전술식").setStyle(ButtonStyle.Secondary),
+
     new ButtonBuilder().setCustomId("run").setLabel("🏃 도주").setStyle(ButtonStyle.Secondary)
   );
 }
 
-// ───────── MESSAGE ─────────
+// ───────── START BATTLE ─────────
 client.on("messageCreate", (msg) => {
   if (!msg || msg.author.bot) return;
 
   const p = getPlayer(msg.author.id);
 
-  // ⚔ PvE 전투
   if (msg.content === "!전투") {
-    DB.battles[msg.author.id] = { enemyHp: 1200, turn: msg.author.id };
+    DB.battles[msg.author.id] = {
+      enemyHp: 1200,
+    };
 
     return msg.reply({
       content: "⚔️ 전투 시작",
-      components: [ui()],
+      components: [battleUI(p)],
     });
-  }
-
-  // ⚔ PvP 시작
-  if (msg.content.startsWith("!pvp")) {
-    const t = msg.mentions.users.first();
-    if (!t) return msg.reply("멘션 필요");
-
-    DB.pvp[msg.author.id] = {
-      a: msg.author.id,
-      b: t.id,
-      hp: {
-        [msg.author.id]: 1200,
-        [t.id]: 1200,
-      },
-      turn: msg.author.id,
-    };
-
-    return msg.reply("⚔️ PvP 시작");
   }
 });
 
@@ -120,90 +139,67 @@ client.on("interactionCreate", async (i) => {
 
   const p = getPlayer(i.user.id);
   const battle = DB.battles[i.user.id];
-  const pvp = Object.values(DB.pvp).find(v => v.a === i.user.id || v.b === i.user.id);
 
-  // ❌ 아무 전투 없음
-  if (!battle && !pvp) {
-    return i.reply({ content: "전투 없음", ephemeral: true });
+  if (!battle) return i.reply({ content: "전투 없음", ephemeral: true });
+
+  const c = CHAR[p.char];
+
+  // ⚔ 공격
+  if (i.customId === "attack") {
+    let d = dmg(100);
+
+    // 숙련도 증가
+    p.skillMastery["돌진"] = (p.skillMastery["돌진"] || 0) + 1;
+
+    battle.enemyHp -= d;
+
+    return i.reply(`⚔️ -${d}`);
   }
 
-  const enemyId = pvp
-    ? pvp.a === i.user.id ? pvp.b : pvp.a
-    : null;
-
-  // ───────── ATTACK ─────────
-  if (i.customId === "atk") {
-    const d = dmg(100);
-
-    if (battle) {
-      battle.enemyHp -= d;
-      return i.reply(`⚔️ -${d} / HP ${battle.enemyHp}`);
-    }
-
-    if (pvp) {
-      pvp.hp[enemyId] -= d;
-      return i.reply(`⚔️ PvP -${d}`);
-    }
-  }
-
-  // ───────── SKILL ─────────
+  // 🌀 술식 (숙련도 기반 확장 포함)
   if (i.customId === "skill") {
-    const c = CHAR[p.char];
-    const skill = c.skills[Math.floor(Math.random() * c.skills.length)];
-
-    if (p.skillsCooldown[skill] > Date.now()) {
-      return i.reply("쿨타임");
-    }
-
-    p.skillsCooldown[skill] = Date.now() + 5000;
+    const skills = getUnlockedSkills(p);
+    const skill = skills[Math.floor(Math.random() * skills.length)];
 
     let d = 120;
-    if (skill === "허식무라사키") d = 300;
 
-    if (battle) battle.enemyHp -= d;
-    if (pvp) pvp.hp[enemyId] -= d;
+    if (skill === "허식무라사키") d = 300;
+    if (skill === "고속돌진") d = 180;
+    if (skill === "연속돌진") d = 220;
+
+    battle.enemyHp -= d;
+
+    // 숙련도 상승
+    p.skillMastery["돌진"] = (p.skillMastery["돌진"] || 0) + 1;
 
     return i.reply(`🌀 ${skill} -${d}`);
   }
 
-  // ───────── DOMAIN (핵심 추가) ─────────
+  // 🌌 영역전개
   if (i.customId === "domain") {
-    const c = CHAR[p.char];
+    if (!c.domain) return i.reply("❌ 없음");
 
-    if (!c.domain) return i.reply("❌ 영역 없음");
+    const d = 400 + (p.skillMastery["돌진"] || 0) * 10;
 
-    if (p.domainCooldown > Date.now()) {
-      return i.reply("쿨타임");
-    }
+    battle.enemyHp -= d;
 
-    p.domainCooldown = Date.now() + 20000;
-
-    const power = 200 + p.hp * 0.1;
-
-    // PvP 영역
-    if (pvp) {
-      const enemy = getPlayer(enemyId);
-
-      const enemyPower = 200 + enemy.hp * 0.1;
-
-      if (power > enemyPower) {
-        pvp.hp[enemyId] -= 500;
-        return i.reply(`🌌 영역 승리`);
-      } else {
-        pvp.hp[i.user.id] -= 500;
-        return i.reply(`💥 영역 패배`);
-      }
-    }
-
-    // PvE
-    if (battle) {
-      battle.enemyHp -= 400;
-    }
-
-    return i.reply(`🌌 ${c.domain} 발동`);
+    return i.reply(`🌌 ${c.domain} -${d}`);
   }
 
-  // ───────── RUN ─────────
+  // ♻ 반전술식 (회복 + 출력 증가)
+  if (i.customId === "reverse") {
+    const heal = 100 * p.reverseOutput;
+
+    p.hp += heal;
+    if (p.hp > 1200) p.hp = 1200;
+
+    // 사용할수록 출력 증가
+    p.reverseOutput += 0.2;
+
+    return i.reply(`♻ 반전술식 +${Math.floor(heal)} (출력 ${p.reverseOutput.toFixed(1)})`);
+  }
+
+  // 🏃 도주
   if (i.customId === "run") {
     const ok = Math.random() < 0.7;
 
@@ -217,8 +213,4 @@ client.on("interactionCreate", async (i) => {
 });
 
 // ───────── LOGIN ─────────
-client.once("ready", () => {
-  console.log("ONLINE:", client.user.tag);
-});
-
 client.login(TOKEN);
