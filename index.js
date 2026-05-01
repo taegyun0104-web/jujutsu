@@ -5,9 +5,9 @@ const app = express();
 app.get("/", (_, res) => res.send("OK"));
 app.listen(process.env.PORT || 3000);
 
-// ─────────────────────────
-// SAFE MODE
-// ─────────────────────────
+// ─────────────────────
+// SAFE CRASH GUARD
+// ─────────────────────
 process.on("unhandledRejection", console.log);
 process.on("uncaughtException", console.log);
 
@@ -19,15 +19,15 @@ const {
   ButtonStyle,
 } = require("discord.js");
 
-// ─────────────────────────
-// DEV
-// ─────────────────────────
+// ─────────────────────
+// DEV MODE
+// ─────────────────────
 const DEV_IDS = new Set(["1499743296023691395"]);
 const isDev = (id) => DEV_IDS.has(id);
 
-// ─────────────────────────
+// ─────────────────────
 // BOT
-// ─────────────────────────
+// ─────────────────────
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -41,9 +41,9 @@ if (!process.env.DISCORD_TOKEN) {
   process.exit(1);
 }
 
-// ─────────────────────────
+// ─────────────────────
 // CHARACTERS
-// ─────────────────────────
+// ─────────────────────
 const CHARACTERS = {
   gojo: {
     name: "고죠",
@@ -67,9 +67,9 @@ const CHARACTERS = {
   },
 };
 
-// ─────────────────────────
+// ─────────────────────
 // DB
-// ─────────────────────────
+// ─────────────────────
 const DB = {
   players: new Map(),
   battles: new Map(),
@@ -77,9 +77,9 @@ const DB = {
   dungeon: new Map(),
 };
 
-// ─────────────────────────
-// PLAYER
-// ─────────────────────────
+// ─────────────────────
+// PLAYER SAFE INIT
+// ─────────────────────
 function getPlayer(id) {
   if (!DB.players.has(id)) {
     DB.players.set(id, {
@@ -88,8 +88,6 @@ function getPlayer(id) {
       hp: 1200,
       maxHp: 1200,
       xp: 0,
-      crystals: 500,
-
       party: ["itadori"],
 
       reversalOutput: 1,
@@ -101,12 +99,21 @@ function getPlayer(id) {
       domainPower: 0,
     });
   }
-  return DB.players.get(id);
+
+  const p = DB.players.get(id);
+
+  // safety patch
+  p.skillsCooldown ??= {};
+  p.domainCooldown ??= 0;
+  p.domainActive ??= false;
+  p.domainPower ??= 0;
+
+  return p;
 }
 
-// ─────────────────────────
+// ─────────────────────
 // DAMAGE
-// ─────────────────────────
+// ─────────────────────
 function dmg(atk) {
   const blackFlash = Math.random() < 0.1;
   let d = atk;
@@ -114,9 +121,9 @@ function dmg(atk) {
   return { d: Math.floor(d), blackFlash };
 }
 
-// ─────────────────────────
+// ─────────────────────
 // BUTTON UI
-// ─────────────────────────
+// ─────────────────────
 function battleUI() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("attack").setLabel("⚔ 공격").setStyle(ButtonStyle.Danger),
@@ -126,16 +133,16 @@ function battleUI() {
   );
 }
 
-// ─────────────────────────
-// MESSAGE
-// ─────────────────────────
+// ─────────────────────
+// MESSAGE COMMANDS
+// ─────────────────────
 client.on("messageCreate", async (msg) => {
   try {
     if (!msg || msg.author.bot) return;
 
     const p = getPlayer(msg.author.id);
 
-    // ───── DEV ─────
+    // DEV
     if (msg.content === "!dev" && isDev(msg.author.id)) {
       return msg.reply("👑 DEV ON");
     }
@@ -150,7 +157,7 @@ client.on("messageCreate", async (msg) => {
       return msg.reply("XP +1000");
     }
 
-    // ───── RANK ─────
+    // RANK
     if (msg.content === "!랭킹") {
       const list = [...DB.players.values()]
         .sort((a, b) => b.xp - a.xp)
@@ -159,19 +166,19 @@ client.on("messageCreate", async (msg) => {
       return msg.reply(list.map((u, i) => `${i + 1}. <@${u.id}> ${u.xp}`).join("\n"));
     }
 
-    // ───── CURSE TOOL ─────
+    // CURSE TOOL
     if (msg.content === "!주구") {
       p.cursedTool = true;
       return msg.reply("🧿 주구 장착");
     }
 
-    // ───── DUNGEON ─────
+    // DUNGEON
     if (msg.content === "!컬링게임") {
       DB.dungeon.set(msg.author.id, { stage: 1, hp: 1000 });
       return msg.reply("🎮 컬링게임 시작");
     }
 
-    // ───── BATTLE START ─────
+    // BATTLE START
     if (msg.content === "!전투") {
       DB.battles.set(msg.author.id, {
         enemy: { hp: 1200 },
@@ -185,7 +192,7 @@ client.on("messageCreate", async (msg) => {
       });
     }
 
-    // ───── PVP ─────
+    // PVP START
     if (msg.content.startsWith("!pvp")) {
       const target = msg.mentions.users.first();
       if (!target) return msg.reply("멘션 필요");
@@ -202,103 +209,116 @@ client.on("messageCreate", async (msg) => {
   }
 });
 
-// ─────────────────────────
+// ─────────────────────
 // BUTTON SYSTEM
-// ─────────────────────────
+// ─────────────────────
 client.on("interactionCreate", async (i) => {
-  if (!i.isButton()) return;
+  try {
+    if (!i.isButton()) return;
 
-  const p = getPlayer(i.user.id);
-  const b = DB.battles.get(i.user.id);
-  const pv = DB.pvp.get(i.user.id);
+    const p = getPlayer(i.user.id);
+    const b = DB.battles.get(i.user.id);
+    const pv = DB.pvp.get(i.user.id);
 
-  // ───── ATTACK ─────
-  if (i.customId === "attack") {
-    const r = dmg(100);
-    if (b) {
-      b.enemy.hp -= r.d;
-      b.turn = (b.turn + 1) % b.party.length;
-      return i.reply(`⚔️ ${r.d}`);
+    // ───── ATTACK ─────
+    if (i.customId === "attack") {
+      const r = dmg(100);
+
+      if (b) {
+        b.enemy.hp -= r.d;
+        b.turn = (b.turn + 1) % b.party.length;
+        return i.reply(`⚔️ ${r.d}`);
+      }
+
+      if (pv) {
+        pv.hp[pv.enemy] -= r.d;
+        return i.reply(`⚔️ PvP ${r.d}`);
+      }
     }
 
-    if (pv) {
-      pv.hp[pv.enemy] -= r.d;
-      return i.reply(`⚔️ PvP ${r.d}`);
-    }
-  }
+    // ───── SKILL ─────
+    if (i.customId === "skill") {
+      const c = CHARACTERS[p.char];
+      const skill = c.skills[Math.floor(Math.random() * c.skills.length)];
 
-  // ───── SKILL ─────
-  if (i.customId === "skill") {
-    const c = CHARACTERS[p.char];
-    const skill = c.skills[Math.floor(Math.random() * c.skills.length)];
+      p.skillsCooldown ??= {};
 
-    if (p.skillsCooldown[skill] > Date.now()) {
-      return i.reply("쿨타임");
-    }
+      if (p.skillsCooldown[skill] > Date.now()) {
+        return i.reply("쿨타임");
+      }
 
-    p.skillsCooldown[skill] = Date.now() + 5000;
+      p.skillsCooldown[skill] = Date.now() + 5000;
 
-    let d = 120;
-    if (skill === "허식무라사키") d = 300;
+      let d = 120;
+      if (skill === "허식무라사키") d = 300;
 
-    return i.reply(`🌀 ${skill} ${d}`);
-  }
-
-  // ───── DOMAIN + CLASH ─────
-  if (i.customId === "domain") {
-    const c = CHARACTERS[p.char];
-    if (!c.domain) return i.reply("❌ 없음");
-
-    if (p.domainCooldown > Date.now()) {
-      return i.reply("쿨타임");
+      return i.reply(`🌀 ${skill} ${d}`);
     }
 
-    p.domainCooldown = Date.now() + 20000;
-    p.domainActive = true;
-    p.domainPower = p.reversalOutput * 100;
+    // ───── DOMAIN + CLASH ─────
+    if (i.customId === "domain") {
+      const c = CHARACTERS[p.char];
 
-    const enemyPvP = DB.pvp.get(i.user.id);
+      if (!c?.domain) return i.reply("❌ 없음");
 
-    if (enemyPvP) {
-      const enemy = DB.players.get(enemyPvP.enemy);
+      if (p.domainCooldown > Date.now()) {
+        return i.reply("쿨타임");
+      }
 
-      if (enemy?.domainActive) {
+      p.domainCooldown = Date.now() + 20000;
+      p.domainActive = true;
+      p.domainPower = p.reversalOutput * 100;
+
+      const pv = DB.pvp.get(i.user.id);
+
+      if (!pv) {
+        return i.reply(`🌌 ${c.domain}`);
+      }
+
+      const enemy = DB.players.get(pv.enemy);
+      if (!enemy) {
+        return i.reply(`🌌 ${c.domain}`);
+      }
+
+      if (enemy.domainActive) {
         const win = p.domainPower > enemy.domainPower;
 
         if (win) {
           enemy.hp -= 500;
           return i.reply("🌌 충돌 승리");
         } else {
-          p.hp -= 500;
+          p.hp -= 300;
           return i.reply("💥 충돌 패배");
         }
       }
+
+      return i.reply(`🌌 ${c.domain}`);
     }
 
-    return i.reply(`🌌 ${c.domain}`);
-  }
+    // ───── RUN ─────
+    if (i.customId === "run") {
+      if (isDev(i.user.id)) {
+        DB.battles.delete(i.user.id);
+        return i.reply("DEV 도주");
+      }
 
-  // ───── RUN ─────
-  if (i.customId === "run") {
-    if (isDev(i.user.id)) {
-      DB.battles.delete(i.user.id);
-      return i.reply("DEV 도주");
+      const success = Math.random() < 0.7;
+
+      if (success) {
+        DB.battles.delete(i.user.id);
+        return i.reply("🏃 도주 성공");
+      } else {
+        return i.reply("실패");
+      }
     }
-
-    const success = Math.random() < 0.7;
-
-    if (success) {
-      DB.battles.delete(i.user.id);
-      return i.reply("🏃 도주 성공");
-    } else {
-      return i.reply("실패");
-    }
+  } catch (e) {
+    console.log(e);
   }
 });
 
-// ─────────────────────────
+// ─────────────────────
 // READY
-// ─────────────────────────
+// ─────────────────────
 client.once("ready", () => {
   console.log("ONLINE", client.user.tag);
 });
