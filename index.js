@@ -1,5 +1,21 @@
 require("dotenv").config();
 
+const express = require("express");
+const app = express();
+app.get("/", (req, res) => res.send("Bot Alive"));
+app.listen(3000);
+
+process.on("unhandledRejection", console.log);
+process.on("uncaughtException", console.log);
+
+if (!process.env.DISCORD_TOKEN) {
+  console.log("❌ DISCORD_TOKEN 없음");
+  process.exit(1);
+}
+
+// ─────────────────────────────
+// DISCORD
+// ─────────────────────────────
 const {
   Client,
   GatewayIntentBits,
@@ -8,6 +24,26 @@ const {
   ButtonStyle,
 } = require("discord.js");
 
+// ─────────────────────────────
+// SQLITE
+// ─────────────────────────────
+const Database = require("better-sqlite3");
+const db = new Database("data.db");
+
+db.prepare(`
+CREATE TABLE IF NOT EXISTS players (
+  id TEXT PRIMARY KEY,
+  char TEXT,
+  hp INTEGER,
+  crystals INTEGER,
+  xp INTEGER DEFAULT 0,
+  tool TEXT DEFAULT 'none'
+)
+`).run();
+
+// ─────────────────────────────
+// CLIENT
+// ─────────────────────────────
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -16,85 +52,90 @@ const client = new Client({
   ],
 });
 
-process.on("unhandledRejection", console.error);
-process.on("uncaughtException", console.error);
-
-// ─────────────────────────────
-// DEV SYSTEM
-// ─────────────────────────────
-const DEV_ID = process.env.DEV_ID;
-const isDev = (id) => id === DEV_ID;
-
 // ─────────────────────────────
 // CHARACTER
 // ─────────────────────────────
 const CHAR = {
-  itadori: {
-    name: "이타도리 유지",
-    atk: 90,
-    hp: 1200,
-    reversal: false,
-  },
-
-  gojo: {
-    name: "고죠 사토루",
-    atk: 120,
-    hp: 2000,
-    reversal: true,
-  },
-
-  sukuna: {
-    name: "료멘 스쿠나",
-    atk: 130,
-    hp: 2200,
-    reversal: false,
-  },
+  itadori: { name: "이타도리", atk: 85, hp: 1200, reversal: false },
+  gojo: { name: "고죠", atk: 120, hp: 2000, reversal: true },
+  sukuna: { name: "스쿠나", atk: 130, hp: 2200, reversal: false },
 };
 
 // ─────────────────────────────
-// DB
+// TOOLS (주구)
 // ─────────────────────────────
-const players = new Map();
-const battles = new Map();
-const pvpBattles = new Map();
+const TOOLS = {
+  none: { name: "맨손", atk: 0 },
+  katana: { name: "주술도", atk: 15 },
+  spear: { name: "저주창", atk: 25 },
+};
+
+// ─────────────────────────────
+// DUNGEON
+// ─────────────────────────────
+const DUNGEONS = {
+  culling: { name: "컬링게임", xp: 120, crystal: 80 },
+  shibuya: { name: "사멸회유", xp: 250, crystal: 150 },
+};
 
 // ─────────────────────────────
 // PLAYER
 // ─────────────────────────────
 function getPlayer(id) {
-  if (!players.has(id)) {
-    players.set(id, {
-      char: "itadori",
-      hp: 1200,
-      owned: ["itadori"],
-      crystals: 500,
-    });
+  let p = db.prepare("SELECT * FROM players WHERE id=?").get(id);
+
+  if (!p) {
+    db.prepare(
+      "INSERT INTO players (id, char, hp, crystals, xp, tool) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run(id, "itadori", 1200, 500, 0, "none");
+
+    p = db.prepare("SELECT * FROM players WHERE id=?").get(id);
   }
-  return players.get(id);
+
+  return p;
+}
+
+function savePlayer(p) {
+  db.prepare(
+    "UPDATE players SET char=?, hp=?, crystals=?, xp=?, tool=? WHERE id=?"
+  ).run(p.char, p.hp, p.crystals, p.xp, p.tool, p.id);
 }
 
 // ─────────────────────────────
-// 🔥 DAMAGE SYSTEM (흑섬)
+// LEVEL + RANKING
+// ─────────────────────────────
+function getLevel(xp) {
+  return Math.floor(xp / 200) + 1;
+}
+
+function getRanking() {
+  return db.prepare(`
+    SELECT id, xp FROM players
+    ORDER BY xp DESC
+    LIMIT 10
+  `).all();
+}
+
+// ─────────────────────────────
+// BLACK FLASH
 // ─────────────────────────────
 function calcDamage(char, atk, mult = 1) {
-  let dmg = atk * mult;
+  let dmg = (atk + (TOOLS[getPlayer(char.id || "").tool] || TOOLS.none).atk) * mult;
 
-  // ⚡ 흑섬 확률
-  const isBlackFlash = Math.random() < 0.12;
+  const blackFlash = Math.random() < 0.12;
 
-  if (isBlackFlash) {
+  if (blackFlash) {
     dmg *= 2.5;
-    return {
-      dmg: Math.floor(dmg),
-      blackFlash: true,
-    };
+    return { dmg: Math.floor(dmg), blackFlash: true };
   }
 
-  return {
-    dmg: Math.floor(dmg),
-    blackFlash: false,
-  };
+  return { dmg: Math.floor(dmg), blackFlash: false };
 }
+
+// ─────────────────────────────
+// TURN SYSTEM
+// ─────────────────────────────
+const battles = new Map();
 
 // ─────────────────────────────
 // MESSAGE
@@ -102,160 +143,124 @@ function calcDamage(char, atk, mult = 1) {
 client.on("messageCreate", async (msg) => {
   if (msg.author.bot) return;
 
-  const p = getPlayer(msg.author.id);
+  let p = getPlayer(msg.author.id);
+  const char = CHAR[p.char];
+
+  // ⚔️ 전투 시작
+  if (msg.content === "!전투") {
+    battles.set(msg.author.id, {
+      enemy: { hp: 800, atk: 60 },
+      skillCD: 0,
+      turn: 1,
+    });
+
+    return msg.reply("⚔️ 턴제 전투 시작!");
+  }
 
   // 🎲 가챠
   if (msg.content === "!가챠") {
     const pool = ["itadori", "gojo", "sukuna"];
     const r = pool[Math.floor(Math.random() * pool.length)];
 
-    if (!p.owned.includes(r)) p.owned.push(r);
     p.char = r;
+    p.hp = CHAR[r].hp;
+
+    savePlayer(p);
 
     return msg.reply(`🎲 ${CHAR[r].name} 획득!`);
   }
 
-  // ⚔️ 전투 시작
-  if (msg.content === "!전투") {
-    const enemy = { hp: 800, atk: 60 };
+  // 🏆 랭킹
+  if (msg.content === "!랭킹") {
+    const data = getRanking();
 
-    battles.set(msg.author.id, {
-      enemy,
-      eHp: enemy.hp,
-    });
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("atk").setLabel("공격").setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId("skill").setLabel("스킬").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("heal").setLabel("반전술식").setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId("run").setLabel("도주").setStyle(ButtonStyle.Secondary)
-    );
-
-    return msg.reply({ content: "⚔️ 전투 시작!", components: [row] });
-  }
-
-  // 🏃 도주
-  if (msg.content === "!도주") {
-    if (battles.has(msg.author.id)) {
-      battles.delete(msg.author.id);
-      return msg.reply("🏃 전투 도주!");
-    }
-
-    if (pvpBattles.has(msg.author.id)) {
-      const battle = pvpBattles.get(msg.author.id);
-      const enemy = battle.p1 === msg.author.id ? battle.p2 : battle.p1;
-
-      pvpBattles.delete(battle.p1);
-      pvpBattles.delete(battle.p2);
-
-      return msg.reply("🏃 PvP 도주 (패배 처리)");
-    }
-
-    return msg.reply("❌ 전투 중 아님");
-  }
-
-  // ⚔️ PvP
-  if (msg.content === "!pvp") {
-    const id = msg.author.id;
-
-    const battle = {
-      p1: id,
-      p2: "enemy",
-      turn: id,
-      hp: { [id]: 1000, enemy: 1000 },
-    };
-
-    pvpBattles.set(id, battle);
-
-    return msg.reply("⚔️ PvP 시작!");
-  }
-
-  // ⚔️ PvP 액션
-  if (["!공격", "!스킬", "!반전술식"].includes(msg.content)) {
-    const battle = pvpBattles.get(msg.author.id);
-    if (!battle) return;
-
-    const char = CHAR[p.char];
-    const enemyId = battle.p1 === msg.author.id ? battle.p2 : battle.p1;
-
-    let result;
-
-    if (msg.content === "!공격") {
-      result = calcDamage(char, char.atk, 1);
-      battle.hp[enemyId] -= result.dmg;
-    }
-
-    if (msg.content === "!스킬") {
-      result = calcDamage(char, char.atk, 1.6);
-      battle.hp[enemyId] -= result.dmg;
-    }
-
-    if (msg.content === "!반전술식") {
-      if (!char.reversal)
-        return msg.reply("❌ 반전술식 불가");
-
-      battle.hp[msg.author.id] += 300;
-      return msg.reply("💚 반전술식 +300");
-    }
-
-    if (result?.blackFlash) {
-      return msg.reply(`⚡🔥 흑섬! ${result.dmg}`);
-    }
-
-    return msg.reply(`⚔️ ${result.dmg}`);
-  }
-
-  // 🛠 DEV
-  if (msg.content === "!dev") {
-    if (!isDev(msg.author.id)) return;
-    return msg.reply("🛠 DEV ON");
-  }
-});
-
-// ─────────────────────────────
-// BUTTON
-// ─────────────────────────────
-client.on("interactionCreate", async (i) => {
-  const p = getPlayer(i.user.id);
-  const battle = battles.get(i.user.id);
-
-  if (!battle) return;
-
-  const char = CHAR[p.char];
-
-  if (i.customId === "atk") {
-    const r = calcDamage(char, char.atk);
-    battle.eHp -= r.dmg;
-
-    return i.reply(
-      r.blackFlash
-        ? `⚡🔥 흑섬 ${r.dmg}`
-        : `👊 ${r.dmg}`
+    return msg.reply(
+      data
+        .map((u, i) => `${i + 1}. <@${u.id}> Lv.${getLevel(u.xp)} (${u.xp})`)
+        .join("\n")
     );
   }
 
-  if (i.customId === "skill") {
-    const r = calcDamage(char, char.atk, 1.5);
-    battle.eHp -= r.dmg;
+  // ⚔️ 던전
+  if (msg.content === "!컬링게임") {
+    const d = DUNGEONS.culling;
+    const win = Math.random() > 0.4;
 
-    return i.reply(
-      r.blackFlash
-        ? `⚡🔥 흑섬 스킬 ${r.dmg}`
-        : `✨ ${r.dmg}`
-    );
+    if (win) {
+      p.xp += d.xp;
+      p.crystals += d.crystal;
+    }
+
+    savePlayer(p);
+
+    return msg.reply(win ? "🏆 승리" : "💀 패배");
   }
 
-  if (i.customId === "heal") {
-    if (!char.reversal)
-      return i.reply("❌ 반전술식 불가");
+  if (msg.content === "!사멸회유") {
+    const d = DUNGEONS.shibuya;
+    const win = Math.random() > 0.55;
+
+    if (win) {
+      p.xp += d.xp;
+      p.crystals += d.crystal;
+    }
+
+    savePlayer(p);
+
+    return msg.reply(win ? "🔥 돌파" : "☠️ 전멸");
+  }
+
+  // ─────────────────────────────
+  // TURN ACTIONS
+  // ─────────────────────────────
+  const b = battles.get(msg.author.id);
+  if (!b) return;
+
+  const tool = TOOLS[p.tool];
+
+  if (msg.content === "!공격") {
+    const dmg = Math.floor(char.atk + tool.atk);
+    b.enemy.hp -= dmg;
+
+    b.skillCD--;
+    b.turn++;
+
+    return msg.reply(`👊 ${dmg} 피해 (턴 ${b.turn})`);
+  }
+
+  if (msg.content === "!술식") {
+    if (b.skillCD > 0)
+      return msg.reply(`❌ 쿨타임 ${b.skillCD}`);
+
+    const dmg = Math.floor(char.atk * 2);
+
+    b.enemy.hp -= dmg;
+    b.skillCD = 3;
+
+    return msg.reply(`✨ 술식 ${dmg}`);
+  }
+
+  if (msg.content === "!회복") {
+    if (!char.reversal) return msg.reply("❌ 불가");
 
     p.hp += 200;
-    return i.reply("💚 반전술식 +200");
+    return msg.reply("💚 회복");
   }
 
-  if (i.customId === "run") {
-    battles.delete(i.user.id);
-    return i.reply("🏃 도주");
+  if (msg.content === "!도주") {
+    battles.delete(msg.author.id);
+    return msg.reply("🏃 도주");
+  }
+
+  // 승리 체크
+  if (b.enemy.hp <= 0) {
+    p.xp += 100;
+    p.crystals += 80;
+
+    battles.delete(msg.author.id);
+    savePlayer(p);
+
+    return msg.reply("🏆 승리!");
   }
 });
 
