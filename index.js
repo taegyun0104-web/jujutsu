@@ -2,16 +2,11 @@ require("dotenv").config();
 
 const express = require("express");
 const app = express();
-app.get("/", (req, res) => res.send("Bot Alive"));
+app.get("/", (_, res) => res.send("Bot Alive"));
 app.listen(3000);
 
 process.on("unhandledRejection", console.log);
 process.on("uncaughtException", console.log);
-
-if (!process.env.DISCORD_TOKEN) {
-  console.log("❌ DISCORD_TOKEN 없음");
-  process.exit(1);
-}
 
 // ─────────────────────────────
 // DISCORD
@@ -19,9 +14,6 @@ if (!process.env.DISCORD_TOKEN) {
 const {
   Client,
   GatewayIntentBits,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
 } = require("discord.js");
 
 // ─────────────────────────────
@@ -53,7 +45,7 @@ const client = new Client({
 });
 
 // ─────────────────────────────
-// CHARACTER
+// DATA
 // ─────────────────────────────
 const CHAR = {
   itadori: { name: "이타도리", atk: 85, hp: 1200, reversal: false },
@@ -61,25 +53,16 @@ const CHAR = {
   sukuna: { name: "스쿠나", atk: 130, hp: 2200, reversal: false },
 };
 
-// ─────────────────────────────
-// TOOLS (주구)
-// ─────────────────────────────
 const TOOLS = {
-  none: { name: "맨손", atk: 0 },
-  katana: { name: "주술도", atk: 15 },
-  spear: { name: "저주창", atk: 25 },
+  none: { atk: 0 },
+  katana: { atk: 15 },
+  spear: { atk: 25 },
 };
 
-// ─────────────────────────────
-// DUNGEON
-// ─────────────────────────────
-const DUNGEONS = {
-  culling: { name: "컬링게임", xp: 120, crystal: 80 },
-  shibuya: { name: "사멸회유", xp: 250, crystal: 150 },
-};
+const battles = new Map();
 
 // ─────────────────────────────
-// PLAYER
+// SAFE PLAYER
 // ─────────────────────────────
 function getPlayer(id) {
   let p = db.prepare("SELECT * FROM players WHERE id=?").get(id);
@@ -96,171 +79,117 @@ function getPlayer(id) {
 }
 
 function savePlayer(p) {
-  db.prepare(
-    "UPDATE players SET char=?, hp=?, crystals=?, xp=?, tool=? WHERE id=?"
-  ).run(p.char, p.hp, p.crystals, p.xp, p.tool, p.id);
+  if (!p?.id) return;
+
+  db.prepare(`
+    UPDATE players
+    SET char=?, hp=?, crystals=?, xp=?, tool=?
+    WHERE id=?
+  `).run(p.char, p.hp, p.crystals, p.xp, p.tool, p.id);
 }
 
 // ─────────────────────────────
-// LEVEL + RANKING
+// SAFE DAMAGE (CRASH FIX 핵심)
 // ─────────────────────────────
-function getLevel(xp) {
-  return Math.floor(xp / 200) + 1;
-}
+function calcDamage(char, atk, toolAtk = 0, mult = 1) {
+  try {
+    let dmg = (atk + (toolAtk || 0)) * mult;
 
-function getRanking() {
-  return db.prepare(`
-    SELECT id, xp FROM players
-    ORDER BY xp DESC
-    LIMIT 10
-  `).all();
-}
+    const blackFlash = Math.random() < 0.12;
 
-// ─────────────────────────────
-// BLACK FLASH
-// ─────────────────────────────
-function calcDamage(char, atk, mult = 1) {
-  let dmg = (atk + (TOOLS[getPlayer(char.id || "").tool] || TOOLS.none).atk) * mult;
+    if (blackFlash) {
+      dmg *= 2.5;
+      return { dmg: Math.floor(dmg), blackFlash: true };
+    }
 
-  const blackFlash = Math.random() < 0.12;
-
-  if (blackFlash) {
-    dmg *= 2.5;
-    return { dmg: Math.floor(dmg), blackFlash: true };
+    return { dmg: Math.floor(dmg), blackFlash: false };
+  } catch (e) {
+    console.log("damage error:", e);
+    return { dmg: 1, blackFlash: false };
   }
-
-  return { dmg: Math.floor(dmg), blackFlash: false };
 }
-
-// ─────────────────────────────
-// TURN SYSTEM
-// ─────────────────────────────
-const battles = new Map();
 
 // ─────────────────────────────
 // MESSAGE
 // ─────────────────────────────
 client.on("messageCreate", async (msg) => {
-  if (msg.author.bot) return;
+  try {
+    if (msg.author.bot) return;
 
-  let p = getPlayer(msg.author.id);
-  const char = CHAR[p.char];
+    let p = getPlayer(msg.author.id);
+    const char = CHAR[p.char];
+    const tool = TOOLS[p.tool] || TOOLS.none;
 
-  // ⚔️ 전투 시작
-  if (msg.content === "!전투") {
-    battles.set(msg.author.id, {
-      enemy: { hp: 800, atk: 60 },
-      skillCD: 0,
-      turn: 1,
-    });
+    // ⚔️ 전투 시작
+    if (msg.content === "!전투") {
+      battles.set(msg.author.id, {
+        enemy: { hp: 800 },
+        cd: 0,
+        turn: 1,
+      });
 
-    return msg.reply("⚔️ 턴제 전투 시작!");
-  }
-
-  // 🎲 가챠
-  if (msg.content === "!가챠") {
-    const pool = ["itadori", "gojo", "sukuna"];
-    const r = pool[Math.floor(Math.random() * pool.length)];
-
-    p.char = r;
-    p.hp = CHAR[r].hp;
-
-    savePlayer(p);
-
-    return msg.reply(`🎲 ${CHAR[r].name} 획득!`);
-  }
-
-  // 🏆 랭킹
-  if (msg.content === "!랭킹") {
-    const data = getRanking();
-
-    return msg.reply(
-      data
-        .map((u, i) => `${i + 1}. <@${u.id}> Lv.${getLevel(u.xp)} (${u.xp})`)
-        .join("\n")
-    );
-  }
-
-  // ⚔️ 던전
-  if (msg.content === "!컬링게임") {
-    const d = DUNGEONS.culling;
-    const win = Math.random() > 0.4;
-
-    if (win) {
-      p.xp += d.xp;
-      p.crystals += d.crystal;
+      return msg.reply("⚔️ 전투 시작!");
     }
 
-    savePlayer(p);
+    const b = battles.get(msg.author.id);
 
-    return msg.reply(win ? "🏆 승리" : "💀 패배");
-  }
+    // 🎯 전투 없으면 여기서 종료 (CRASH 방지 핵심)
+    if (!b) return;
 
-  if (msg.content === "!사멸회유") {
-    const d = DUNGEONS.shibuya;
-    const win = Math.random() > 0.55;
+    // 👊 공격
+    if (msg.content === "!공격") {
+      const r = calcDamage(char, char.atk, tool.atk);
 
-    if (win) {
-      p.xp += d.xp;
-      p.crystals += d.crystal;
+      b.enemy.hp -= r.dmg;
+      b.cd--;
+
+      b.turn++;
+
+      return msg.reply(
+        r.blackFlash ? `⚡ 흑섬 ${r.dmg}` : `👊 ${r.dmg}`
+      );
     }
 
-    savePlayer(p);
+    // ✨ 술식
+    if (msg.content === "!술식") {
+      if (b.cd > 0) return msg.reply(`쿨타임 ${b.cd}`);
 
-    return msg.reply(win ? "🔥 돌파" : "☠️ 전멸");
-  }
+      const r = calcDamage(char, char.atk, tool.atk, 2);
 
-  // ─────────────────────────────
-  // TURN ACTIONS
-  // ─────────────────────────────
-  const b = battles.get(msg.author.id);
-  if (!b) return;
+      b.enemy.hp -= r.dmg;
+      b.cd = 3;
 
-  const tool = TOOLS[p.tool];
+      return msg.reply(`✨ ${r.dmg}`);
+    }
 
-  if (msg.content === "!공격") {
-    const dmg = Math.floor(char.atk + tool.atk);
-    b.enemy.hp -= dmg;
+    // 💚 회복
+    if (msg.content === "!회복") {
+      if (!char.reversal) return msg.reply("불가");
 
-    b.skillCD--;
-    b.turn++;
+      p.hp = (p.hp || char.hp) + 200;
+      savePlayer(p);
 
-    return msg.reply(`👊 ${dmg} 피해 (턴 ${b.turn})`);
-  }
+      return msg.reply("💚 +200");
+    }
 
-  if (msg.content === "!술식") {
-    if (b.skillCD > 0)
-      return msg.reply(`❌ 쿨타임 ${b.skillCD}`);
+    // 🏃 도주
+    if (msg.content === "!도주") {
+      battles.delete(msg.author.id);
+      return msg.reply("도주 완료");
+    }
 
-    const dmg = Math.floor(char.atk * 2);
+    // 🏆 승리 체크 (NULL 방지)
+    if (b?.enemy?.hp <= 0) {
+      p.xp += 100;
+      p.crystals += 80;
 
-    b.enemy.hp -= dmg;
-    b.skillCD = 3;
+      battles.delete(msg.author.id);
+      savePlayer(p);
 
-    return msg.reply(`✨ 술식 ${dmg}`);
-  }
-
-  if (msg.content === "!회복") {
-    if (!char.reversal) return msg.reply("❌ 불가");
-
-    p.hp += 200;
-    return msg.reply("💚 회복");
-  }
-
-  if (msg.content === "!도주") {
-    battles.delete(msg.author.id);
-    return msg.reply("🏃 도주");
-  }
-
-  // 승리 체크
-  if (b.enemy.hp <= 0) {
-    p.xp += 100;
-    p.crystals += 80;
-
-    battles.delete(msg.author.id);
-    savePlayer(p);
-
-    return msg.reply("🏆 승리!");
+      return msg.reply("승리!");
+    }
+  } catch (err) {
+    console.log("MESSAGE ERROR:", err);
   }
 });
 
@@ -268,7 +197,7 @@ client.on("messageCreate", async (msg) => {
 // READY
 // ─────────────────────────────
 client.once("ready", () => {
-  console.log(`✅ ONLINE ${client.user.tag}`);
+  console.log("✅ ONLINE");
 });
 
 client.login(process.env.DISCORD_TOKEN);
