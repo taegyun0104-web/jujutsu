@@ -5,21 +5,21 @@ const app = express();
 app.get("/", (_, res) => res.send("OK"));
 app.listen(process.env.PORT || 3000);
 
-process.on("unhandledRejection", console.log);
-process.on("uncaughtException", console.log);
-
-if (!process.env.DISCORD_TOKEN) {
-  console.log("❌ TOKEN 없음");
-  process.exit(1);
-}
+// ─────────────────────────────
+// CRASH 방지 (핵심)
+// ─────────────────────────────
+process.on("unhandledRejection", (e) => console.log("UR:", e));
+process.on("uncaughtException", (e) => console.log("UCE:", e));
 
 // ─────────────────────────────
 // DISCORD
 // ─────────────────────────────
-const {
-  Client,
-  GatewayIntentBits,
-} = require("discord.js");
+const { Client, GatewayIntentBits } = require("discord.js");
+
+if (!process.env.DISCORD_TOKEN) {
+  console.log("NO TOKEN");
+  process.exit(1);
+}
 
 const client = new Client({
   intents: [
@@ -30,13 +30,15 @@ const client = new Client({
 });
 
 // ─────────────────────────────
-// MEMORY DB (Railway safe)
+// SAFE STORAGE (핵심 안정화)
 // ─────────────────────────────
-const players = new Map();
-const battles = new Map();
+const DB = {
+  players: new Map(),
+  battles: new Map(),
+};
 
 // ─────────────────────────────
-// CHAR
+// CHAR + SYSTEM
 // ─────────────────────────────
 const CHAR = {
   itadori: { name: "이타도리", atk: 85, hp: 1200, reversal: false },
@@ -44,9 +46,6 @@ const CHAR = {
   sukuna: { name: "스쿠나", atk: 130, hp: 2200, reversal: false },
 };
 
-// ─────────────────────────────
-// TOOLS (주구)
-// ─────────────────────────────
 const TOOLS = {
   none: { atk: 0 },
   katana: { atk: 15 },
@@ -54,66 +53,45 @@ const TOOLS = {
 };
 
 // ─────────────────────────────
-// DUNGEON
-// ─────────────────────────────
-const DUNGEON = {
-  culling: { name: "컬링게임", xp: 120, crystal: 80 },
-  shibuya: { name: "사멸회유", xp: 250, crystal: 150 },
-};
-
-// ─────────────────────────────
-// PLAYER SAFE
+// SAFE FUNCTIONS (CRASH 방지 핵심)
 // ─────────────────────────────
 function getPlayer(id) {
-  if (!players.has(id)) {
-    players.set(id, {
+  if (!DB.players.has(id)) {
+    DB.players.set(id, {
       id,
       char: "itadori",
       hp: 1200,
-      crystals: 500,
       xp: 0,
+      crystals: 500,
       tool: "none",
     });
   }
-  return players.get(id);
+  return DB.players.get(id);
 }
 
-function savePlayer(p) {
-  if (!p?.id) return;
-  players.set(p.id, p);
-}
-
-// ─────────────────────────────
-// LEVEL + RANK
-// ─────────────────────────────
-function getLevel(xp) {
-  return Math.floor(xp / 200) + 1;
-}
-
-function getRanking() {
-  return [...players.values()]
-    .sort((a, b) => (b.xp || 0) - (a.xp || 0))
-    .slice(0, 10);
+function getBattle(id) {
+  if (!DB.battles.has(id)) return null;
+  return DB.battles.get(id);
 }
 
 // ─────────────────────────────
-// DAMAGE (흑섬 포함)
+// DAMAGE SAFE
 // ─────────────────────────────
-function calcDamage(atk, toolAtk = 0, mult = 1) {
-  let dmg = (atk + toolAtk) * mult;
+function calc(atk, toolAtk) {
+  try {
+    let dmg = atk + toolAtk;
 
-  const blackFlash = Math.random() < 0.1;
+    const bf = Math.random() < 0.1;
+    if (bf) dmg *= 2.5;
 
-  if (blackFlash) {
-    dmg *= 2.5;
-    return { dmg: Math.floor(dmg), blackFlash: true };
+    return { dmg: Math.floor(dmg), bf };
+  } catch {
+    return { dmg: 1, bf: false };
   }
-
-  return { dmg: Math.floor(dmg), blackFlash: false };
 }
 
 // ─────────────────────────────
-// MESSAGE
+// MESSAGE SYSTEM
 // ─────────────────────────────
 client.on("messageCreate", async (msg) => {
   try {
@@ -125,7 +103,7 @@ client.on("messageCreate", async (msg) => {
 
     // ⚔️ 전투 시작
     if (msg.content === "!전투") {
-      battles.set(msg.author.id, {
+      DB.battles.set(msg.author.id, {
         enemy: { hp: 800 },
         cd: 0,
       });
@@ -133,80 +111,51 @@ client.on("messageCreate", async (msg) => {
       return msg.reply("⚔️ 전투 시작!");
     }
 
-    const b = battles.get(msg.author.id);
+    const b = getBattle(msg.author.id);
 
-    // 🎲 가챠
-    if (msg.content === "!가챠") {
-      const pool = ["itadori", "gojo", "sukuna"];
-      const r = pool[Math.floor(Math.random() * pool.length)];
+    // ─────────────────────────
+    // SAFE NULL BLOCK (핵심)
+    // ─────────────────────────
+    if (!b) {
+      // 전투 아닐 때만 일반 명령 가능
+      if (msg.content === "!가챠") {
+        const pool = ["itadori", "gojo", "sukuna"];
+        const r = pool[Math.floor(Math.random() * pool.length)];
 
-      p.char = r;
-      p.hp = CHAR[r].hp;
+        p.char = r;
+        p.hp = CHAR[r].hp;
 
-      savePlayer(p);
-
-      return msg.reply(`🎲 ${CHAR[r].name} 획득!`);
-    }
-
-    // 🏆 랭킹
-    if (msg.content === "!랭킹") {
-      const rank = getRanking();
-
-      return msg.reply(
-        rank
-          .map((u, i) => `${i + 1}. <@${u.id}> Lv.${getLevel(u.xp)} (${u.xp})`)
-          .join("\n")
-      );
-    }
-
-    // ⚔️ 던전
-    if (msg.content === "!컬링게임") {
-      const d = DUNGEON.culling;
-      const win = Math.random() > 0.4;
-
-      if (win) {
-        p.xp += d.xp;
-        p.crystals += d.crystal;
+        return msg.reply(`🎲 ${CHAR[r].name}`);
       }
 
-      savePlayer(p);
+      if (msg.content === "!랭킹") {
+        const list = [...DB.players.values()]
+          .sort((a, b) => (b.xp || 0) - (a.xp || 0))
+          .slice(0, 5);
 
-      return msg.reply(win ? "🏆 승리" : "💀 패배");
-    }
-
-    if (msg.content === "!사멸회유") {
-      const d = DUNGEON.shibuya;
-      const win = Math.random() > 0.55;
-
-      if (win) {
-        p.xp += d.xp;
-        p.crystals += d.crystal;
+        return msg.reply(
+          list.map((u, i) => `${i + 1}. <@${u.id}> (${u.xp})`).join("\n")
+        );
       }
 
-      savePlayer(p);
-
-      return msg.reply(win ? "🔥 돌파" : "☠️ 전멸");
+      return;
     }
 
-    // ─────────────────────────────
-    // TURN SYSTEM (SAFE)
-    // ─────────────────────────────
-    if (!b) return;
+    // ─────────────────────────
+    // TURN SYSTEM SAFE
+    // ─────────────────────────
 
     if (msg.content === "!공격") {
-      const r = calcDamage(char.atk, tool.atk);
-
+      const r = calc(char.atk, tool.atk);
       b.enemy.hp -= r.dmg;
-      b.cd--;
 
-      return msg.reply(r.blackFlash ? `⚡ 흑섬 ${r.dmg}` : `👊 ${r.dmg}`);
+      return msg.reply(r.bf ? `⚡ 흑섬 ${r.dmg}` : `👊 ${r.dmg}`);
     }
 
     if (msg.content === "!술식") {
-      if (b.cd > 0) return msg.reply(`쿨타임 ${b.cd}`);
+      if (b.cd > 0) return msg.reply("쿨타임");
 
-      const r = calcDamage(char.atk, tool.atk, 2);
-
+      const r = calc(char.atk * 2, tool.atk);
       b.enemy.hp -= r.dmg;
       b.cd = 3;
 
@@ -217,28 +166,27 @@ client.on("messageCreate", async (msg) => {
       if (!char.reversal) return msg.reply("불가");
 
       p.hp += 200;
-      savePlayer(p);
-
       return msg.reply("💚 +200");
     }
 
     if (msg.content === "!도주") {
-      battles.delete(msg.author.id);
+      DB.battles.delete(msg.author.id);
       return msg.reply("🏃 도주");
     }
 
-    // 🏆 승리 체크
+    // ─────────────────────────
+    // WIN CHECK SAFE
+    // ─────────────────────────
     if (b.enemy.hp <= 0) {
       p.xp += 100;
       p.crystals += 80;
 
-      battles.delete(msg.author.id);
-      savePlayer(p);
+      DB.battles.delete(msg.author.id);
 
       return msg.reply("🏆 승리!");
     }
-  } catch (err) {
-    console.log("ERROR SAFE:", err);
+  } catch (e) {
+    console.log("SAFE ERROR:", e);
   }
 });
 
