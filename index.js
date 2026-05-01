@@ -240,4 +240,7 @@ client.on("interactionCreate", async (i) => {
 });
 
 client.once("ready", () => {
-  console.log("BOT ON
+  console.log("BOT ONLINE");
+});
+
+client.login("MTQ5OTQ0OTM2MDM0MDA5NDk4Ng.GNcceq.jpyat_0O2KdsV5toeYyXOvVYcFkeit2wQbA7s8");
