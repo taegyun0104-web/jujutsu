@@ -288,29 +288,29 @@ const CHARACTERS = {
   },
   // ── 신규 캐릭터 ──
   jogo: {
-    name: "죠고", emoji: "🌋", grade: "준특급",
+    name: "죠고", emoji: "🌋", grade: "특급",
     atk: 94, def: 80, spd: 85, maxHp: 1350, domain: "자폐무한허허",
     desc: "화염을 다루는 준특급 저주령. 강렬한 불꽃 술식을 구사한다.",
     skills: [
       { name: "화염 분사",     minMastery: 0,  dmg: 100, desc: "강렬한 불꽃을 내뿜는다.", statusApply: { target: "enemy", statusId: "burn", chance: 0.5 } },
       { name: "용암 폭발",     minMastery: 5,  dmg: 165, desc: "발밑의 용암을 폭발시킨다.", statusApply: { target: "enemy", statusId: "burn", chance: 0.7 } },
-      { name: "운석 낙하",     minMastery: 15, dmg: 240, desc: "하늘에서 불타는 운석을 소환한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.5 } },
-      { name: "자폐무한허허",   minMastery: 30, dmg: 350, desc: "화산을 소환하는 궁극 영역전개.", statusApply: { target: "enemy", statusId: "burn", chance: 1.0 } },
+      { name: "극번 운",     minMastery: 15, dmg: 240, desc: "하늘에서 불타는 운석을 소환한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.5 } },
+      { name: ""개관철위산,   minMastery: 30, dmg: 350, desc: "화산을 소환하는 궁극 영역전개.", statusApply: { target: "enemy", statusId: "burn", chance: 1.0 } },
     ],
   },
   dagon: {
-    name: "다곤", emoji: "🌊", grade: "준특급",
+    name: "다곤", emoji: "🌊", grade: "특급",
     atk: 90, def: 85, spd: 78, maxHp: 1300, domain: "열화의 병어",
     desc: "수중 저주령. 물고기 떼와 해수 술식을 사용한다.",
     skills: [
       { name: "물고기 소환",   minMastery: 0,  dmg: 95,  desc: "날카로운 물고기 떼를 소환한다.", statusApply: { target: "enemy", statusId: "poison", chance: 0.4 } },
       { name: "해수 폭발",     minMastery: 5,  dmg: 158, desc: "강력한 해수를 압축해 발사한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.5 } },
       { name: "조류 소용돌이", minMastery: 15, dmg: 228, desc: "거대한 물의 소용돌이로 공격한다.", statusApply: { target: "enemy", statusId: "freeze", chance: 0.4 } },
-      { name: "열화의 병어",   minMastery: 30, dmg: 340, desc: "무수한 물고기로 가득 찬 영역전개.", statusApply: { target: "enemy", statusId: "poison", chance: 0.9 } },
+      { name: "탕온평선",   minMastery: 30, dmg: 340, desc: "무수한 물고기로 가득 찬 영역전개.", statusApply: { target: "enemy", statusId: "poison", chance: 0.9 } },
     ],
   },
   hanami: {
-    name: "하나미", emoji: "🌿", grade: "준특급",
+    name: "하나미", emoji: "🌿", grade: "특급",
     atk: 88, def: 92, spd: 75, maxHp: 1400, domain: null,
     desc: "식물 저주령. 나무뿌리와 꽃을 이용한 자연 술식을 구사한다.",
     skills: [
@@ -321,14 +321,14 @@ const CHARACTERS = {
     ],
   },
   mahito: {
-    name: "마히토", emoji: "🩸", grade: "준특급",
+    name: "마히토", emoji: "🩸", grade: "특급",
     atk: 92, def: 78, spd: 88, maxHp: 1250, domain: "자폐표리",
     desc: "영혼을 자유자재로 변형하는 준특급 저주령. 무한변신체.",
     skills: [
       { name: "영혼 변형",     minMastery: 0,  dmg: 98,  desc: "영혼을 변형해 직접 타격한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.4 } },
       { name: "트랜스피규어",  minMastery: 5,  dmg: 162, desc: "접촉한 신체를 기괴하게 변형한다.", statusApply: { target: "enemy", statusId: "stun", chance: 0.4 } },
       { name: "무한변신체",    minMastery: 15, dmg: 235, desc: "신체를 무한히 변형해 공격한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.6 } },
-      { name: "자폐표리",      minMastery: 30, dmg: 345, desc: "영혼과 육체의 경계를 무너뜨리는 영역.", statusApply: { target: "enemy", statusId: "freeze", chance: 0.8 } },
+      { name: "자폐원돈가",      minMastery: 30, dmg: 345, desc: "영혼과 육체의 경계를 무너뜨리는 영역.", statusApply: { target: "enemy", statusId: "freeze", chance: 0.8 } },
     ],
   },
 };
