@@ -1,17 +1,1 @@
-{
-  "name": "jjk-discord-bot",
-  "version": "2.0.0",
-  "description": "주술회전 RPG 디스코드 봇",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "discord.js": "^14.16.3",
-    "dotenv": "^16.4.5",
-    "express": "^4.18.2"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  }
-}
+
