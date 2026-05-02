@@ -1,3 +1,6 @@
+S
+복사
+
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
@@ -30,7 +33,7 @@ const TOKEN = process.env.DISCORD_TOKEN;
 if (!TOKEN) { console.error("DISCORD_TOKEN 없음!"); process.exit(1); }
  
 // ═══════════════════════════════════════════════
-// ── 자동 저장 시스템 (수정) ──
+// ── 자동 저장 시스템 ──
 // ═══════════════════════════════════════════════
 const SAVE_FILE = path.join(__dirname, "players.json");
 let isDirty = false;
@@ -45,7 +48,6 @@ function loadPlayers() {
     }
   } catch (e) {
     console.error("플레이어 데이터 로드 실패:", e);
-    // 백업 복구 시도
     try {
       if (fs.existsSync(SAVE_FILE + ".bak")) {
         const raw = fs.readFileSync(SAVE_FILE + ".bak", "utf8");
@@ -60,11 +62,9 @@ function loadPlayers() {
 function savePlayers() {
   if (!isDirty) return;
   try {
-    // 기존 파일을 백업
     if (fs.existsSync(SAVE_FILE)) {
       fs.copyFileSync(SAVE_FILE, SAVE_FILE + ".bak");
     }
-    // 임시 파일에 먼저 쓴 뒤 rename → 원자적 저장 (중간에 죽어도 파일 안 깨짐)
     const tmp = SAVE_FILE + ".tmp";
     fs.writeFileSync(tmp, JSON.stringify(players, null, 2), "utf8");
     fs.renameSync(tmp, SAVE_FILE);
@@ -77,10 +77,8 @@ function savePlayers() {
  
 function markDirty() { isDirty = true; }
  
-// 30초마다 자동 저장
 setInterval(savePlayers, 30_000);
  
-// 프로세스 종료 시 반드시 저장
 function exitSave() { isDirty = true; savePlayers(); }
 process.on("SIGINT",  () => { exitSave(); process.exit(0); });
 process.on("SIGTERM", () => { exitSave(); process.exit(0); });
@@ -117,9 +115,9 @@ const CHARACTERS = {
     desc: "특급주술사 후보생. 아직 성장 중인 주술사.",
     skills: [
       { name: "주먹질", minMastery: 0,  dmg: 70,  desc: "강력한 기본 주먹 공격." },
-      { name: "흑번",   minMastery: 5,  dmg: 120, desc: "저주 에너지를 실은 주먹." },
-      { name: "흑번창", minMastery: 15, dmg: 180, desc: "최대 저주 에너지 방출!" },
-      { name: "발도",   minMastery: 30, dmg: 260, desc: "스쿠나의 힘을 빌린 궁극기." },
+      { name: "다이버전트 주먹",   minMastery: 5,  dmg: 120, desc: "저주 에너지를 실은 주먹." },
+      { name: "흑섬", minMastery: 15, dmg: 180, desc: "최대 저주 에너지 방출!" },
+      { name: "해",   minMastery: 30, dmg: 260, desc: "스쿠나의 힘을 빌린 궁극기." },
     ],
   },
   gojo: {
@@ -188,10 +186,13 @@ const CHARACTERS = {
       { name: "감로대법",   minMastery: 30, dmg: 320, desc: "감로대법으로 모든 저주 흡수." },
     ],
   },
+  // ★ 마키: 천여주박 각성 시스템 추가
   maki: {
     name: "마키 젠인", emoji: "⚪", grade: "준1급",
     atk: 92, def: 88, spd: 92, maxHp: 1050, domain: null,
-    desc: "저주력이 없어도 강한 주술사.",
+    desc: "저주력이 없어도 강한 주술사. HP 30% 이하 시 천여주박 각성!",
+    // 각성 임계치: maxHp의 30%
+    awakening: { threshold: 0.30, dmgMult: 2.0, label: "천여주박 각성" },
     skills: [
       { name: "봉술",       minMastery: 0,  dmg: 92,  desc: "저주 도구 봉으로 타격." },
       { name: "저주창",     minMastery: 5,  dmg: 155, desc: "저주 도구 창을 투척한다." },
@@ -245,6 +246,28 @@ const CHARACTERS = {
   },
 };
  
+// ── 마키 각성 여부 체크 헬퍼 ──
+function isMakiAwakened(player) {
+  if (player.active !== "maki") return false;
+  const ch = CHARACTERS["maki"];
+  return player.hp <= Math.floor(ch.maxHp * ch.awakening.threshold);
+}
+ 
+// ── 데미지 계산 (마키 각성 배율 적용) ──
+function calcDmgForPlayer(player, enemyDef, baseMult = 1) {
+  const ch = CHARACTERS[player.active];
+  let mult = baseMult;
+  if (isMakiAwakened(player)) mult *= CHARACTERS["maki"].awakening.dmgMult;
+  return calcDmg(ch.atk, enemyDef, mult);
+}
+ 
+// ── 스킬 데미지 계산 (마키 각성 배율 적용) ──
+function calcSkillDmgForPlayer(player, baseSkillDmg) {
+  let dmg = baseSkillDmg + Math.floor(Math.random() * 40);
+  if (isMakiAwakened(player)) dmg = Math.floor(dmg * CHARACTERS["maki"].awakening.dmgMult);
+  return dmg;
+}
+ 
 // ═══════════════════════════════════════════════
 // ── 적 데이터 ──
 // ═══════════════════════════════════════════════
@@ -269,7 +292,7 @@ function pickCullingEnemy(wave) {
   const pool = getCullingPool(wave);
   const id = pool[Math.floor(Math.random() * pool.length)];
   const base = ENEMIES.find(e => e.id === id);
-  const scale = 1 + (wave - 1) * 0.05; // wave당 5% 강화
+  const scale = 1 + (wave - 1) * 0.05;
   return {
     ...base,
     hp:       Math.floor(base.hp * scale),
@@ -281,15 +304,25 @@ function pickCullingEnemy(wave) {
 }
  
 // ═══════════════════════════════════════════════
-// ── 가챠 풀 ──
+// ── 가챠 풀 (확률 하향 — 고급 캐릭터 위주) ──
 // ═══════════════════════════════════════════════
 const GACHA_POOL = [
-  { id: "gojo",     rate: 0.7 }, { id: "sukuna",   rate: 0.8 },
-  { id: "yuta",     rate: 1.0 }, { id: "geto",     rate: 1.5 },
-  { id: "itadori",  rate: 3.0 }, { id: "megumi",   rate: 7   },
-  { id: "nanami",   rate: 7   }, { id: "maki",     rate: 8   },
-  { id: "nobara",   rate: 8   }, { id: "higuruma", rate: 8   },
-  { id: "panda",    rate: 27  }, { id: "inumaki",  rate: 28  },
+  // 특급 (기존 대비 절반 이하)
+  { id: "gojo",     rate: 0.3  },  // 0.7 → 0.3
+  { id: "sukuna",   rate: 0.35 },  // 0.8 → 0.35
+  { id: "yuta",     rate: 0.45 },  // 1.0 → 0.45
+  // 준특급
+  { id: "geto",     rate: 0.9  },  // 1.5 → 0.9
+  // 준1급/1급
+  { id: "itadori",  rate: 2.0  },  // 3.0 → 2.0
+  { id: "megumi",   rate: 5.0  },  // 7   → 5.0
+  { id: "nanami",   rate: 5.0  },  // 7   → 5.0
+  { id: "maki",     rate: 5.5  },  // 8   → 5.5
+  { id: "nobara",   rate: 5.5  },  // 8   → 5.5
+  { id: "higuruma", rate: 5.5  },  // 8   → 5.5
+  // 2급 이하 (풀러로 조정)
+  { id: "panda",    rate: 35   },  // 27  → 35
+  { id: "inumaki",  rate: 35   },  // 28  → 35
 ];
  
 const REVERSE_CHARS = new Set(["gojo", "sukuna", "yuta"]);
@@ -301,9 +334,8 @@ const CODES = { "release": { crystals: 200 } };
 const players = loadPlayers();
 const battles = {};
 const cullings = {};
-// 파티: { partyId: { id, leader, members, cullingSession } }
 const parties = {};
-const partyInvites = {}; // { inviteeId: { partyId, inviterId, expiresAt } }
+const partyInvites = {};
 let _partyIdSeq = 1;
  
 // ═══════════════════════════════════════════════
@@ -323,7 +355,6 @@ function getPlayer(userId, username = "플레이어") {
     };
     markDirty();
   }
-  // 버전 호환 필드 보정
   const p = players[userId];
   let changed = false;
   if (p.reverseOutput  === undefined) { p.reverseOutput  = 1.0; changed = true; }
@@ -395,16 +426,17 @@ function profileEmbed(player) {
   const skill   = getCurrentSkill(player, player.active);
   const next    = getNextSkill(player, player.active);
   const mastery = getMastery(player, player.active);
+  const awakened = isMakiAwakened(player);
   return new EmbedBuilder()
-    .setTitle(`${ch.emoji} ${player.name}의 주술사 프로필`)
-    .setColor(JJK_GRADE_COLOR[ch.grade])
+    .setTitle(`${ch.emoji} ${player.name}의 주술사 프로필${awakened ? " 🔥[천여주박 각성!]" : ""}`)
+    .setColor(awakened ? 0xFF0000 : JJK_GRADE_COLOR[ch.grade])
     .addFields(
       { name: "📊 레벨/XP",       value: `LV.**${getLevel(player.xp)}** | ${player.xp} XP`, inline: true },
       { name: "💎 크리스탈",       value: `${player.crystals}`, inline: true },
       { name: "🏆 전적",           value: `${player.wins}승 ${player.losses}패`, inline: true },
       { name: `${ch.emoji} 활성 캐릭터 [${JJK_GRADE_EMOJI[ch.grade]} ${ch.grade}]`, value: ch.desc, inline: false },
       { name: "⚔️ 스탯",          value: `공격 **${ch.atk}** | 방어 **${ch.def}** | HP **${Math.max(0,player.hp)}/${ch.maxHp}**`, inline: false },
-      { name: "🔥 현재 스킬",      value: `**${skill.name}** — ${skill.desc} (피해 ${skill.dmg})`, inline: false },
+      { name: "🔥 현재 스킬",      value: `**${skill.name}** — ${skill.desc} (피해 ${skill.dmg}${awakened ? " × **2배**🔥" : ""})`, inline: false },
       { name: "📈 숙련도",         value: masteryBar(mastery, player.active), inline: true },
       { name: "⬆️ 다음 스킬",     value: next ? `**${next.name}** (숙련도 ${next.minMastery} 필요)` : "**MAX 달성!**", inline: true },
       { name: "🌌 영역전개",       value: ch.domain || "없음", inline: true },
@@ -420,12 +452,13 @@ function skillEmbed(player) {
   const id      = player.active;
   const ch      = CHARACTERS[id];
   const mastery = getMastery(player, id);
+  const awakened = isMakiAwakened(player);
   return new EmbedBuilder()
-    .setTitle(`${ch.emoji} ${ch.name}의 스킬 트리`)
-    .setColor(JJK_GRADE_COLOR[ch.grade])
-    .setDescription(`숙련도: **${mastery}** | 현재 스킬: **${getCurrentSkill(player,id).name}** | 영역: **${ch.domain||"없음"}**`)
+    .setTitle(`${ch.emoji} ${ch.name}의 스킬 트리${awakened ? " 🔥[천여주박 각성!]" : ""}`)
+    .setColor(awakened ? 0xFF0000 : JJK_GRADE_COLOR[ch.grade])
+    .setDescription(`숙련도: **${mastery}** | 현재 스킬: **${getCurrentSkill(player,id).name}** | 영역: **${ch.domain||"없음"}**${awakened ? "\n🔥 **천여주박 각성 중** — 모든 데미지 **2배!**" : ""}`)
     .addFields(ch.skills.map(s => ({
-      name:  `${mastery >= s.minMastery ? "✅" : "🔒"} ${s.name} — 피해 ${s.dmg} (숙련도 ${s.minMastery} 필요)`,
+      name:  `${mastery >= s.minMastery ? "✅" : "🔒"} ${s.name} — 피해 ${s.dmg}${awakened ? `(→ **${s.dmg * 2}** 각성)` : ""} (숙련도 ${s.minMastery} 필요)`,
       value: s.desc, inline: false,
     })))
     .setFooter({ text: "전투/컬링 승리 시 숙련도 상승!" });
@@ -435,12 +468,13 @@ function skillEmbed(player) {
 function cullingEmbed(player, session, log = []) {
   const ch    = CHARACTERS[player.active];
   const enemy = session.currentEnemy;
+  const awakened = isMakiAwakened(player);
   return new EmbedBuilder()
-    .setTitle(`⚔️ 컬링 게임 — 🌊 WAVE ${session.wave}`)
-    .setColor(session.wave >= 15 ? 0xF5C842 : session.wave >= 8 ? 0xe63946 : 0x7C5CFC)
+    .setTitle(`⚔️ 컬링 게임 — 🌊 WAVE ${session.wave}${awakened ? " 🔥[각성!]" : ""}`)
+    .setColor(awakened ? 0xFF0000 : session.wave >= 15 ? 0xF5C842 : session.wave >= 8 ? 0xe63946 : 0x7C5CFC)
     .setDescription(log.join("\n") || "⚔️ 새 파도가 밀려온다!")
     .addFields(
-      { name: `${ch.emoji} 내 HP`,           value: `${hpBar(player.hp, ch.maxHp)} ${Math.max(0,player.hp)}/${ch.maxHp}`, inline: true },
+      { name: `${ch.emoji} 내 HP`,           value: `${hpBar(player.hp, ch.maxHp)} ${Math.max(0,player.hp)}/${ch.maxHp}${awakened ? " 🔥각성" : ""}`, inline: true },
       { name: `${enemy.emoji} ${enemy.name}`, value: `${hpBar(session.enemyHp, enemy.hp)} ${Math.max(0,session.enemyHp)}/${enemy.hp}`, inline: true },
       { name: "📊 현황",                      value: `WAVE **${session.wave}** | 처치 **${session.kills}** | **${session.totalXp}**XP / **${session.totalCrystals}**💎`, inline: false },
     )
@@ -454,7 +488,8 @@ function partyCullingEmbed(party, session, log = []) {
     const p  = players[uid];
     if (!p) return "❓ 알 수 없음";
     const ch = CHARACTERS[p.active];
-    return `${ch.emoji} **${p.name}** ${hpBar(p.hp, ch.maxHp)} ${Math.max(0,p.hp)}/${ch.maxHp}`;
+    const awakened = isMakiAwakened(p);
+    return `${ch.emoji} **${p.name}** ${hpBar(p.hp, ch.maxHp)} ${Math.max(0,p.hp)}/${ch.maxHp}${awakened ? " 🔥각성" : ""}`;
   }).join("\n");
   return new EmbedBuilder()
     .setTitle(`⚔️ [파티] 컬링 게임 — 🌊 WAVE ${session.wave}`)
@@ -490,13 +525,20 @@ const mkPartyCullingButtons = () => new ActionRowBuilder().addComponents(
   new ButtonBuilder().setCustomId("pc_reverse").setLabel("♻ 반전술식").setStyle(ButtonStyle.Secondary),
   new ButtonBuilder().setCustomId("pc_escape") .setLabel("🏳 철수(리더)").setStyle(ButtonStyle.Secondary),
 );
-const mkDevButtons = () => new ActionRowBuilder().addComponents(
-  new ButtonBuilder().setCustomId("dev_heal")   .setLabel("HP 풀회복") .setStyle(ButtonStyle.Success),
-  new ButtonBuilder().setCustomId("dev_xp")     .setLabel("XP +1000") .setStyle(ButtonStyle.Primary),
-  new ButtonBuilder().setCustomId("dev_mastery").setLabel("숙련도 MAX").setStyle(ButtonStyle.Primary),
-  new ButtonBuilder().setCustomId("dev_crystal").setLabel("💎 +9999") .setStyle(ButtonStyle.Secondary),
-  new ButtonBuilder().setCustomId("dev_kill")   .setLabel("적 즉사")   .setStyle(ButtonStyle.Danger),
-);
+ 
+// ═══════════════════════════════════════════════
+// ── DEV 버튼 (대상 지정 가능) ──
+// ═══════════════════════════════════════════════
+const mkDevButtons = (targetId = null) => {
+  const suffix = targetId ? `_${targetId}` : "";
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`dev_heal${suffix}`)   .setLabel("HP 풀회복") .setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`dev_xp${suffix}`)     .setLabel("XP +1000") .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`dev_mastery${suffix}`).setLabel("숙련도 MAX").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`dev_crystal${suffix}`).setLabel("💎 +9999") .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`dev_kill${suffix}`)   .setLabel("적 즉사")   .setStyle(ButtonStyle.Danger),
+  );
+};
  
 // ═══════════════════════════════════════════════
 // ── 메시지 핸들러 ──
@@ -520,6 +562,7 @@ client.on("messageCreate", async (msg) => {
         { name: "👥 파티",   value: "`!파티` 생성/정보\n`!파티초대 @유저` 초대\n`!파티수락` / `!파티거절`\n`!파티탈퇴`\n`!파티컬링` 파티 컬링 게임(최소 2명)", inline: false },
         { name: "🎁 코드",   value: "`!코드 [코드]` 보상 코드 입력", inline: false },
         { name: "📈 등급",   value: "🔱특급 > 💠준특급 > ⭐⭐1급 > ⭐준1급 > 🔹🔹2급 > 🔹3급 > ◽4급", inline: false },
+        { name: "🔥 마키 각성", value: "HP 30% 이하 시 **천여주박 각성** 발동! 모든 데미지 **2배**", inline: false },
       )
       .setFooter({ text: "💎 첫 시작 시 500 크리스탈 지급!" })
     ]});
@@ -537,7 +580,8 @@ client.on("messageCreate", async (msg) => {
         const owned = player.owned.includes(id);
         const m     = getMastery(player, id);
         const skill = owned ? getCurrentSkill(player, id) : null;
-        return `${owned ? ch.emoji : "🔒"} **${ch.name}** [${JJK_GRADE_EMOJI[ch.grade]} ${ch.grade}]${owned ? ` — 숙련 ${m} | ${skill.name}` : " — 미획득"}`;
+        const awakeNote = ch.awakening ? ` | 🔥각성 있음` : "";
+        return `${owned ? ch.emoji : "🔒"} **${ch.name}** [${JJK_GRADE_EMOJI[ch.grade]} ${ch.grade}]${owned ? ` — 숙련 ${m} | ${skill.name}${awakeNote}` : " — 미획득"}`;
       }).join("\n"))
       .setFooter({ text: "!가챠로 새 캐릭터를 획득하세요!" })
     ]});
@@ -609,7 +653,8 @@ client.on("messageCreate", async (msg) => {
     if (cullings[msg.author.id]) return msg.reply("컬링 게임 진행 중입니다! 먼저 철수하세요.");
     const party = getParty(msg.author.id);
     if (party?.cullingSession)   return msg.reply("파티 컬링 게임 진행 중입니다!");
-    if (player.hp <= 0) { player.hp = Math.round(CHARACTERS[player.active].maxHp * 0.5); markDirty(); return msg.reply("HP 0 → 절반 회복! 다시 `!전투` 입력하세요."); }
+    // ★ HP 0 → 풀회복
+    if (player.hp <= 0) { player.hp = CHARACTERS[player.active].maxHp; markDirty(); return msg.reply("HP 0 → **풀회복!** 다시 `!전투` 입력하세요."); }
     return msg.reply({
       content: "⚔️ 상대할 적을 선택하세요:",
       components: [new ActionRowBuilder().addComponents(
@@ -624,7 +669,8 @@ client.on("messageCreate", async (msg) => {
     if (cullings[msg.author.id]) return msg.reply("이미 컬링 게임 진행 중입니다! 버튼을 사용하세요.");
     const party = getParty(msg.author.id);
     if (party?.cullingSession)   return msg.reply("파티 컬링 게임 진행 중입니다!");
-    if (player.hp <= 0) { player.hp = Math.round(CHARACTERS[player.active].maxHp * 0.5); markDirty(); return msg.reply("HP 0 → 절반 회복! 다시 `!컬링` 입력하세요."); }
+    // ★ HP 0 → 풀회복
+    if (player.hp <= 0) { player.hp = CHARACTERS[player.active].maxHp; markDirty(); return msg.reply("HP 0 → **풀회복!** 다시 `!컬링` 입력하세요."); }
  
     const firstEnemy = pickCullingEnemy(1);
     cullings[msg.author.id] = { wave: 1, currentEnemy: firstEnemy, enemyHp: firstEnemy.hp, skillUsed: false, domainUsed: false, kills: 0, totalXp: 0, totalCrystals: 0, totalMastery: 0 };
@@ -726,7 +772,8 @@ client.on("messageCreate", async (msg) => {
     }
     for (const uid of party.members) {
       const p = players[uid];
-      if (p && p.hp <= 0) { p.hp = Math.round(CHARACTERS[p.active].maxHp * 0.5); markDirty(); }
+      // ★ HP 0 → 풀회복
+      if (p && p.hp <= 0) { p.hp = CHARACTERS[p.active].maxHp; markDirty(); }
     }
     const firstEnemy = pickCullingEnemy(1);
     party.cullingSession = { wave: 1, currentEnemy: firstEnemy, enemyHp: firstEnemy.hp, skillUsedBy: {}, domainUsed: false, kills: 0, totalXp: 0, totalCrystals: 0, totalMastery: 0 };
@@ -755,7 +802,20 @@ client.on("messageCreate", async (msg) => {
     ]});
   }
  
-  if (content === "!dev" && isDev(msg.author.id)) {
+  // ── DEV 패널 ──
+  // !dev          → 자기 자신에게 패널
+  // !dev @유저    → 멘션된 유저에게 패널 (DEV만 가능)
+  if (content.startsWith("!dev") && isDev(msg.author.id)) {
+    const mentioned = msg.mentions.users.first();
+    if (mentioned && mentioned.id !== msg.author.id) {
+      // 대상 유저에게 적용할 패널
+      const targetPlayer = getPlayer(mentioned.id, mentioned.username);
+      return msg.reply({
+        content: `👑 DEV PANEL — 대상: **${targetPlayer.name}** (<@${mentioned.id}>)`,
+        components: [mkDevButtons(mentioned.id)],
+      });
+    }
+    // 자기 자신에게 패널
     return msg.reply({ content: "👑 DEV PANEL", components: [mkDevButtons()] });
   }
 });
@@ -805,18 +865,43 @@ client.on("interactionCreate", async (i) => {
     });
   }
  
-  // ── DEV 버튼 ──
+  // ── DEV 버튼 (대상 포함) ──
   if (i.isButton() && i.customId.startsWith("dev_") && isDev(i.user.id)) {
-    if (i.customId === "dev_heal")    { player.hp = CHARACTERS[player.active].maxHp; markDirty(); return i.reply({ content: `DEV: HP 풀회복 (${player.hp})`, ephemeral: true }); }
-    if (i.customId === "dev_xp")      { player.xp += 1000; markDirty(); return i.reply({ content: `DEV: XP +1000 (합계 ${player.xp})`, ephemeral: true }); }
-    if (i.customId === "dev_mastery") { player.owned.forEach(id => { player.mastery[id] = 30; }); markDirty(); return i.reply({ content: "DEV: 모든 캐릭터 숙련도 MAX", ephemeral: true }); }
-    if (i.customId === "dev_crystal") { player.crystals += 9999; markDirty(); return i.reply({ content: `DEV: 💎 +9999 (합계 ${player.crystals})`, ephemeral: true }); }
-    if (i.customId === "dev_kill") {
-      if (battle)  battle.enemyHp = 0;
-      if (culling) culling.enemyHp = 0;
-      const party = getParty(i.user.id);
-      if (party?.cullingSession) party.cullingSession.enemyHp = 0;
-      return i.reply({ content: "DEV: 적 즉사", ephemeral: true });
+    // customId 형식: dev_<action> 또는 dev_<action>_<targetUserId>
+    const parts    = i.customId.split("_");
+    // parts[0] = "dev", parts[1] = action, parts[2]~ = targetId (선택)
+    const action   = parts[1];
+    const targetId = parts.length >= 3 ? parts.slice(2).join("_") : null;
+    const target   = targetId ? getPlayer(targetId) : player;
+    const targetName = targetId ? (players[targetId]?.name || targetId) : player.name;
+ 
+    if (action === "heal") {
+      target.hp = CHARACTERS[target.active].maxHp;
+      markDirty();
+      return i.reply({ content: `DEV: **${targetName}** HP 풀회복 (${target.hp})`, ephemeral: true });
+    }
+    if (action === "xp") {
+      target.xp += 1000;
+      markDirty();
+      return i.reply({ content: `DEV: **${targetName}** XP +1000 (합계 ${target.xp})`, ephemeral: true });
+    }
+    if (action === "mastery") {
+      target.owned.forEach(id => { target.mastery[id] = 30; });
+      markDirty();
+      return i.reply({ content: `DEV: **${targetName}** 모든 캐릭터 숙련도 MAX`, ephemeral: true });
+    }
+    if (action === "crystal") {
+      target.crystals += 9999;
+      markDirty();
+      return i.reply({ content: `DEV: **${targetName}** 💎 +9999 (합계 ${target.crystals})`, ephemeral: true });
+    }
+    if (action === "kill") {
+      const tId = targetId || i.user.id;
+      if (battles[tId])  battles[tId].enemyHp = 0;
+      if (cullings[tId]) cullings[tId].enemyHp = 0;
+      const tParty = getParty(tId);
+      if (tParty?.cullingSession) tParty.cullingSession.enemyHp = 0;
+      return i.reply({ content: `DEV: **${targetName}** 적 즉사`, ephemeral: true });
     }
     return i.reply({ content: "DEV 오류", ephemeral: true });
   }
@@ -829,6 +914,14 @@ client.on("interactionCreate", async (i) => {
     const ch    = CHARACTERS[player.active];
     const skill = getCurrentSkill(player, player.active);
     const log   = [];
+ 
+    // 각성 알림 (이번 턴에 처음 각성했는지 표시용)
+    const wasAwakened = culling._makiAwakened || false;
+    const nowAwakened = isMakiAwakened(player);
+    if (!wasAwakened && nowAwakened) {
+      culling._makiAwakened = true;
+      log.push("🔥 **천여주박 각성!!** 마키의 데미지가 **2배**로 증가!");
+    }
  
     // 철수
     if (i.customId === "c_escape") {
@@ -853,15 +946,15 @@ client.on("interactionCreate", async (i) => {
     const enemy = culling.currentEnemy;
  
     if (i.customId === "c_attack") {
-      const dmg = calcDmg(ch.atk, enemy.def);
+      const dmg = calcDmgForPlayer(player, enemy.def);
       culling.enemyHp -= dmg;
-      log.push(`👊 **${ch.name}**의 공격! → **${enemy.name}**에게 **${dmg}** 피해!`);
+      log.push(`👊 **${ch.name}**의 공격! → **${enemy.name}**에게 **${dmg}** 피해!${nowAwakened ? " 🔥" : ""}`);
     }
     else if (i.customId === "c_skill") {
       if (culling.skillUsed) return i.reply({ content: "술식은 파도당 1회!", ephemeral: true });
-      const dmg = skill.dmg + Math.floor(Math.random() * 40);
+      const dmg = calcSkillDmgForPlayer(player, skill.dmg);
       culling.enemyHp -= dmg; culling.skillUsed = true;
-      log.push(`✨ **${skill.name}**! → **${enemy.name}**에게 **${dmg}** 피해!`);
+      log.push(`✨ **${skill.name}**! → **${enemy.name}**에게 **${dmg}** 피해!${nowAwakened ? " 🔥" : ""}`);
     }
     else if (i.customId === "c_domain") {
       if (!ch.domain) return i.reply({ content: `${ch.name}은 영역전개가 없습니다!`, ephemeral: true });
@@ -882,6 +975,12 @@ client.on("interactionCreate", async (i) => {
       const dmg = calcDmg(enemy.atk, ch.def);
       player.hp -= dmg;
       log.push(`💥 **${enemy.name}**의 반격! → **${ch.name}**에게 **${dmg}** 피해!`);
+    }
+ 
+    // 각성 체크 (반격 받은 후 재확인)
+    if (!culling._makiAwakened && isMakiAwakened(player)) {
+      culling._makiAwakened = true;
+      log.push("🔥 **천여주박 각성!!** HP가 30% 이하로 떨어졌다! 마키의 데미지가 **2배**!");
     }
  
     const dead      = player.hp <= 0;
@@ -941,6 +1040,12 @@ client.on("interactionCreate", async (i) => {
     const skill   = getCurrentSkill(player, player.active);
     const log     = [];
  
+    // 마키 각성 알림
+    if (!session._makiAwakened && isMakiAwakened(player)) {
+      session._makiAwakened = true;
+      log.push(`🔥 **${player.name}의 천여주박 각성!!** 데미지 **2배**!`);
+    }
+ 
     // 철수 (리더만)
     if (i.customId === "pc_escape") {
       if (i.user.id !== party.leader) return i.reply({ content: "파티 리더만 철수할 수 있습니다!", ephemeral: true });
@@ -965,15 +1070,15 @@ client.on("interactionCreate", async (i) => {
     const enemy = session.currentEnemy;
  
     if (i.customId === "pc_attack") {
-      const dmg = calcDmg(ch.atk, enemy.def);
+      const dmg = calcDmgForPlayer(player, enemy.def);
       session.enemyHp -= dmg;
-      log.push(`👊 **${player.name}**(${ch.name})의 공격! → **${dmg}** 피해!`);
+      log.push(`👊 **${player.name}**(${ch.name})의 공격! → **${dmg}** 피해!${isMakiAwakened(player) ? " 🔥" : ""}`);
     }
     else if (i.customId === "pc_skill") {
       if (session.skillUsedBy[i.user.id]) return i.reply({ content: "이번 파도에 술식을 이미 사용했습니다!", ephemeral: true });
-      const dmg = skill.dmg + Math.floor(Math.random() * 40);
+      const dmg = calcSkillDmgForPlayer(player, skill.dmg);
       session.enemyHp -= dmg; session.skillUsedBy[i.user.id] = true;
-      log.push(`✨ **${player.name}**의 **${skill.name}**! → **${dmg}** 피해!`);
+      log.push(`✨ **${player.name}**의 **${skill.name}**! → **${dmg}** 피해!${isMakiAwakened(player) ? " 🔥" : ""}`);
     }
     else if (i.customId === "pc_domain") {
       if (!ch.domain) return i.reply({ content: `${ch.name}은 영역전개가 없습니다!`, ephemeral: true });
@@ -990,7 +1095,6 @@ client.on("interactionCreate", async (i) => {
       log.push(`♻ **${player.name}**의 반전술식! HP **+${heal}** 회복`);
     }
  
-    // 반전술식이 아닐 때 랜덤 파티원에게 반격
     if (session.enemyHp > 0 && i.customId !== "pc_reverse") {
       const alive = party.members.filter(uid => players[uid] && players[uid].hp > 0);
       if (alive.length > 0) {
@@ -1000,10 +1104,14 @@ client.on("interactionCreate", async (i) => {
         tgt.hp -= dmg;
         log.push(`💥 **${enemy.name}**의 반격! → **${tgt.name}**에게 **${dmg}** 피해!${tgt.hp <= 0 ? ` 💀 **${tgt.name}** 전사!` : ""}`);
         if (tgt.hp < 0) tgt.hp = 0;
+        // 반격 후 마키 각성 체크
+        if (!session._makiAwakened && isMakiAwakened(tgt)) {
+          session._makiAwakened = true;
+          log.push(`🔥 **${tgt.name}의 천여주박 각성!!** 데미지 **2배**!`);
+        }
       }
     }
  
-    // 전멸 확인
     const allDead   = party.members.every(uid => !players[uid] || players[uid].hp <= 0);
     const enemyDead = session.enemyHp <= 0;
  
@@ -1054,16 +1162,24 @@ client.on("interactionCreate", async (i) => {
   const skill = getCurrentSkill(player, player.active);
   const log   = [];
  
+  // 마키 각성 알림
+  const wasBAwakened = battle._makiAwakened || false;
+  const nowBAwakened = isMakiAwakened(player);
+  if (!wasBAwakened && nowBAwakened) {
+    battle._makiAwakened = true;
+    log.push("🔥 **천여주박 각성!!** 마키의 데미지가 **2배**로 증가!");
+  }
+ 
   if (i.customId === "b_attack") {
-    const dmg = calcDmg(ch.atk, enemy.def);
+    const dmg = calcDmgForPlayer(player, enemy.def);
     battle.enemyHp -= dmg;
-    log.push(`👊 **${ch.name}**의 공격! → **${enemy.name}**에게 **${dmg}** 피해!`);
+    log.push(`👊 **${ch.name}**의 공격! → **${enemy.name}**에게 **${dmg}** 피해!${nowBAwakened ? " 🔥" : ""}`);
   }
   else if (i.customId === "b_skill") {
     if (battle.skillUsed) return i.reply({ content: "술식은 전투당 1회!", ephemeral: true });
-    const dmg = skill.dmg + Math.floor(Math.random() * 40);
+    const dmg = calcSkillDmgForPlayer(player, skill.dmg);
     battle.enemyHp -= dmg; battle.skillUsed = true;
-    log.push(`✨ **${skill.name}**! → **${enemy.name}**에게 **${dmg}** 피해!`);
+    log.push(`✨ **${skill.name}**! → **${enemy.name}**에게 **${dmg}** 피해!${nowBAwakened ? " 🔥" : ""}`);
   }
   else if (i.customId === "b_domain") {
     if (!ch.domain)       return i.reply({ content: `${ch.name}은 영역전개가 없습니다!`, ephemeral: true });
@@ -1088,6 +1204,11 @@ client.on("interactionCreate", async (i) => {
     const dmg = calcDmg(enemy.atk, ch.def);
     player.hp -= dmg;
     log.push(`💥 **${enemy.name}**의 반격! → **${ch.name}**에게 **${dmg}** 피해!`);
+    // 반격 후 각성 체크
+    if (!battle._makiAwakened && isMakiAwakened(player)) {
+      battle._makiAwakened = true;
+      log.push("🔥 **천여주박 각성!!** HP 30% 이하! 마키의 데미지가 **2배**!");
+    }
   }
  
   const pDead = player.hp <= 0;
@@ -1111,13 +1232,13 @@ client.on("interactionCreate", async (i) => {
   return i.update({
     embeds: [new EmbedBuilder()
       .setTitle(`⚔️ ${ch.name} VS ${enemy.emoji} ${enemy.name}`)
-      .setColor(pDead ? 0xe63946 : eDead ? 0xF5C842 : 0x7c5cfc)
+      .setColor(pDead ? 0xe63946 : eDead ? 0xF5C842 : (isMakiAwakened(player) && !over) ? 0xFF0000 : 0x7c5cfc)
       .setDescription(log.join("\n"))
       .addFields(
-        { name: `${ch.emoji} 내 HP`,    value: `${hpBar(player.hp, ch.maxHp)} ${Math.max(0,player.hp)}/${ch.maxHp}`, inline: true },
+        { name: `${ch.emoji} 내 HP`,    value: `${hpBar(player.hp, ch.maxHp)} ${Math.max(0,player.hp)}/${ch.maxHp}${isMakiAwakened(player) && !over ? " 🔥각성" : ""}`, inline: true },
         { name: `${enemy.emoji} 적 HP`, value: `${hpBar(battle.enemyHp, enemy.hp)} ${Math.max(0,battle.enemyHp)}/${enemy.hp}`, inline: true },
       )
-      .setFooter({ text: over ? "전투 종료!" : `술식: ${skill.name} | 영역: ${ch.domain || "없음"}` })
+      .setFooter({ text: over ? "전투 종료!" : `술식: ${skill.name} | 영역: ${ch.domain || "없음"}${isMakiAwakened(player) ? " | 🔥천여주박 각성 중" : ""}` })
     ],
     components: over ? [] : [mkBattleButtons()],
   });
