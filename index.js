@@ -1,6 +1,3 @@
-S
-복사
-
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
@@ -115,9 +112,9 @@ const CHARACTERS = {
     desc: "특급주술사 후보생. 아직 성장 중인 주술사.",
     skills: [
       { name: "주먹질", minMastery: 0,  dmg: 70,  desc: "강력한 기본 주먹 공격." },
-      { name: "다이버전트 주먹",   minMastery: 5,  dmg: 120, desc: "저주 에너지를 실은 주먹." },
-      { name: "흑섬", minMastery: 15, dmg: 180, desc: "최대 저주 에너지 방출!" },
-      { name: "해",   minMastery: 30, dmg: 260, desc: "스쿠나의 힘을 빌린 궁극기." },
+      { name: "흑번",   minMastery: 5,  dmg: 120, desc: "저주 에너지를 실은 주먹." },
+      { name: "흑번창", minMastery: 15, dmg: 180, desc: "최대 저주 에너지 방출!" },
+      { name: "발도",   minMastery: 30, dmg: 260, desc: "스쿠나의 힘을 빌린 궁극기." },
     ],
   },
   gojo: {
