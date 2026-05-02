@@ -53,9 +53,9 @@ const CHARACTERS = {
     domain: "무량공처",
     desc: "최강의 주술사. 무량공처를 구사한다.",
     skills: [
-      { name: "술식순전", minMastery: 0,  dmg: 110, desc: "저주 에너지 순전 강화." },
-      { name: "적",       minMastery: 5,  dmg: 170, desc: "공간을 비틀어 압축한다." },
-      { name: "창",       minMastery: 15, dmg: 250, desc: "저주 에너지를 극한 팽창." },
+      { name: "아오", minMastery: 0,  dmg: 110, desc: "적들을 끌어당겨서 공격한다." },
+      { name: "아카",       minMastery: 5,  dmg: 170, desc: "적들을 날려서 폭발시킨다." },
+      { name: "무라사키",       minMastery: 15, dmg: 250, desc: "아오와 아카를 합쳐서 발사하는 무한한 에너지." },
       { name: "무량공처", minMastery: 30, dmg: 360, desc: "무한을 지배하는 궁극술식." },
     ],
   },
