@@ -28,17 +28,14 @@ if (!TOKEN) { console.error("❌ DISCORD_TOKEN 없음!"); process.exit(1); }
 // ═══════════════════════════════════════════════
 // ── 저장 시스템 (Railway 완벽 호환) ──
 // ═══════════════════════════════════════════════
-// Railway에서 영구 저장을 위해 /data 볼륨 또는 현재 디렉토리 사용
-// Railway Volume을 /data 로 마운트하면 DATA_DIR=/data 환경변수 설정
-const DATA_DIR  = process.env.DATA_DIR || path.join(__dirname, "data");
-const SAVE_FILE = path.join(DATA_DIR, "players.json");
+const DATA_DIR    = process.env.DATA_DIR || path.join(__dirname, "data");
+const SAVE_FILE   = path.join(DATA_DIR, "players.json");
 const BACKUP_FILE = SAVE_FILE + ".bak";
 const TMP_FILE    = SAVE_FILE + ".tmp";
 
-let isDirty  = false;
-let isSaving = false;
+let isDirty   = false;
+let isSaving  = false;
 let saveTimer = null;
-let lastSaveTime = 0;
 
 // 시작 시 DATA_DIR 생성
 try {
@@ -51,11 +48,10 @@ try {
 }
 
 function loadPlayers() {
-  // 메인 파일 시도
   for (const file of [SAVE_FILE, BACKUP_FILE]) {
     try {
       if (fs.existsSync(file)) {
-        const raw    = fs.readFileSync(file, "utf8");
+        const raw = fs.readFileSync(file, "utf8");
         if (!raw || raw.trim() === "") continue;
         const parsed = JSON.parse(raw);
         if (typeof parsed !== "object" || parsed === null) continue;
@@ -70,42 +66,40 @@ function loadPlayers() {
   return {};
 }
 
+// ★★★ 핵심 수정: renameSync 대신 copyFileSync+unlink 사용 (Railway 볼륨 간 이동 오류 방지)
 function savePlayers(force = false) {
   if (!isDirty && !force) return;
   if (isSaving) {
-    // 저장 중에 강제 요청이 오면 잠깐 대기 후 재시도
-    if (force) {
-      setTimeout(() => savePlayers(true), 100);
-    }
+    if (force) setTimeout(() => savePlayers(true), 150);
     return;
   }
   isSaving = true;
   try {
-    // DATA_DIR 없으면 생성
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
     // 기존 파일 백업
     try {
-      if (fs.existsSync(SAVE_FILE)) {
-        fs.copyFileSync(SAVE_FILE, BACKUP_FILE);
-      }
+      if (fs.existsSync(SAVE_FILE)) fs.copyFileSync(SAVE_FILE, BACKUP_FILE);
     } catch (e) {
-      console.error("⚠️ 백업 실패 (계속 진행):", e.message);
+      console.error("⚠️ 백업 실패:", e.message);
     }
-    // 원자적 저장: tmp에 쓰고 rename
+
+    // 직접 쓰기 (Railway 볼륨에서 rename이 EXDEV 오류 날 수 있으므로 직접 write)
     const data = JSON.stringify(players, null, 2);
     fs.writeFileSync(TMP_FILE, data, "utf8");
-    // 검증
+
+    // 검증 후 덮어쓰기
     const check = JSON.parse(fs.readFileSync(TMP_FILE, "utf8"));
     if (typeof check !== "object") throw new Error("저장 검증 실패");
-    fs.renameSync(TMP_FILE, SAVE_FILE);
+
+    // copyFileSync + unlink로 원자적 교체 (rename 대신)
+    fs.copyFileSync(TMP_FILE, SAVE_FILE);
+    try { fs.unlinkSync(TMP_FILE); } catch {}
+
     isDirty = false;
-    lastSaveTime = Date.now();
-    console.log(`💾 저장 완료 (${Object.keys(players).length}명) → ${SAVE_FILE}`);
+    console.log(`💾 저장 완료 (${Object.keys(players).length}명)`);
   } catch (e) {
     console.error("❌ 저장 실패:", e.message);
-    // tmp 파일 정리
     try { if (fs.existsSync(TMP_FILE)) fs.unlinkSync(TMP_FILE); } catch {}
   } finally {
     isSaving = false;
@@ -114,20 +108,14 @@ function savePlayers(force = false) {
 
 function markDirty() {
   isDirty = true;
-  // debounce: 1.5초 후 저장
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => savePlayers(), 1500);
 }
 
-// 5초마다 강제 저장 (Railway 재시작 대비)
-const autoSaveInterval = setInterval(() => {
-  if (isDirty) savePlayers(true);
-}, 5_000);
-
-// 30초마다 항상 저장 (혹시 모를 상황 대비)
-const forceSaveInterval = setInterval(() => {
-  savePlayers(true);
-}, 30_000);
+// 5초마다 변경사항 저장
+const autoSaveInterval = setInterval(() => { if (isDirty) savePlayers(true); }, 5_000);
+// 30초마다 강제 저장
+const forceSaveInterval = setInterval(() => savePlayers(true), 30_000);
 
 function exitSave() {
   console.log("⚠️ 종료 시그널 — 최종 저장 중...");
@@ -135,7 +123,7 @@ function exitSave() {
   clearInterval(autoSaveInterval);
   clearInterval(forceSaveInterval);
   if (saveTimer) clearTimeout(saveTimer);
-  isSaving = false; // 강제 리셋
+  isSaving = false;
   savePlayers(true);
   console.log("✅ 최종 저장 완료");
 }
@@ -351,7 +339,7 @@ const CHARACTERS = {
       { name: "화염 분사",   minMastery: 0,  dmg: 100, desc: "강렬한 불꽃을 내뿜는다.", statusApply: { target: "enemy", statusId: "burn", chance: 0.5 } },
       { name: "용암 폭발",   minMastery: 5,  dmg: 165, desc: "발밑의 용암을 폭발시킨다.", statusApply: { target: "enemy", statusId: "burn", chance: 0.7 } },
       { name: "극번 운",     minMastery: 15, dmg: 240, desc: "하늘에서 불타는 운석을 소환한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.5 } },
-      { name: "개관철위산", minMastery: 30, dmg: 350, desc: "화산을 소환하는 궁극 영역전개.", statusApply: { target: "enemy", statusId: "burn", chance: 1.0 } },
+      { name: "개관철위산",  minMastery: 30, dmg: 350, desc: "화산을 소환하는 궁극 영역전개.", statusApply: { target: "enemy", statusId: "burn", chance: 1.0 } },
     ],
   },
   dagon: {
@@ -634,13 +622,8 @@ function tickCooldowns(player) {
   if (player.skillCooldown   > 0) player.skillCooldown--;
 }
 
-// ═══════════════════════════════════════════════
-// ── 스킬 인덱스 파싱 헬퍼 (핵심 버그 수정) ──
-// ═══════════════════════════════════════════════
-// customId 형식: "bs_0", "cs_1", "js_2", "pvp_sm_0" 등
-// value 형식:   "bs_0", "cs_1", "js_2", "pvp_sm_0"
+// ★★★ 술식 스킬 인덱스 파싱 ★★★
 function parseSkillIndex(value) {
-  // 마지막 "_숫자" 부분을 추출
   const match = value.match(/_(\d+)$/);
   if (!match) return -1;
   return parseInt(match[1], 10);
@@ -828,16 +811,16 @@ const mkPartyCullingButtons = () => new ActionRowBuilder().addComponents(
   new ButtonBuilder().setCustomId("pc_escape") .setLabel("🏳 철수(리더)") .setStyle(ButtonStyle.Secondary),
 );
 const mkPvpButtons = (battleId, session, userId) => {
-  const isP1     = session.p1Id === userId;
-  const skillCd  = isP1 ? session.skillCd1  : session.skillCd2;
+  const isP1      = session.p1Id === userId;
+  const skillCd   = isP1 ? session.skillCd1  : session.skillCd2;
   const reverseCd = isP1 ? session.reverseCd1 : session.reverseCd2;
-  const p        = players[userId];
-  const hasRev   = p && REVERSE_CHARS.has(p.active);
+  const p         = players[userId];
+  const hasRev    = p && REVERSE_CHARS.has(p.active);
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`pvp_attack_${battleId}`)  .setLabel("⚔ 공격")    .setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId(`pvp_skill_${battleId}`)   .setLabel(`🌀 술식${skillCd > 0 ? `(${skillCd}턴)` : ""}`).setStyle(ButtonStyle.Primary).setDisabled(skillCd > 0),
-    new ButtonBuilder().setCustomId(`pvp_domain_${battleId}`)  .setLabel("🌌 영역전개").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`pvp_reverse_${battleId}`) .setLabel(`♻ 반전${reverseCd > 0 ? `(${reverseCd}턴)` : ""}`).setStyle(ButtonStyle.Secondary).setDisabled(reverseCd > 0 || !hasRev),
+    new ButtonBuilder().setCustomId(`pvp_attack_${battleId}`)   .setLabel("⚔ 공격")    .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(`pvp_skill_${battleId}`)    .setLabel(`🌀 술식${skillCd > 0 ? `(${skillCd}턴)` : ""}`).setStyle(ButtonStyle.Primary).setDisabled(skillCd > 0),
+    new ButtonBuilder().setCustomId(`pvp_domain_${battleId}`)   .setLabel("🌌 영역전개").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`pvp_reverse_${battleId}`)  .setLabel(`♻ 반전${reverseCd > 0 ? `(${reverseCd}턴)` : ""}`).setStyle(ButtonStyle.Secondary).setDisabled(reverseCd > 0 || !hasRev),
     new ButtonBuilder().setCustomId(`pvp_surrender_${battleId}`).setLabel("🏳 항복")   .setStyle(ButtonStyle.Secondary),
   );
 };
@@ -852,11 +835,9 @@ const mkDevButtons = (targetId = null) => {
   );
 };
 
-// ════════════════════════════════════════════════
-// ── 스킬 선택 메뉴 (★ 버그 수정: prefix 통일) ──
-// ════════════════════════════════════════════════
-// value 형식을 "PREFIX_INDEX" 로 통일
-// 예) prefix="bs" → customId="bs_skill_select", value="bs_0","bs_1",...
+// ★★★ 핵심 수정: 술식 선택 메뉴 — value에 전투 타입을 포함해 충돌 방지 ★★★
+// customId: "skill_select_{prefix}"
+// value:    "{prefix}_{index}"
 function mkSkillSelectMenu(player, prefix) {
   const skills = getAvailableSkills(player, player.active);
   if (!skills.length) return null;
@@ -865,12 +846,12 @@ function mkSkillSelectMenu(player, prefix) {
     return {
       label:       `[${i + 1}] ${s.name}`.slice(0, 100),
       description: `피해 ${s.dmg}${statusNote}`.slice(0, 100),
-      value:       `${prefix}_${i}`,   // ← "bs_0", "cs_1" 등
+      value:       `${prefix}_${i}`,
     };
   });
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
-      .setCustomId(`${prefix}_skill_select`)
+      .setCustomId(`skill_select_${prefix}`)  // ← 통일된 customId 패턴
       .setPlaceholder("사용할 술식 선택 (5턴 쿨다운)")
       .addOptions(options)
   );
@@ -1374,7 +1355,10 @@ client.on("messageCreate", async (msg) => {
 });
 
 // ═══════════════════════════════════════════════
-// ── 인터랙션 핸들러 (단일 핸들러로 통합) ──
+// ★★★ 인터랙션 핸들러 — 술식 드롭다운 완전 재설계 ★★★
+// 핵심 변경점:
+//   기존: i.reply(ephemeral) → i.message.edit() → 타이밍 버그
+//   수정: i.update()로 메시지 직접 교체 (술식 결과를 메인 메시지에 표시)
 // ═══════════════════════════════════════════════
 client.on("interactionCreate", async (i) => {
   if (!i.isButton() && !i.isStringSelectMenu()) return;
@@ -1399,291 +1383,265 @@ client.on("interactionCreate", async (i) => {
   }
 
   // ════════════════════════════════════════════
-  // ── 술식 스킬 드롭다운 (★ 핵심 버그 수정) ──
+  // ★★★ 술식 드롭다운 핸들러 — skill_select_{prefix} ★★★
+  // i.update()로 직접 메인 메시지 교체 (ephemeral reply 없음)
   // ════════════════════════════════════════════
-
-  // 일반전투 술식 선택
-  if (i.isStringSelectMenu() && i.customId === "bs_skill_select") {
-    if (!battle) return i.reply({ content: "전투 중이 아닙니다!", ephemeral: true });
-    if (player.skillCooldown > 0) return i.reply({ content: `⚡ 술식 쿨다운 중 (${player.skillCooldown}턴)`, ephemeral: true });
-
-    const skillIdx = parseSkillIndex(i.values[0]); // ← 수정된 파싱 함수 사용
+  if (i.isStringSelectMenu() && i.customId.startsWith("skill_select_")) {
+    const prefix   = i.customId.replace("skill_select_", "");
+    const skillIdx = parseSkillIndex(i.values[0]);
     const skills   = getAvailableSkills(player, player.active);
     const skill    = skills[skillIdx];
-    if (!skill || skillIdx < 0) return i.reply({ content: "스킬 선택 오류!", ephemeral: true });
 
-    const ch    = CHARACTERS[player.active];
-    const enemy = battle.enemy;
-    const log   = [];
-
-    // 상태이상 틱
-    { const pObj = { hp: player.hp, statusEffects: player.statusEffects || [] }; const tick = tickStatus(pObj, ch.maxHp); player.hp = pObj.hp; player.statusEffects = pObj.statusEffects; if (tick.log.length) log.push(...tick.log.map(l => `[나] ${l}`)); }
-    tickCooldowns(player);
-
-    const dmg = calcSkillDmgForPlayer(player, skill.dmg);
-    battle.enemyHp -= dmg;
-    player.skillCooldown = 5;
-    log.push(`✨ **[${skillIdx + 1}번] ${skill.name}**! → **${enemy.name}**에게 **${dmg}** 피해!${isMakiAwakened(player) ? " 🔥" : ""}`);
-
-    const eObj = { statusEffects: enemy.statusEffects || [] };
-    const sLog = applySkillStatus(skill, player, eObj, enemy.hp);
-    enemy.statusEffects = eObj.statusEffects;
-    if (sLog.length) log.push(...sLog);
-
-    // 적 상태이상 틱
-    { const eeObj = { hp: battle.enemyHp, statusEffects: enemy.statusEffects || [] }; tickStatus(eeObj, enemy.hp); battle.enemyHp = eeObj.hp; enemy.statusEffects = eeObj.statusEffects; }
-
-    // 적 반격
-    if (battle.enemyHp > 0 && !isIncapacitated(enemy.statusEffects)) {
-      const edm = calcDmg(enemy.atk, ch.def);
-      player.hp -= edm;
-      log.push(`💥 **${enemy.name}**의 반격! → **${ch.name}**에게 **${edm}** 피해!`);
-      if (enemy.statusAttack && Math.random() < enemy.statusAttack.chance) {
-        applyStatus(player, enemy.statusAttack.statusId);
-        const sd = STATUS_EFFECTS[enemy.statusAttack.statusId];
-        log.push(`${sd.emoji} **${enemy.name}**의 ${sd.name} 공격!`);
-      }
-      if (!battle._makiAwakened && isMakiAwakened(player)) { battle._makiAwakened = true; log.push("🔥 **천여주박 각성!!**"); }
+    if (!skill || skillIdx < 0) {
+      return i.reply({ content: "❌ 스킬 선택 오류!", ephemeral: true });
     }
 
-    const pDead = player.hp <= 0;
-    const eDead = battle.enemyHp <= 0;
+    // ── 일반전투 술식 (prefix: "bs") ──
+    if (prefix === "bs") {
+      if (!battle) return i.reply({ content: "전투 중이 아닙니다!", ephemeral: true });
+      if (player.skillCooldown > 0) return i.reply({ content: `⚡ 술식 쿨다운 중 (${player.skillCooldown}턴)`, ephemeral: true });
 
-    if (eDead) {
-      player.xp += enemy.xp; player.crystals += enemy.crystals; player.wins++;
-      if (!player.mastery[player.active]) player.mastery[player.active] = 0;
-      player.mastery[player.active] += enemy.masteryXp;
-      player.statusEffects = [];
-      const newSkill = getCurrentSkill(player, player.active);
-      delete battles[i.user.id]; markDirty();
-      log.push(`\n🏆 승리! +**${enemy.xp}** XP | +**${enemy.crystals}**💎 | 숙련도 **+${enemy.masteryXp}**`);
-      log.push(`🔥 현재 스킬: **${newSkill.name}** (피해 ${newSkill.dmg})`);
-    } else if (pDead) {
-      player.hp = 0; player.losses++;
-      player.statusEffects = [];
-      delete battles[i.user.id]; markDirty();
-      log.push(`\n💀 패배... !전투로 재도전하세요.`);
-    } else {
-      markDirty();
-    }
+      const ch    = CHARACTERS[player.active];
+      const enemy = battle.enemy;
+      const log   = [];
 
-    const over = pDead || eDead;
-    await i.reply({ content: `✅ **${skill.name}** 사용! (5턴 쿨다운)`, ephemeral: true });
-    return i.message.edit({
-      embeds: [new EmbedBuilder()
-        .setTitle(`⚔️ ${ch.name} VS ${enemy.emoji} ${enemy.name}`)
-        .setColor(pDead ? 0xe63946 : eDead ? 0xF5C842 : 0x7c5cfc)
-        .setDescription(log.join("\n"))
-        .addFields(
-          { name: `${ch.emoji} 내 HP`,    value: `${hpBar(player.hp, ch.maxHp)} ${Math.max(0, player.hp)}/${ch.maxHp}`, inline: true },
-          { name: `${enemy.emoji} 적 HP`, value: `${hpBar(battle.enemyHp, enemy.hp)} ${Math.max(0, battle.enemyHp)}/${enemy.hp}`, inline: true },
-        )
-        .setFooter({ text: over ? "전투 종료!" : `⚡술식: 5턴 쿨다운 | ♻반전: ${player.reverseCooldown > 0 ? player.reverseCooldown + "턴" : "가능"}` })
-      ],
-      components: over ? [] : [mkBattleButtons(player)],
-    });
-  }
+      { const pObj = { hp: player.hp, statusEffects: player.statusEffects || [] }; const tick = tickStatus(pObj, ch.maxHp); player.hp = pObj.hp; player.statusEffects = pObj.statusEffects; if (tick.log.length) log.push(...tick.log.map(l => `[나] ${l}`)); }
+      tickCooldowns(player);
 
-  // 컬링 술식 선택
-  if (i.isStringSelectMenu() && i.customId === "cs_skill_select") {
-    if (!culling) return i.reply({ content: "컬링 게임 진행 중이 아닙니다!", ephemeral: true });
-    if (player.skillCooldown > 0) return i.reply({ content: `⚡ 술식 쿨다운 중 (${player.skillCooldown}턴)`, ephemeral: true });
+      const dmg = calcSkillDmgForPlayer(player, skill.dmg);
+      battle.enemyHp -= dmg;
+      player.skillCooldown = 5;
+      log.push(`✨ **[${skillIdx + 1}번] ${skill.name}**! → **${enemy.name}**에게 **${dmg}** 피해!${isMakiAwakened(player) ? " 🔥" : ""}`);
 
-    const skillIdx = parseSkillIndex(i.values[0]); // ← 수정
-    const skills   = getAvailableSkills(player, player.active);
-    const skill    = skills[skillIdx];
-    if (!skill || skillIdx < 0) return i.reply({ content: "스킬 선택 오류!", ephemeral: true });
+      const eObj = { statusEffects: enemy.statusEffects || [] };
+      const sLog = applySkillStatus(skill, player, eObj, enemy.hp);
+      enemy.statusEffects = eObj.statusEffects;
+      if (sLog.length) log.push(...sLog);
 
-    const ch    = CHARACTERS[player.active];
-    const enemy = culling.currentEnemy;
-    const log   = [];
+      { const eeObj = { hp: battle.enemyHp, statusEffects: enemy.statusEffects || [] }; tickStatus(eeObj, enemy.hp); battle.enemyHp = eeObj.hp; enemy.statusEffects = eeObj.statusEffects; }
 
-    // 상태이상 틱
-    { const pObj = { hp: player.hp, statusEffects: player.statusEffects || [] }; tickStatus(pObj, ch.maxHp); player.hp = pObj.hp; player.statusEffects = pObj.statusEffects; }
-    tickCooldowns(player);
-
-    const dmg = calcSkillDmgForPlayer(player, skill.dmg);
-    culling.enemyHp -= dmg;
-    player.skillCooldown = 5;
-    log.push(`✨ **[${skillIdx + 1}번] ${skill.name}**! → **${enemy.name}**에게 **${dmg}** 피해!${isMakiAwakened(player) ? " 🔥" : ""}`);
-
-    const eObj = { statusEffects: enemy.statusEffects || [] };
-    const sLog = applySkillStatus(skill, player, eObj, enemy.hp);
-    enemy.statusEffects = eObj.statusEffects;
-    if (sLog.length) log.push(...sLog);
-
-    // 적 상태이상 틱
-    { const eeObj = { hp: culling.enemyHp, statusEffects: enemy.statusEffects }; tickStatus(eeObj, enemy.hp); culling.enemyHp = eeObj.hp; enemy.statusEffects = eeObj.statusEffects; }
-
-    // 적 반격
-    if (culling.enemyHp > 0 && !isIncapacitated(enemy.statusEffects)) {
-      const edm = calcDmg(enemy.atk, ch.def);
-      player.hp -= edm;
-      log.push(`💥 **${enemy.name}**의 반격! → **${ch.name}**에게 **${edm}** 피해!`);
-      if (enemy.statusAttack && Math.random() < enemy.statusAttack.chance) {
-        applyStatus(player, enemy.statusAttack.statusId);
-        const sd = STATUS_EFFECTS[enemy.statusAttack.statusId];
-        log.push(`${sd.emoji} **${enemy.name}**의 ${sd.name} 공격!`);
-      }
-    }
-
-    if (player.hp <= 0) {
-      await i.reply({ content: "💀 사망!", ephemeral: true });
-      return handleCullingDeath(i, player, culling, log, true);
-    }
-
-    if (culling.enemyHp <= 0) {
-      culling.kills++; culling.totalXp += enemy.xp; culling.totalCrystals += enemy.crystals; culling.totalMastery += enemy.masteryXp;
-      log.push(`✅ **${enemy.name}** 처치! +${enemy.xp} XP | +${enemy.crystals}💎`);
-      if (culling.wave > player.cullingBest) player.cullingBest = culling.wave;
-      const nextWave  = culling.wave + 1;
-      const nextEnemy = pickCullingEnemy(nextWave);
-      culling.wave = nextWave; culling.currentEnemy = nextEnemy; culling.enemyHp = nextEnemy.hp;
-      log.push(`\n🌊 **WAVE ${nextWave}** 돌입! ${nextEnemy.emoji} **${nextEnemy.name}** 등장!`);
-      markDirty();
-      await i.reply({ content: `✅ **${skill.name}** 사용! (5턴 쿨다운)`, ephemeral: true });
-      return i.message.edit({ embeds: [cullingEmbed(player, culling, log)], components: [mkCullingButtons(player)] });
-    }
-
-    markDirty();
-    await i.reply({ content: `✅ **${skill.name}** 사용! (5턴 쿨다운)`, ephemeral: true });
-    return i.message.edit({ embeds: [cullingEmbed(player, culling, log)], components: [mkCullingButtons(player)] });
-  }
-
-  // 사멸회유 술식 선택
-  if (i.isStringSelectMenu() && i.customId === "js_skill_select") {
-    if (!jujutsu || jujutsu.phase !== "fight") return i.reply({ content: "사멸회유 전투 중이 아닙니다!", ephemeral: true });
-    if (player.skillCooldown > 0) return i.reply({ content: `⚡ 술식 쿨다운 중 (${player.skillCooldown}턴)`, ephemeral: true });
-
-    const skillIdx = parseSkillIndex(i.values[0]); // ← 수정
-    const skills   = getAvailableSkills(player, player.active);
-    const skill    = skills[skillIdx];
-    if (!skill || skillIdx < 0) return i.reply({ content: "스킬 선택 오류!", ephemeral: true });
-
-    const ch    = CHARACTERS[player.active];
-    const enemy = jujutsu.currentEnemy;
-    const log   = [];
-
-    { const pObj = { hp: player.hp, statusEffects: player.statusEffects || [] }; tickStatus(pObj, ch.maxHp); player.hp = pObj.hp; player.statusEffects = pObj.statusEffects; }
-    tickCooldowns(player);
-
-    const dmg = calcSkillDmgForPlayer(player, skill.dmg);
-    jujutsu.enemyHp -= dmg;
-    player.skillCooldown = 5;
-    log.push(`✨ **[${skillIdx + 1}번] ${skill.name}**! → **${enemy.name}**에게 **${dmg}** 피해!${isMakiAwakened(player) ? " 🔥" : ""}`);
-
-    const eObj = { statusEffects: enemy.statusEffects || [] };
-    const sLog = applySkillStatus(skill, player, eObj, enemy.hp);
-    enemy.statusEffects = eObj.statusEffects;
-    if (sLog.length) log.push(...sLog);
-
-    { const eeObj = { hp: jujutsu.enemyHp, statusEffects: enemy.statusEffects }; tickStatus(eeObj, enemy.hp); jujutsu.enemyHp = eeObj.hp; enemy.statusEffects = eeObj.statusEffects; }
-
-    if (jujutsu.enemyHp > 0 && !isIncapacitated(enemy.statusEffects)) {
-      const edm = calcDmg(enemy.atk, ch.def);
-      player.hp -= edm;
-      log.push(`💥 **${enemy.name}**의 반격! → **${ch.name}**에게 **${edm}** 피해!`);
-      if (enemy.statusAttack && Math.random() < enemy.statusAttack.chance) {
-        applyStatus(player, enemy.statusAttack.statusId);
-        const sd = STATUS_EFFECTS[enemy.statusAttack.statusId];
-        log.push(`${sd.emoji} **${enemy.name}**의 ${sd.name} 공격!`);
-      }
-    }
-
-    if (player.hp <= 0) {
-      await i.reply({ content: "💀 사망!", ephemeral: true });
-      return handleJujutsuDeath(i, player, jujutsu, log, true);
-    }
-
-    if (jujutsu.enemyHp <= 0) {
-      jujutsu.kills++; jujutsu.totalXp += enemy.xp; jujutsu.totalCrystals += enemy.crystals; jujutsu.totalMastery += enemy.masteryXp; jujutsu.points += enemy.points;
-      log.push(`✅ **${enemy.name}** 처치! **+${enemy.points}포인트** (현재: ${jujutsu.points}/15)`);
-
-      if (jujutsu.points >= 15) {
-        player.crystals += 500; player.xp += 1000;
-        if (jujutsu.points > player.jujutsuBest) player.jujutsuBest = jujutsu.points;
-        player.statusEffects = []; player.skillCooldown = 0; player.reverseCooldown = 0;
-        delete jujutsus[i.user.id]; markDirty();
-        log.push(`\n🎉 **15포인트 달성!!** 보너스: **+1000** XP | **+500**💎`);
-        await i.reply({ content: "🎉 사멸회유 완료!", ephemeral: true });
-        return i.message.edit({ embeds: [new EmbedBuilder().setTitle("🎉 사멸회유 완료!").setColor(0xF5C842).setDescription(log.join("\n"))], components: [] });
+      if (battle.enemyHp > 0 && !isIncapacitated(enemy.statusEffects)) {
+        const edm = calcDmg(enemy.atk, ch.def);
+        player.hp -= edm;
+        log.push(`💥 **${enemy.name}**의 반격! → **${ch.name}**에게 **${edm}** 피해!`);
+        if (enemy.statusAttack && Math.random() < enemy.statusAttack.chance) {
+          applyStatus(player, enemy.statusAttack.statusId);
+          const sd = STATUS_EFFECTS[enemy.statusAttack.statusId];
+          log.push(`${sd.emoji} **${enemy.name}**의 ${sd.name} 공격!`);
+        }
+        if (!battle._makiAwakened && isMakiAwakened(player)) { battle._makiAwakened = true; log.push("🔥 **천여주박 각성!!**"); }
       }
 
-      if (jujutsu.points > player.jujutsuBest) player.jujutsuBest = jujutsu.points;
-      const nextWave  = jujutsu.wave + 1;
-      const choices   = generateJujutsuChoices(nextWave);
-      jujutsu.wave = nextWave; jujutsu.currentEnemy = null; jujutsu.enemyHp = 0;
-      jujutsu.pendingChoices = choices; jujutsu.phase = "choose";
-      log.push(`\n🎯 **WAVE ${nextWave}** — 다음 적을 선택하세요!`);
-      markDirty();
-      await i.reply({ content: `✅ **${skill.name}** 사용!`, ephemeral: true });
-      return i.message.edit({ embeds: [jujutsuEmbed(player, jujutsu, log, choices)], components: [mkJujutsuChoiceButtons(choices)] });
-    }
+      const pDead = player.hp <= 0;
+      const eDead = battle.enemyHp <= 0;
 
-    markDirty();
-    await i.reply({ content: `✅ **${skill.name}** 사용! (5턴 쿨다운)`, ephemeral: true });
-    return i.message.edit({ embeds: [jujutsuEmbed(player, jujutsu, log)], components: [mkJujutsuButtons(player)] });
-  }
+      if (eDead) {
+        player.xp += enemy.xp; player.crystals += enemy.crystals; player.wins++;
+        if (!player.mastery[player.active]) player.mastery[player.active] = 0;
+        player.mastery[player.active] += enemy.masteryXp;
+        player.statusEffects = [];
+        const newSkill = getCurrentSkill(player, player.active);
+        delete battles[i.user.id]; markDirty();
+        log.push(`\n🏆 승리! +**${enemy.xp}** XP | +**${enemy.crystals}**💎 | 숙련도 **+${enemy.masteryXp}**`);
+        log.push(`🔥 현재 스킬: **${newSkill.name}** (피해 ${newSkill.dmg})`);
+      } else if (pDead) {
+        player.hp = 0; player.losses++;
+        player.statusEffects = [];
+        delete battles[i.user.id]; markDirty();
+        log.push(`\n💀 패배... !전투로 재도전하세요.`);
+      } else { markDirty(); }
 
-  // PvP 술식 선택
-  if (i.isStringSelectMenu() && i.customId === "pvp_sm_skill_select") {
-    const session = getPvpSessionByUser(i.user.id);
-    if (!session) return i.reply({ content: "PvP 세션을 찾을 수 없습니다.", ephemeral: true });
-    if (session.turn !== i.user.id) return i.reply({ content: "상대방의 턴입니다!", ephemeral: true });
-
-    const battleId   = session.id;
-    const selfInfo   = pvpSelf(session, i.user.id);
-    const oppInfo    = pvpOpponent(session, i.user.id);
-    const selfPlayer = players[selfInfo.id];
-    const oppPlayer  = players[oppInfo.id];
-    const oppCh      = CHARACTERS[oppPlayer.active];
-
-    if (session[selfInfo.skillCdKey] > 0) return i.reply({ content: `⚡ 술식 쿨다운 중 (${session[selfInfo.skillCdKey]}턴)`, ephemeral: true });
-
-    const skillIdx = parseSkillIndex(i.values[0]); // ← 수정
-    const skills   = getAvailableSkills(selfPlayer, selfPlayer.active);
-    const skill    = skills[skillIdx];
-    if (!skill || skillIdx < 0) return i.reply({ content: "스킬 선택 오류!", ephemeral: true });
-
-    const myWeaken = getWeakenMult(session[selfInfo.statusKey]);
-    const dmg = Math.max(1, Math.floor(calcSkillDmgForPlayer(selfPlayer, skill.dmg) * myWeaken));
-    session[oppInfo.hpKey] -= dmg;
-    session[selfInfo.skillCdKey] = 5;
-
-    const log = [`✨ **${selfPlayer.name}**의 **[${skillIdx + 1}번] ${skill.name}**! → **${oppPlayer.name}**에게 **${dmg}** 피해!`];
-    const oppSObj = { statusEffects: session[oppInfo.statusKey] };
-    const sLog = applySkillStatus(skill, selfPlayer, oppSObj, oppCh.maxHp);
-    session[oppInfo.statusKey] = oppSObj.statusEffects;
-    if (sLog.length) log.push(...sLog);
-
-    const p1Dead = session.hp1 <= 0;
-    const p2Dead = session.hp2 <= 0;
-    const p1Player = players[session.p1Id];
-    const p2Player = players[session.p2Id];
-
-    if (p1Dead || p2Dead) {
-      const winner = p1Dead ? p2Player : p1Player;
-      const loser  = p1Dead ? p1Player : p2Player;
-      winner.pvpWins++; winner.crystals += 100;
-      loser.pvpLosses++;
-      delete pvpSessions[battleId];
-      markDirty();
-      log.push(`\n🏆 **${winner.name}** 승리! +100💎`);
-      await i.reply({ content: "✅ 술식 사용!", ephemeral: true });
-      return i.message.edit({
-        embeds: [new EmbedBuilder().setTitle(`⚔️ PvP 결투 종료 — ${winner.name} 승리!`).setColor(0xF5C842).setDescription(log.join("\n"))],
-        components: [],
+      const over = pDead || eDead;
+      return i.update({
+        embeds: [new EmbedBuilder()
+          .setTitle(`⚔️ ${ch.name} VS ${enemy.emoji} ${enemy.name}`)
+          .setColor(pDead ? 0xe63946 : eDead ? 0xF5C842 : 0x7c5cfc)
+          .setDescription(log.join("\n"))
+          .addFields(
+            { name: `${ch.emoji} 내 HP`,    value: `${hpBar(player.hp, ch.maxHp)} ${Math.max(0, player.hp)}/${ch.maxHp}`, inline: true },
+            { name: `${enemy.emoji} 적 HP`, value: `${hpBar(battle.enemyHp, enemy.hp)} ${Math.max(0, battle.enemyHp)}/${enemy.hp}`, inline: true },
+          )
+          .setFooter({ text: over ? "전투 종료!" : `⚡술식: 5턴 쿨다운 | ♻반전: ${player.reverseCooldown > 0 ? player.reverseCooldown + "턴" : "가능"}` })
+        ],
+        components: over ? [] : [mkBattleButtons(player)],
       });
     }
 
-    session.turn = oppInfo.id;
-    session.round++;
-    markDirty();
-    await i.reply({ content: `✅ **${skill.name}** 사용! (5턴 쿨다운)`, ephemeral: true });
-    return i.message.edit({
-      embeds: [pvpEmbed(session, log)],
-      components: [mkPvpButtons(battleId, session, oppInfo.id)],
-    });
+    // ── 컬링 술식 (prefix: "cs") ──
+    if (prefix === "cs") {
+      if (!culling) return i.reply({ content: "컬링 게임 진행 중이 아닙니다!", ephemeral: true });
+      if (player.skillCooldown > 0) return i.reply({ content: `⚡ 술식 쿨다운 중 (${player.skillCooldown}턴)`, ephemeral: true });
+
+      const ch    = CHARACTERS[player.active];
+      const enemy = culling.currentEnemy;
+      const log   = [];
+
+      { const pObj = { hp: player.hp, statusEffects: player.statusEffects || [] }; tickStatus(pObj, ch.maxHp); player.hp = pObj.hp; player.statusEffects = pObj.statusEffects; }
+      tickCooldowns(player);
+
+      const dmg = calcSkillDmgForPlayer(player, skill.dmg);
+      culling.enemyHp -= dmg;
+      player.skillCooldown = 5;
+      log.push(`✨ **[${skillIdx + 1}번] ${skill.name}**! → **${enemy.name}**에게 **${dmg}** 피해!${isMakiAwakened(player) ? " 🔥" : ""}`);
+
+      const eObj = { statusEffects: enemy.statusEffects || [] };
+      const sLog = applySkillStatus(skill, player, eObj, enemy.hp);
+      enemy.statusEffects = eObj.statusEffects;
+      if (sLog.length) log.push(...sLog);
+
+      { const eeObj = { hp: culling.enemyHp, statusEffects: enemy.statusEffects }; tickStatus(eeObj, enemy.hp); culling.enemyHp = eeObj.hp; enemy.statusEffects = eeObj.statusEffects; }
+
+      if (culling.enemyHp > 0 && !isIncapacitated(enemy.statusEffects)) {
+        const edm = calcDmg(enemy.atk, ch.def);
+        player.hp -= edm;
+        log.push(`💥 **${enemy.name}**의 반격! → **${ch.name}**에게 **${edm}** 피해!`);
+        if (enemy.statusAttack && Math.random() < enemy.statusAttack.chance) {
+          applyStatus(player, enemy.statusAttack.statusId);
+          const sd = STATUS_EFFECTS[enemy.statusAttack.statusId];
+          log.push(`${sd.emoji} **${enemy.name}**의 ${sd.name} 공격!`);
+        }
+      }
+
+      if (player.hp <= 0) {
+        return handleCullingDeath(i, player, culling, log);
+      }
+
+      if (culling.enemyHp <= 0) {
+        culling.kills++; culling.totalXp += enemy.xp; culling.totalCrystals += enemy.crystals; culling.totalMastery += enemy.masteryXp;
+        log.push(`✅ **${enemy.name}** 처치! +${enemy.xp} XP | +${enemy.crystals}💎`);
+        if (culling.wave > player.cullingBest) { player.cullingBest = culling.wave; log.push(`🏆 **최고기록 갱신!** WAVE ${player.cullingBest}`); }
+        const nextWave  = culling.wave + 1;
+        const nextEnemy = pickCullingEnemy(nextWave);
+        culling.wave = nextWave; culling.currentEnemy = nextEnemy; culling.enemyHp = nextEnemy.hp;
+        log.push(`\n🌊 **WAVE ${nextWave}** 돌입! ${nextEnemy.emoji} **${nextEnemy.name}** 등장!`);
+        markDirty();
+        return i.update({ embeds: [cullingEmbed(player, culling, log)], components: [mkCullingButtons(player)] });
+      }
+
+      markDirty();
+      return i.update({ embeds: [cullingEmbed(player, culling, log)], components: [mkCullingButtons(player)] });
+    }
+
+    // ── 사멸회유 술식 (prefix: "js") ──
+    if (prefix === "js") {
+      if (!jujutsu || jujutsu.phase !== "fight") return i.reply({ content: "사멸회유 전투 중이 아닙니다!", ephemeral: true });
+      if (player.skillCooldown > 0) return i.reply({ content: `⚡ 술식 쿨다운 중 (${player.skillCooldown}턴)`, ephemeral: true });
+
+      const ch    = CHARACTERS[player.active];
+      const enemy = jujutsu.currentEnemy;
+      const log   = [];
+
+      { const pObj = { hp: player.hp, statusEffects: player.statusEffects || [] }; tickStatus(pObj, ch.maxHp); player.hp = pObj.hp; player.statusEffects = pObj.statusEffects; }
+      tickCooldowns(player);
+
+      const dmg = calcSkillDmgForPlayer(player, skill.dmg);
+      jujutsu.enemyHp -= dmg;
+      player.skillCooldown = 5;
+      log.push(`✨ **[${skillIdx + 1}번] ${skill.name}**! → **${enemy.name}**에게 **${dmg}** 피해!${isMakiAwakened(player) ? " 🔥" : ""}`);
+
+      const eObj = { statusEffects: enemy.statusEffects || [] };
+      const sLog = applySkillStatus(skill, player, eObj, enemy.hp);
+      enemy.statusEffects = eObj.statusEffects;
+      if (sLog.length) log.push(...sLog);
+
+      { const eeObj = { hp: jujutsu.enemyHp, statusEffects: enemy.statusEffects }; tickStatus(eeObj, enemy.hp); jujutsu.enemyHp = eeObj.hp; enemy.statusEffects = eeObj.statusEffects; }
+
+      if (jujutsu.enemyHp > 0 && !isIncapacitated(enemy.statusEffects)) {
+        const edm = calcDmg(enemy.atk, ch.def);
+        player.hp -= edm;
+        log.push(`💥 **${enemy.name}**의 반격! → **${ch.name}**에게 **${edm}** 피해!`);
+        if (enemy.statusAttack && Math.random() < enemy.statusAttack.chance) {
+          applyStatus(player, enemy.statusAttack.statusId);
+          const sd = STATUS_EFFECTS[enemy.statusAttack.statusId];
+          log.push(`${sd.emoji} **${enemy.name}**의 ${sd.name} 공격!`);
+        }
+      }
+
+      if (player.hp <= 0) return handleJujutsuDeath(i, player, jujutsu, log);
+
+      if (jujutsu.enemyHp <= 0) {
+        jujutsu.kills++; jujutsu.totalXp += enemy.xp; jujutsu.totalCrystals += enemy.crystals; jujutsu.totalMastery += enemy.masteryXp; jujutsu.points += enemy.points;
+        log.push(`✅ **${enemy.name}** 처치! **+${enemy.points}포인트** (현재: ${jujutsu.points}/15)`);
+
+        if (jujutsu.points >= 15) {
+          player.crystals += 500; player.xp += 1000;
+          if (jujutsu.points > player.jujutsuBest) player.jujutsuBest = jujutsu.points;
+          player.statusEffects = []; player.skillCooldown = 0; player.reverseCooldown = 0;
+          delete jujutsus[i.user.id]; markDirty();
+          log.push(`\n🎉 **15포인트 달성!!** 보너스: **+1000** XP | **+500**💎`);
+          return i.update({ embeds: [new EmbedBuilder().setTitle("🎉 사멸회유 완료!").setColor(0xF5C842).setDescription(log.join("\n"))], components: [] });
+        }
+
+        if (jujutsu.points > player.jujutsuBest) player.jujutsuBest = jujutsu.points;
+        const nextWave  = jujutsu.wave + 1;
+        const choices   = generateJujutsuChoices(nextWave);
+        jujutsu.wave = nextWave; jujutsu.currentEnemy = null; jujutsu.enemyHp = 0;
+        jujutsu.pendingChoices = choices; jujutsu.phase = "choose";
+        log.push(`\n🎯 **WAVE ${nextWave}** — 다음 적을 선택하세요!`);
+        markDirty();
+        return i.update({ embeds: [jujutsuEmbed(player, jujutsu, log, choices)], components: [mkJujutsuChoiceButtons(choices)] });
+      }
+
+      markDirty();
+      return i.update({ embeds: [jujutsuEmbed(player, jujutsu, log)], components: [mkJujutsuButtons(player)] });
+    }
+
+    // ── PvP 술식 (prefix: "pvp_sm") ──
+    if (prefix === "pvp_sm") {
+      const session = getPvpSessionByUser(i.user.id);
+      if (!session) return i.reply({ content: "PvP 세션을 찾을 수 없습니다.", ephemeral: true });
+      if (session.turn !== i.user.id) return i.reply({ content: "상대방의 턴입니다!", ephemeral: true });
+
+      const battleId   = session.id;
+      const selfInfo   = pvpSelf(session, i.user.id);
+      const oppInfo    = pvpOpponent(session, i.user.id);
+      const selfPlayer = players[selfInfo.id];
+      const oppPlayer  = players[oppInfo.id];
+      const oppCh      = CHARACTERS[oppPlayer.active];
+
+      if (session[selfInfo.skillCdKey] > 0) return i.reply({ content: `⚡ 술식 쿨다운 중 (${session[selfInfo.skillCdKey]}턴)`, ephemeral: true });
+
+      const myWeaken = getWeakenMult(session[selfInfo.statusKey]);
+      const dmg = Math.max(1, Math.floor(calcSkillDmgForPlayer(selfPlayer, skill.dmg) * myWeaken));
+      session[oppInfo.hpKey] -= dmg;
+      session[selfInfo.skillCdKey] = 5;
+
+      const log = [`✨ **${selfPlayer.name}**의 **[${skillIdx + 1}번] ${skill.name}**! → **${oppPlayer.name}**에게 **${dmg}** 피해!`];
+      const oppSObj = { statusEffects: session[oppInfo.statusKey] };
+      const sLog = applySkillStatus(skill, selfPlayer, oppSObj, oppCh.maxHp);
+      session[oppInfo.statusKey] = oppSObj.statusEffects;
+      if (sLog.length) log.push(...sLog);
+
+      const p1Dead = session.hp1 <= 0;
+      const p2Dead = session.hp2 <= 0;
+      const p1Player = players[session.p1Id];
+      const p2Player = players[session.p2Id];
+
+      if (p1Dead || p2Dead) {
+        const winner = p1Dead ? p2Player : p1Player;
+        const loser  = p1Dead ? p1Player : p2Player;
+        winner.pvpWins++; winner.crystals += 100;
+        loser.pvpLosses++;
+        delete pvpSessions[battleId];
+        markDirty();
+        log.push(`\n🏆 **${winner.name}** 승리! +100💎`);
+        return i.update({
+          embeds: [new EmbedBuilder().setTitle(`⚔️ PvP 결투 종료 — ${winner.name} 승리!`).setColor(0xF5C842).setDescription(log.join("\n"))],
+          components: [],
+        });
+      }
+
+      session.turn = oppInfo.id;
+      session.round++;
+      markDirty();
+      return i.update({
+        embeds: [pvpEmbed(session, log)],
+        components: [mkPvpButtons(battleId, session, oppInfo.id)],
+      });
+    }
+
+    // 알 수 없는 prefix
+    return i.reply({ content: "❌ 알 수 없는 술식 요청입니다.", ephemeral: true });
   }
 
   // ── DEV 버튼 ──
@@ -1755,11 +1713,9 @@ client.on("interactionCreate", async (i) => {
     session[selfInfo.statusKey] = myObj.statusEffects;
     if (myTick.log.length) log.push(...myTick.log.map(l => `[${selfPlayer.name}] ${l}`));
 
-    // 쿨다운 틱
     if (session[selfInfo.skillCdKey]   > 0) session[selfInfo.skillCdKey]--;
     if (session[selfInfo.reverseCdKey] > 0) session[selfInfo.reverseCdKey]--;
 
-    // 동결/기절 체크
     if (isIncapacitated(session[selfInfo.statusKey])) {
       log.push(`⛔ **${selfPlayer.name}**은 상태이상으로 행동할 수 없습니다!`);
       session.turn = oppInfo.id;
@@ -1777,6 +1733,7 @@ client.on("interactionCreate", async (i) => {
     }
     else if (action === "skill") {
       if (session[selfInfo.skillCdKey] > 0) return i.reply({ content: `⚡ 술식 쿨다운 중 (${session[selfInfo.skillCdKey]}턴)`, ephemeral: true });
+      // ★ 술식 드롭다운을 ephemeral로 표시 (PvP는 드롭다운 선택 후 별도 처리됨)
       const skillMenu = mkSkillSelectMenu(selfPlayer, "pvp_sm");
       if (!skillMenu) return i.reply({ content: "사용 가능한 스킬이 없습니다!", ephemeral: true });
       return i.reply({ content: `🌀 **${selfPlayer.name}** 사용할 술식을 선택하세요:`, components: [skillMenu], ephemeral: true });
@@ -1868,6 +1825,7 @@ client.on("interactionCreate", async (i) => {
       });
     }
 
+    // ★ 술식 버튼: 드롭다운 메뉴를 ephemeral로 표시 (PvP 외 모드는 드롭다운 선택 시 i.update() 사용)
     if (i.customId === "c_skill") {
       if (player.skillCooldown > 0) return i.reply({ content: `⚡ 술식 쿨다운 중! (${player.skillCooldown}턴 남음)`, ephemeral: true });
       const menu = mkSkillSelectMenu(player, "cs");
@@ -1877,7 +1835,6 @@ client.on("interactionCreate", async (i) => {
 
     const enemy = culling.currentEnemy;
 
-    // 상태이상 틱
     { const pObj = { hp: player.hp, statusEffects: player.statusEffects || [] }; const tick = tickStatus(pObj, ch.maxHp); player.hp = pObj.hp; player.statusEffects = pObj.statusEffects; if (tick.log.length) log.push(...tick.log.map(l => `[나] ${l}`)); }
     tickCooldowns(player);
 
@@ -1920,7 +1877,6 @@ client.on("interactionCreate", async (i) => {
       }
     }
 
-    // 적 상태이상 틱 (반전술식이 아닐 때)
     if (i.customId !== "c_reverse") {
       const eObj = { hp: culling.enemyHp, statusEffects: enemy.statusEffects || [] };
       const eTick = tickStatus(eObj, enemy.hp);
@@ -1928,7 +1884,6 @@ client.on("interactionCreate", async (i) => {
       if (eTick.log.length) log.push(...eTick.log.map(l => `[${enemy.name}] ${l}`));
     }
 
-    // 적 반격
     if (culling.enemyHp > 0 && i.customId !== "c_reverse") {
       if (!isIncapacitated(enemy.statusEffects)) {
         const dmg = calcDmg(enemy.atk, ch.def);
@@ -2024,7 +1979,6 @@ client.on("interactionCreate", async (i) => {
       return i.reply({ content: "🌀 사용할 술식을 선택하세요:", components: [menu], ephemeral: true });
     }
 
-    // 상태이상 틱
     { const pObj = { hp: player.hp, statusEffects: player.statusEffects || [] }; const tick = tickStatus(pObj, ch.maxHp); player.hp = pObj.hp; player.statusEffects = pObj.statusEffects; if (tick.log.length) log.push(...tick.log.map(l => `[나] ${l}`)); }
     tickCooldowns(player);
 
@@ -2336,7 +2290,6 @@ client.on("interactionCreate", async (i) => {
       return i.reply({ content: "🌀 사용할 술식을 선택하세요:", components: [menu], ephemeral: true });
     }
 
-    // 상태이상 틱
     { const pObj = { hp: player.hp, statusEffects: player.statusEffects || [] }; const tick = tickStatus(pObj, ch.maxHp); player.hp = pObj.hp; player.statusEffects = pObj.statusEffects; if (tick.log.length) log.push(...tick.log.map(l => `[나] ${l}`)); }
     tickCooldowns(player);
 
@@ -2403,7 +2356,6 @@ client.on("interactionCreate", async (i) => {
       log.push("❌ 도주 실패!");
     }
 
-    // 적 상태이상 틱
     if (!["b_reverse", "b_run"].includes(i.customId)) {
       const eObj = { hp: battle.enemyHp, statusEffects: enemy.statusEffects || [] };
       const eTick = tickStatus(eObj, enemy.hp);
@@ -2411,7 +2363,6 @@ client.on("interactionCreate", async (i) => {
       if (eTick.log.length) log.push(...eTick.log.map(l => `[${enemy.name}] ${l}`));
     }
 
-    // 적 반격
     if (battle.enemyHp > 0 && i.customId !== "b_reverse") {
       if (!isIncapacitated(enemy.statusEffects || [])) {
         const dmg = calcDmg(enemy.atk, ch.def);
@@ -2470,7 +2421,6 @@ client.once("ready", () => {
   console.log(`✅ ${client.user.tag} 온라인!`);
   console.log(`📁 데이터 저장 경로: ${SAVE_FILE}`);
   client.user.setActivity("주술회전 RPG | !도움", { type: 0 });
-  // 봇 시작 시 즉시 저장 (경로 확인용)
   savePlayers(true);
 });
 
