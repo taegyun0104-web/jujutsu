@@ -112,9 +112,9 @@ const CHARACTERS = {
     desc: "특급주술사 후보생. 아직 성장 중인 주술사.",
     skills: [
       { name: "주먹질", minMastery: 0,  dmg: 70,  desc: "강력한 기본 주먹 공격." },
-      { name: "흑번",   minMastery: 5,  dmg: 120, desc: "저주 에너지를 실은 주먹." },
-      { name: "흑번창", minMastery: 15, dmg: 180, desc: "최대 저주 에너지 방출!" },
-      { name: "발도",   minMastery: 30, dmg: 260, desc: "스쿠나의 힘을 빌린 궁극기." },
+      { name: "다이버전트 주먹",   minMastery: 5,  dmg: 120, desc: "저주 에너지를 실은 주먹." },
+      { name: "흑섬", minMastery: 15, dmg: 180, desc: "최대 저주 에너지 방출!" },
+      { name: "어주자",   minMastery: 30, dmg: 260, desc: "스쿠나의 힘을 빌린 궁극기." },
     ],
   },
   gojo: {
@@ -134,15 +134,15 @@ const CHARACTERS = {
     desc: "식신술을 구사하는 주술사.",
     skills: [
       { name: "옥견",       minMastery: 0,  dmg: 85,  desc: "식신 옥견을 소환한다." },
-      { name: "대호",       minMastery: 5,  dmg: 140, desc: "식신 대호를 소환한다." },
-      { name: "십종영이",   minMastery: 15, dmg: 200, desc: "열 가지 식신을 소환한다." },
-      { name: "마허라가라", minMastery: 30, dmg: 290, desc: "최강의 식신, 마허라가라 강림." },
+      { name: "탈토",       minMastery: 5,  dmg: 140, desc: "식신 대호를 소환한다." },
+      { name: "만상",   minMastery: 15, dmg: 200, desc: "열 가지 식신을 소환한다." },
+      { name: "후루베 유라유라", minMastery: 30, dmg: 290, desc: "최강의 식신, 마허라가라 강림." },
     ],
   },
   nobara: {
     name: "쿠기사키 노바라", emoji: "🌸", grade: "1급",
     atk: 88, def: 75, spd: 85, maxHp: 950, domain: null,
-    desc: "반전술식을 구사하는 주술사.",
+    desc: "망치를 이용해 영혼에 공격 가능한 주술사.",
     skills: [
       { name: "망치질", minMastery: 0,  dmg: 88,  desc: "저주 못을 박는다." },
       { name: "공명",   minMastery: 5,  dmg: 150, desc: "허수아비를 통해 공명 피해." },
@@ -166,10 +166,10 @@ const CHARACTERS = {
     atk: 100, def: 90, spd: 95, maxHp: 2000, domain: "복마어주자",
     desc: "저주의 왕. 역대 최강의 저주된 영혼.",
     skills: [
-      { name: "손톱 공격",       minMastery: 0,  dmg: 110, desc: "날카로운 손톱으로 베어낸다." },
-      { name: "해체",            minMastery: 5,  dmg: 180, desc: "공간 자체를 베어낸다." },
-      { name: "분해",            minMastery: 15, dmg: 260, desc: "닿는 모든 것을 분해한다." },
-      { name: "개·염·천·지·개", minMastery: 30, dmg: 380, desc: "천지개벽의 궁극 영역전개." },
+      { name: "해",       minMastery: 0,  dmg: 110, desc: "날카로운 손톱으로 베어낸다." },
+      { name: "팔",            minMastery: 5,  dmg: 180, desc: "공간 자체를 베어낸다." },
+      { name: "푸가",            minMastery: 15, dmg: 260, desc: "닿는 모든 것을 분해한다." },
+      { name: "복마어주자", minMastery: 30, dmg: 380, desc: "천지개벽의 궁극 영역전개." },
     ],
   },
   geto: {
