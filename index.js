@@ -444,24 +444,44 @@ function generateJujutsuChoices(wave) {
 // ── 가챠 풀 ──
 // ═══════════════════════════════════════════════
 const GACHA_POOL = [
-  { id: "gojo",     rate: 0.3  },
-  { id: "sukuna",   rate: 0.35 },
-  { id: "yuta",     rate: 0.45 },
-  { id: "jogo",     rate: 0.6  },
-  { id: "dagon",    rate: 0.6  },
-  { id: "mahito",   rate: 0.7  },
-  { id: "hanami",   rate: 0.7  },
-  { id: "geto",     rate: 0.9  },
-  { id: "itadori",  rate: 2.0  },
-  { id: "megumi",   rate: 5.0  },
-  { id: "nanami",   rate: 5.0  },
-  { id: "maki",     rate: 5.5  },
-  { id: "nobara",   rate: 5.5  },
-  { id: "higuruma", rate: 5.5  },
-  { id: "panda",    rate: 35   },
-  { id: "inumaki",  rate: 35   },
+  // --- 초특급/특급 라인 ---
+  { id: "gojo", rate: 0.3 },        // 고죠 사토루
+  { id: "sukuna", rate: 0.35 },     // 스쿠나
+  { id: "yuta", rate: 0.45 },       // 오콧츠 유타
+  { id: "geto", rate: 0.9 },        // 게토 스구루
+  
+  // --- 신규 추가 특급 (죠고 일행) ---
+  { id: "jogo", rate: 0.6 },        // 죠고 (추가)
+  { id: "mahito", rate: 0.6 },      // 마히토 (추가)
+  { id: "hanami", rate: 0.7 },      // 하나미 (추가)
+  { id: "dagon", rate: 0.7 },       // 다곤 (추가)
+
+  // --- 일반/준1급 라인 ---
+  { id: "itadori", rate: 2.0 },     // 이타도리 유지
+  { id: "megumi", rate: 5.0 },      // 후시구로 메구미
+  { id: "nanami", rate: 5.0 },      // 나나미 켄토
+  { id: "maki", rate: 5.5 },        // 젠인 마키
+  { id: "nobara", rate: 5.5 },      // 쿠기사키 노바라
+  { id: "higuruma", rate: 5.5 },    // 히구루마 히로미
+  
+  // --- 기타 (높은 확률) ---
+  { id: "panda", rate: 35.0 },      // 판다
+  { id: "inumaki", rate: 32.4 }     // 이누마키 토게 (전체 합을 맞추기 위해 소폭 조정)
 ];
 
+// 가챠 실행 함수 (부동 소수점 계산 적용)
+function runGacha() {
+  const totalRate = GACHA_POOL.reduce((sum, item) => sum + item.rate, 0);
+  let random = Math.random() * totalRate;
+
+  for (const item of GACHA_POOL) {
+    if (random < item.rate) {
+      return item.id;
+    }
+    random -= item.rate;
+  }
+  return GACHA_POOL[GACHA_POOL.length - 1].id;
+}
 const REVERSE_CHARS = new Set(["gojo", "sukuna", "yuta"]);
 const CODES = { "release": { crystals: 200 } };
 
