@@ -377,7 +377,7 @@ const CHARACTERS = {
     ],
   },
   mahito: {
-    name: "마히토", emoji: "🩸", grade: "준특급",
+    name: "마히토", emoji: "🩸", grade: "특급",
     atk: 92, def: 78, spd: 88, maxHp: 1250, domain: "자폐원돈과",
     desc: "영혼을 자유자재로 변형하는 준특급 저주령. 무한변신체.",
     skills: [
