@@ -289,18 +289,18 @@ const CHARACTERS = {
   // ── 신규 캐릭터 ──
   jogo: {
     name: "죠고", emoji: "🌋", grade: "특급",
-    atk: 94, def: 80, spd: 85, maxHp: 1350, domain: "자폐무한허허",
+    atk: 94, def: 80, spd: 85, maxHp: 1350, domain: "개관철위산",
     desc: "화염을 다루는 준특급 저주령. 강렬한 불꽃 술식을 구사한다.",
     skills: [
       { name: "화염 분사",     minMastery: 0,  dmg: 100, desc: "강렬한 불꽃을 내뿜는다.", statusApply: { target: "enemy", statusId: "burn", chance: 0.5 } },
       { name: "용암 폭발",     minMastery: 5,  dmg: 165, desc: "발밑의 용암을 폭발시킨다.", statusApply: { target: "enemy", statusId: "burn", chance: 0.7 } },
       { name: "극번 운",     minMastery: 15, dmg: 240, desc: "하늘에서 불타는 운석을 소환한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.5 } },
-      { name: ""개관철위산,   minMastery: 30, dmg: 350, desc: "화산을 소환하는 궁극 영역전개.", statusApply: { target: "enemy", statusId: "burn", chance: 1.0 } },
+      { name: "개관철위산",   minMastery: 30, dmg: 350, desc: "화산을 소환하는 궁극 영역전개.", statusApply: { target: "enemy", statusId: "burn", chance: 1.0 } },
     ],
   },
   dagon: {
     name: "다곤", emoji: "🌊", grade: "특급",
-    atk: 90, def: 85, spd: 78, maxHp: 1300, domain: "열화의 병어",
+    atk: 90, def: 85, spd: 78, maxHp: 1300, domain: "탕온평선",
     desc: "수중 저주령. 물고기 떼와 해수 술식을 사용한다.",
     skills: [
       { name: "물고기 소환",   minMastery: 0,  dmg: 95,  desc: "날카로운 물고기 떼를 소환한다.", statusApply: { target: "enemy", statusId: "poison", chance: 0.4 } },
@@ -321,14 +321,14 @@ const CHARACTERS = {
     ],
   },
   mahito: {
-    name: "마히토", emoji: "🩸", grade: "특급",
-    atk: 92, def: 78, spd: 88, maxHp: 1250, domain: "자폐표리",
+    name: "마히토", emoji: "🩸", grade: "준특급",
+    atk: 92, def: 78, spd: 88, maxHp: 1250, domain: "자폐원돈과",
     desc: "영혼을 자유자재로 변형하는 준특급 저주령. 무한변신체.",
     skills: [
       { name: "영혼 변형",     minMastery: 0,  dmg: 98,  desc: "영혼을 변형해 직접 타격한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.4 } },
-      { name: "트랜스피규어",  minMastery: 5,  dmg: 162, desc: "접촉한 신체를 기괴하게 변형한다.", statusApply: { target: "enemy", statusId: "stun", chance: 0.4 } },
-      { name: "무한변신체",    minMastery: 15, dmg: 235, desc: "신체를 무한히 변형해 공격한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.6 } },
-      { name: "자폐원돈가",      minMastery: 30, dmg: 345, desc: "영혼과 육체의 경계를 무너뜨리는 영역.", statusApply: { target: "enemy", statusId: "freeze", chance: 0.8 } },
+      { name: "무위전변",  minMastery: 5,  dmg: 162, desc: "접촉한 신체를 기괴하게 변형한다.", statusApply: { target: "enemy", statusId: "stun", chance: 0.4 } },
+      { name: "편사지경체",    minMastery: 15, dmg: 235, desc: "신체를 무한히 변형해 공격한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.6 } },
+      { name: "자폐원돈과",      minMastery: 30, dmg: 345, desc: "영혼과 육체의 경계를 무너뜨리는 영역.", statusApply: { target: "enemy", statusId: "freeze", chance: 0.8 } },
     ],
   },
 };
@@ -440,9 +440,6 @@ function generateJujutsuChoices(wave) {
   });
 }
 
-// ═══════════════════════════════════════════════
-// ── 가챠 풀 ──
-// ═══════════════════════════════════════════════
 const GACHA_POOL = [
   // --- 초특급/특급 라인 ---
   { id: "gojo", rate: 0.3 },        // 고죠 사토루
@@ -482,6 +479,7 @@ function runGacha() {
   }
   return GACHA_POOL[GACHA_POOL.length - 1].id;
 }
+
 const REVERSE_CHARS = new Set(["gojo", "sukuna", "yuta"]);
 const CODES = { "release": { crystals: 200 } };
 
