@@ -2451,35 +2451,3 @@ async def on_ready():
         print(f"✅ {bot.user.name} 연결 완료 및 DB 준비 끝!")
     except Exception as e:
         print(f"❌ DB 연결 에러: {e}")
-
-@bot.command()
-async def 저장(ctx, *, 내용: str):
-    try:
-        conn = psycopg2.connect(DB_URL)
-        cur = conn.cursor()
-        # 'data'라는 키 하나에 계속 덮어쓰는 방식
-        cur.execute("INSERT INTO storage (id, val) VALUES (%s, %s) ON CONFLICT (id) DO UPDATE SET val = EXCLUDED.val;", ('data', 내용))
-        conn.commit()
-        cur.close()
-        conn.close()
-        await ctx.send(f"💾 '{내용}' 저장됨! (재시작해도 유지)")
-    except Exception as e:
-        await ctx.send(f"❌ 저장 실패: {e}")
-
-@bot.command()
-async def 확인(ctx):
-    conn = psycopg2.connect(DB_URL)
-    cur = conn.cursor()
-    cur.execute("SELECT val FROM storage WHERE id = %s;", ('data',))
-    res = cur.fetchone()
-    cur.close()
-    conn.close()
-    
-    if res:
-        await ctx.send(f"🔍 저장된 데이터: {res[0]}")
-    else:
-        await ctx.send("저장된 게 없어요.")
-
-bot.run(TOKEN)
-discord.py
-psycopg2-binary
