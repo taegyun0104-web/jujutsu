@@ -1,11 +1,13 @@
 require("dotenv").config();
-
+const fs = require("fs");
+const path = require("path");
+ 
 // ───────── EXPRESS (Railway 헬스체크용) ─────────
 const express = require("express");
 const app = express();
 app.get("/", (_, res) => res.send("OK"));
 app.listen(process.env.PORT || 3000);
-
+ 
 const {
   Client,
   GatewayIntentBits,
@@ -15,7 +17,7 @@ const {
   ButtonStyle,
   StringSelectMenuBuilder,
 } = require("discord.js");
-
+ 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -23,17 +25,44 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
   ],
 });
-
+ 
 const TOKEN = process.env.DISCORD_TOKEN;
 if (!TOKEN) { console.error("DISCORD_TOKEN 없음!"); process.exit(1); }
-
+ 
+// ───────── 자동 저장 시스템 ─────────
+const SAVE_FILE = path.join(__dirname, "players.json");
+ 
+function loadPlayers() {
+  try {
+    if (fs.existsSync(SAVE_FILE)) {
+      const raw = fs.readFileSync(SAVE_FILE, "utf8");
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error("플레이어 데이터 로드 실패:", e);
+  }
+  return {};
+}
+ 
+function savePlayers() {
+  try {
+    fs.writeFileSync(SAVE_FILE, JSON.stringify(players, null, 2), "utf8");
+  } catch (e) {
+    console.error("플레이어 데이터 저장 실패:", e);
+  }
+}
+ 
+// 30초마다 자동 저장
+setInterval(savePlayers, 30_000);
+ 
+// ───────── 개발자 ID ─────────
 const DEV_IDS = new Set([
-  "1499743296023691395",
+  "1284771557633425470",
   "1397218266505678881",
-  "1499983302503956501",
 ]);
 const isDev = (id) => DEV_IDS.has(id);
-
+ 
+// ───────── 캐릭터 & 데이터 ─────────
 const CHARACTERS = {
   itadori: {
     name: "이타도리 유지", emoji: "🟠", grade: "C",
@@ -53,9 +82,9 @@ const CHARACTERS = {
     domain: "무량공처",
     desc: "최강의 주술사. 무량공처를 구사한다.",
     skills: [
-      { name: "아오", minMastery: 0,  dmg: 110, desc: "적들을 끌어당겨서 공격한다." },
-      { name: "아카",       minMastery: 5,  dmg: 170, desc: "적들을 날려서 폭발시킨다." },
-      { name: "무라사키",       minMastery: 15, dmg: 250, desc: "아오와 아카를 합쳐서 발사하는 무한한 에너지." },
+      { name: "아오",     minMastery: 0,  dmg: 110, desc: "적들을 끌어당겨서 공격한다." },
+      { name: "아카",     minMastery: 5,  dmg: 170, desc: "적들을 날려서 폭발시킨다." },
+      { name: "무라사키", minMastery: 15, dmg: 250, desc: "아오와 아카를 합쳐서 발사하는 무한한 에너지." },
       { name: "무량공처", minMastery: 30, dmg: 360, desc: "무한을 지배하는 궁극술식." },
     ],
   },
@@ -138,9 +167,9 @@ const CHARACTERS = {
     desc: "저주로 만든 특이체질의 주술사.",
     skills: [
       { name: "박치기",     minMastery: 0,  dmg: 80,  desc: "머리로 힘차게 들이받는다." },
-      { name: "곰 발바닥", minMastery: 5,  dmg: 135, desc: "두꺼운 발바닥으로 내리친다." },
-      { name: "팬더 변신", minMastery: 15, dmg: 195, desc: "진짜 팬더로 변신해 공격." },
-      { name: "고릴라 변신", minMastery: 30, dmg: 270, desc: "고릴라 형태로 폭발적 강화." },
+      { name: "곰 발바닥",  minMastery: 5,  dmg: 135, desc: "두꺼운 발바닥으로 내리친다." },
+      { name: "팬더 변신",  minMastery: 15, dmg: 195, desc: "진짜 팬더로 변신해 공격." },
+      { name: "고릴라 변신",minMastery: 30, dmg: 270, desc: "고릴라 형태로 폭발적 강화." },
     ],
   },
   inumaki: {
@@ -180,14 +209,45 @@ const CHARACTERS = {
     ],
   },
 };
-
+ 
 const ENEMIES = [
   { id: "e1", name: "저급 저주령",      emoji: "👹", hp: 400,  atk: 28,  def: 10, xp: 60,  crystals: 15,  masteryXp: 1 },
   { id: "e2", name: "1급 저주령",       emoji: "👺", hp: 800,  atk: 60,  def: 30, xp: 150, crystals: 30,  masteryXp: 3 },
   { id: "e3", name: "특급 저주령",      emoji: "💀", hp: 1800, atk: 95,  def: 55, xp: 350, crystals: 70,  masteryXp: 7 },
   { id: "e4", name: "저주의 왕 (보스)", emoji: "👑", hp: 4000, atk: 140, def: 80, xp: 800, crystals: 150, masteryXp: 15 },
 ];
-
+ 
+// ───────── 던전 설정 ─────────
+const DUNGEONS = [
+  {
+    id: "d1", name: "폐교 던전", emoji: "🏫", difficulty: "초급",
+    floors: 3,
+    color: 0x4ade80,
+    desc: "저급 저주령이 들끓는 폐교. 입문자용 던전.",
+    enemyPool: ["e1", "e1", "e1", "e2"],
+    boss: "e2",
+    rewards: { xp: 500, crystals: 100 },
+  },
+  {
+    id: "d2", name: "저주령의 소굴", emoji: "🕸️", difficulty: "중급",
+    floors: 4,
+    color: 0x7C5CFC,
+    desc: "1급 저주령이 지배하는 소굴. 실력을 쌓은 주술사에게 적합.",
+    enemyPool: ["e2", "e2", "e3"],
+    boss: "e3",
+    rewards: { xp: 1200, crystals: 250 },
+  },
+  {
+    id: "d3", name: "심층 저주지대", emoji: "🌑", difficulty: "고급",
+    floors: 5,
+    color: 0xe63946,
+    desc: "특급 저주령이 넘치는 심층부. 목숨을 건 전투.",
+    enemyPool: ["e2", "e3", "e3", "e4"],
+    boss: "e4",
+    rewards: { xp: 3000, crystals: 600 },
+  },
+];
+ 
 const GACHA_POOL = [
   { id: "gojo",     rate: 0.7 },
   { id: "sukuna",   rate: 0.8 },
@@ -202,15 +262,17 @@ const GACHA_POOL = [
   { id: "panda",    rate: 27  },
   { id: "inumaki",  rate: 28  },
 ];
-
+ 
 const GRADE_COLOR = { S: 0xF5C842, A: 0x7C5CFC, B: 0x4ade80, C: 0x94a3b8 };
 const GRADE_EMOJI = { S: "⭐⭐⭐", A: "⭐⭐", B: "⭐", C: "🔹" };
 const REVERSE_CHARS = new Set(["gojo", "sukuna", "yuta"]);
 const CODES = { "release": { crystals: 200 } };
-
-const players = {};
+ 
+// ───────── 플레이어 저장소 ─────────
+const players = loadPlayers();
 const battles = {};
-
+const dungeons = {}; // 활성 던전 세션
+ 
 function getPlayer(userId, username = "플레이어") {
   if (!players[userId]) {
     players[userId] = {
@@ -218,25 +280,30 @@ function getPlayer(userId, username = "플레이어") {
       owned: ["itadori"], active: "itadori",
       hp: CHARACTERS["itadori"].maxHp, potion: 3,
       wins: 0, losses: 0, mastery: { itadori: 0 }, reverseOutput: 1.0,
+      dungeonClears: {},
     };
   }
+  // 기존 플레이어에 새 필드 자동 추가 (버전 업데이트 호환)
+  if (!players[userId].dungeonClears) players[userId].dungeonClears = {};
+  if (!players[userId].reverseOutput) players[userId].reverseOutput = 1.0;
+  if (!players[userId].mastery) players[userId].mastery = { itadori: 0 };
   return players[userId];
 }
-
+ 
 function getMastery(player, charId) { return player.mastery?.[charId] || 0; }
-
+ 
 function getCurrentSkill(player, charId) {
   const mastery = getMastery(player, charId);
   let current = CHARACTERS[charId].skills[0];
   for (const s of CHARACTERS[charId].skills) { if (mastery >= s.minMastery) current = s; }
   return current;
 }
-
+ 
 function getNextSkill(player, charId) {
   const mastery = getMastery(player, charId);
   return CHARACTERS[charId].skills.find(s => s.minMastery > mastery) || null;
 }
-
+ 
 function masteryBar(mastery, charId) {
   const tiers = CHARACTERS[charId].skills.map(s => s.minMastery);
   const maxTier = tiers[tiers.length - 1];
@@ -246,7 +313,7 @@ function masteryBar(mastery, charId) {
   const filled = Math.round(((mastery - prev) / (next - prev)) * 10);
   return "`" + "█".repeat(Math.max(0, filled)) + "░".repeat(Math.max(0, 10 - filled)) + "`" + ` ${mastery}/${next}`;
 }
-
+ 
 function getLevel(xp) { return Math.floor(xp / 200) + 1; }
 function hpBar(cur, max, len = 12) {
   const filled = Math.round((Math.max(0, cur) / max) * len);
@@ -255,7 +322,55 @@ function hpBar(cur, max, len = 12) {
 function calcDmg(atk, def, mult = 1) {
   return Math.max(1, Math.floor((atk * (0.8 + Math.random() * 0.4) - def * 0.25) * mult));
 }
-
+ 
+// ───────── 던전 유틸 ─────────
+function pickDungeonEnemy(dungeon, floor) {
+  const isBoss = floor === dungeon.floors;
+  if (isBoss) {
+    return { ...ENEMIES.find(e => e.id === dungeon.boss) };
+  }
+  const pool = dungeon.enemyPool.map(id => ENEMIES.find(e => e.id === id));
+  const enemy = pool[Math.floor(Math.random() * pool.length)];
+  // 층이 깊어질수록 스탯 강화
+  const scale = 1 + (floor - 1) * 0.15;
+  return {
+    ...enemy,
+    hp: Math.floor(enemy.hp * scale),
+    atk: Math.floor(enemy.atk * scale),
+    def: Math.floor(enemy.def * scale),
+    xp: Math.floor(enemy.xp * scale),
+    crystals: Math.floor(enemy.crystals * scale),
+  };
+}
+ 
+function dungeonFloorEmbed(player, session, log = []) {
+  const dungeon = DUNGEONS.find(d => d.id === session.dungeonId);
+  const ch = CHARACTERS[player.active];
+  const enemy = session.currentEnemy;
+  const isBoss = session.floor === dungeon.floors;
+  return new EmbedBuilder()
+    .setTitle(`${dungeon.emoji} ${dungeon.name} — ${session.floor}/${dungeon.floors}층 ${isBoss ? "👑 BOSS" : ""}`)
+    .setColor(isBoss ? 0xF5C842 : dungeon.color)
+    .setDescription(log.length ? log.join("\n") : "⚔️ 전투 시작!")
+    .addFields(
+      { name: `${ch.emoji} 내 HP`, value: `${hpBar(player.hp, ch.maxHp)} ${Math.max(0, player.hp)}/${ch.maxHp}`, inline: true },
+      { name: `${enemy.emoji} ${enemy.name}`, value: `${hpBar(session.enemyHp, enemy.hp)} ${Math.max(0, session.enemyHp)}/${enemy.hp}`, inline: true },
+      { name: "🗝️ 진행도", value: `${session.floor}층 / 총 ${dungeon.floors}층 | 도전 중`, inline: false },
+    )
+    .setFooter({ text: `술식: ${getCurrentSkill(player, player.active).name} | 영역: ${ch.domain || "없음"}` });
+}
+ 
+function dungeonButtons() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId("d_attack").setLabel("⚔ 공격").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId("d_skill").setLabel("🌀 술식").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId("d_domain").setLabel("🌌 영역전개").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("d_reverse").setLabel("♻ 반전술식").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("d_escape").setLabel("🏃 도주(포기)").setStyle(ButtonStyle.Secondary),
+  );
+}
+ 
+// ───────── 일반 전투 버튼 ─────────
 function battleButtons() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("b_attack").setLabel("⚔ 공격").setStyle(ButtonStyle.Danger),
@@ -265,7 +380,7 @@ function battleButtons() {
     new ButtonBuilder().setCustomId("b_run").setLabel("🏃 도주").setStyle(ButtonStyle.Secondary),
   );
 }
-
+ 
 function devButtons() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("dev_heal").setLabel("HP 풀회복").setStyle(ButtonStyle.Success),
@@ -275,7 +390,7 @@ function devButtons() {
     new ButtonBuilder().setCustomId("dev_kill").setLabel("적 즉사").setStyle(ButtonStyle.Danger),
   );
 }
-
+ 
 function rollGacha(count = 1) {
   const total = GACHA_POOL.reduce((s, p) => s + p.rate, 0);
   return Array.from({ length: count }, () => {
@@ -284,12 +399,16 @@ function rollGacha(count = 1) {
     return GACHA_POOL[GACHA_POOL.length - 1].id;
   });
 }
-
+ 
 function profileEmbed(player) {
   const ch = CHARACTERS[player.active];
   const skill = getCurrentSkill(player, player.active);
   const nextSkill = getNextSkill(player, player.active);
   const mastery = getMastery(player, player.active);
+  const clearInfo = DUNGEONS.map(d => {
+    const clears = player.dungeonClears?.[d.id] || 0;
+    return `${d.emoji} ${d.name}: **${clears}**회 클리어`;
+  }).join("\n");
   return new EmbedBuilder()
     .setTitle(`${ch.emoji} ${player.name}의 주술사 프로필`)
     .setColor(GRADE_COLOR[ch.grade])
@@ -305,11 +424,12 @@ function profileEmbed(player) {
       { name: "🌌 영역전개", value: ch.domain || "없음", inline: true },
       { name: "❤️ HP 바", value: `${hpBar(player.hp, ch.maxHp)} ${Math.max(0,player.hp)}/${ch.maxHp}`, inline: true },
       { name: "🧪 회복약", value: `${player.potion}개`, inline: true },
+      { name: "🗝️ 던전 클리어", value: clearInfo, inline: false },
       { name: "📦 보유 캐릭터", value: player.owned.map(id => `${CHARACTERS[id].emoji} ${CHARACTERS[id].name} (숙련 ${getMastery(player,id)})`).join("\n"), inline: false },
     )
-    .setFooter({ text: "!캐릭터 | !스킬 | !가챠 | !전투" });
+    .setFooter({ text: "!캐릭터 | !스킬 | !가챠 | !전투 | !던전" });
 }
-
+ 
 function skillEmbed(player) {
   const id = player.active;
   const ch = CHARACTERS[id];
@@ -322,14 +442,15 @@ function skillEmbed(player) {
       name: `${mastery >= s.minMastery ? "✅" : "🔒"} ${s.name} — 피해 ${s.dmg} (숙련도 ${s.minMastery} 필요)`,
       value: s.desc, inline: false,
     })))
-    .setFooter({ text: "전투 승리 시 숙련도 상승!" });
+    .setFooter({ text: "전투/던전 승리 시 숙련도 상승!" });
 }
-
+ 
+// ───────── 메시지 핸들러 ─────────
 client.on("messageCreate", async (msg) => {
   if (!msg || msg.author.bot) return;
   const content = msg.content.trim();
   const player = getPlayer(msg.author.id, msg.author.username);
-
+ 
   if (content === "!도움" || content === "!help") {
     return msg.reply({ embeds: [new EmbedBuilder()
       .setTitle("⚡ 주술회전 RPG봇 — 명령어")
@@ -338,17 +459,18 @@ client.on("messageCreate", async (msg) => {
         { name: "📋 기본", value: "`!프로필` `!도움`", inline: false },
         { name: "👤 캐릭터", value: "`!캐릭터` — 편성\n`!도감` — 전체 목록\n`!스킬` — 스킬 트리", inline: false },
         { name: "🎲 가챠", value: "`!가챠` — 1회 (150💎)\n`!가챠10` — 10회 (1350💎)", inline: false },
-        { name: "⚔️ 전투", value: "`!전투` — 전투 시작\n버튼으로 공격/술식/영역전개/반전술식/도주", inline: false },
+        { name: "⚔️ 일반 전투", value: "`!전투` — 적 선택 후 전투 시작\n버튼으로 공격/술식/영역전개/반전술식/도주", inline: false },
+        { name: "🗝️ 던전", value: "`!던전` — 던전 선택 후 도전\n층마다 랜덤 몹 등장, 마지막 층은 보스!\n클리어 시 보너스 보상 지급", inline: false },
         { name: "🎁 코드", value: "`!코드 [코드]` — 보상 코드 입력", inline: false },
-        { name: "📈 숙련도", value: "전투 승리 시 숙련도 상승 → 더 강한 스킬 해금!", inline: false },
+        { name: "📈 숙련도", value: "전투/던전 승리 시 숙련도 상승 → 더 강한 스킬 해금!", inline: false },
       )
       .setFooter({ text: "💎 첫 시작 시 500 크리스탈 지급!" })
     ]});
   }
-
+ 
   if (content === "!프로필") return msg.reply({ embeds: [profileEmbed(player)] });
   if (content === "!스킬") return msg.reply({ embeds: [skillEmbed(player)] });
-
+ 
   if (content === "!도감") {
     return msg.reply({ embeds: [new EmbedBuilder()
       .setTitle("📖 주술회전 캐릭터 도감")
@@ -362,7 +484,7 @@ client.on("messageCreate", async (msg) => {
       .setFooter({ text: "!가챠로 새 캐릭터를 획득하세요!" })
     ]});
   }
-
+ 
   if (content === "!캐릭터") {
     if (!player.owned.length) return msg.reply("보유 캐릭터 없음! `!가챠`로 소환하세요.");
     const select = new StringSelectMenuBuilder()
@@ -375,7 +497,7 @@ client.on("messageCreate", async (msg) => {
       }));
     return msg.reply({ content: "👤 편성할 캐릭터를 선택하세요:", components: [new ActionRowBuilder().addComponents(select)] });
   }
-
+ 
   if (content === "!가챠") {
     if (player.crystals < 150) return msg.reply(`💎 크리스탈 부족! (${player.crystals}/150)`);
     player.crystals -= 150;
@@ -384,6 +506,7 @@ client.on("messageCreate", async (msg) => {
     const isNew = !player.owned.includes(result);
     if (isNew) { player.owned.push(result); if (!player.mastery[result]) player.mastery[result] = 0; }
     else player.crystals += 50;
+    savePlayers();
     return msg.reply({ embeds: [new EmbedBuilder()
       .setTitle("🎲 주술 소환 결과!")
       .setColor(GRADE_COLOR[ch.grade])
@@ -397,7 +520,7 @@ client.on("messageCreate", async (msg) => {
       .setFooter({ text: "!캐릭터로 편성 | !스킬로 스킬 트리 확인" })
     ]});
   }
-
+ 
   if (content === "!가챠10") {
     if (player.crystals < 1350) return msg.reply(`💎 크리스탈 부족! (${player.crystals}/1350)`);
     player.crystals -= 1350;
@@ -408,6 +531,7 @@ client.on("messageCreate", async (msg) => {
       if (!player.owned.includes(id)) { player.owned.push(id); if (!player.mastery[id]) player.mastery[id] = 0; newOnes.push(id); }
       else { dupCrystals += 50; player.crystals += 50; }
     });
+    savePlayers();
     return msg.reply({ embeds: [new EmbedBuilder()
       .setTitle("🎲 주술 10회 소환 결과!")
       .setColor(0xF5C842)
@@ -419,9 +543,10 @@ client.on("messageCreate", async (msg) => {
       )
     ]});
   }
-
+ 
   if (content === "!전투") {
     if (battles[msg.author.id]) return msg.reply("이미 전투 중! 버튼을 사용하세요.");
+    if (dungeons[msg.author.id]) return msg.reply("던전 진행 중입니다! 먼저 던전을 완료하거나 포기하세요.");
     if (player.hp <= 0) { player.hp = Math.round(CHARACTERS[player.active].maxHp * 0.5); return msg.reply("HP 0 → 절반 회복! 다시 `!전투` 입력하세요."); }
     return msg.reply({
       content: "⚔️ 상대할 적을 선택하세요:",
@@ -430,7 +555,35 @@ client.on("messageCreate", async (msg) => {
       )],
     });
   }
-
+ 
+  // ───────── !던전 명령어 ─────────
+  if (content === "!던전") {
+    if (battles[msg.author.id]) return msg.reply("일반 전투 중입니다! 먼저 전투를 마무리하세요.");
+    if (dungeons[msg.author.id]) return msg.reply("이미 던전 진행 중입니다! 버튼을 사용하세요.");
+    if (player.hp <= 0) { player.hp = Math.round(CHARACTERS[player.active].maxHp * 0.5); return msg.reply("HP 0 → 절반 회복! 다시 `!던전` 입력하세요."); }
+ 
+    const embed = new EmbedBuilder()
+      .setTitle("🗝️ 던전 선택")
+      .setColor(0x7C5CFC)
+      .setDescription("도전할 던전을 선택하세요!\n층마다 랜덤 몹이 등장하며, 마지막 층은 보스입니다.")
+      .addFields(DUNGEONS.map(d => ({
+        name: `${d.emoji} ${d.name} [${d.difficulty}] — ${d.floors}층`,
+        value: `${d.desc}\n보상: +${d.rewards.xp} XP | +${d.rewards.crystals}💎`,
+        inline: false,
+      })))
+      .setFooter({ text: "던전 도중 도주 시 보상 없음!" });
+ 
+    const row = new ActionRowBuilder().addComponents(
+      ...DUNGEONS.map(d =>
+        new ButtonBuilder()
+          .setCustomId(`dungeon_start_${d.id}`)
+          .setLabel(`${d.emoji} ${d.name}`)
+          .setStyle(ButtonStyle.Primary)
+      )
+    );
+    return msg.reply({ embeds: [embed], components: [row] });
+  }
+ 
   if (content.startsWith("!코드 ") || content.startsWith("!code ")) {
     const code = content.split(" ")[1]?.trim().toLowerCase();
     if (!code) return msg.reply("사용법: `!코드 코드입력`");
@@ -440,6 +593,7 @@ client.on("messageCreate", async (msg) => {
     const reward = CODES[code];
     player.crystals += reward.crystals || 0;
     player.usedCodes.push(code);
+    savePlayers();
     return msg.reply({ embeds: [new EmbedBuilder()
       .setTitle("🎁 코드 보상!")
       .setColor(0xF5C842)
@@ -447,26 +601,31 @@ client.on("messageCreate", async (msg) => {
       .addFields({ name: "💎 현재 크리스탈", value: `${player.crystals}`, inline: true })
     ]});
   }
-
+ 
   if (content === "!dev" && isDev(msg.author.id)) {
     return msg.reply({ content: "👑 DEV PANEL", components: [devButtons()] });
   }
 });
-
+ 
+// ───────── 인터랙션 핸들러 ─────────
 client.on("interactionCreate", async (i) => {
   if (!i.isButton() && !i.isStringSelectMenu()) return;
   const player = getPlayer(i.user.id, i.user.username);
   const battle = battles[i.user.id];
-
+  const dungeon = dungeons[i.user.id];
+ 
+  // ── 캐릭터 선택 ──
   if (i.isStringSelectMenu() && i.customId === "select_char") {
     const id = i.values[0];
     player.active = id;
     player.hp = CHARACTERS[id].maxHp;
     const ch = CHARACTERS[id];
     const skill = getCurrentSkill(player, id);
+    savePlayers();
     return i.update({ content: `${ch.emoji} **${ch.name}** 편성 완료! HP 최대 회복.\n현재 스킬: **${skill.name}** (피해 ${skill.dmg})`, components: [] });
   }
-
+ 
+  // ── 일반 전투 적 선택 ──
   if (i.isButton() && i.customId.startsWith("enemy_")) {
     const enemyId = i.customId.replace("enemy_", "");
     const enemy = ENEMIES.find(e => e.id === enemyId);
@@ -490,24 +649,195 @@ client.on("interactionCreate", async (i) => {
       components: [battleButtons()],
     });
   }
-
+ 
+  // ── 던전 시작 ──
+  if (i.isButton() && i.customId.startsWith("dungeon_start_")) {
+    const dungeonId = i.customId.replace("dungeon_start_", "");
+    const dungeonDef = DUNGEONS.find(d => d.id === dungeonId);
+    if (!dungeonDef) return i.reply({ content: "오류", ephemeral: true });
+    if (dungeons[i.user.id]) return i.reply({ content: "이미 던전 중입니다!", ephemeral: true });
+ 
+    const firstEnemy = pickDungeonEnemy(dungeonDef, 1);
+    dungeons[i.user.id] = {
+      dungeonId,
+      floor: 1,
+      currentEnemy: firstEnemy,
+      enemyHp: firstEnemy.hp,
+      skillUsed: false,
+      domainUsed: false,
+      totalXp: 0,
+      totalCrystals: 0,
+      totalMastery: 0,
+    };
+ 
+    return i.update({
+      content: "",
+      embeds: [dungeonFloorEmbed(player, dungeons[i.user.id], [`${dungeonDef.emoji} **${dungeonDef.name}** 입장! 1층 전투 시작!`, `${firstEnemy.emoji} **${firstEnemy.name}** 등장!`])],
+      components: [dungeonButtons()],
+    });
+  }
+ 
+  // ── DEV 버튼 ──
   if (i.isButton() && i.customId.startsWith("dev_") && isDev(i.user.id)) {
-    if (i.customId === "dev_heal") { player.hp = CHARACTERS[player.active].maxHp; return i.reply({ content: `DEV: HP 풀회복 (${player.hp})`, ephemeral: true }); }
-    if (i.customId === "dev_xp") { player.xp += 1000; return i.reply({ content: `DEV: XP +1000 (합계 ${player.xp})`, ephemeral: true }); }
-    if (i.customId === "dev_mastery") { player.owned.forEach(id => { player.mastery[id] = 30; }); return i.reply({ content: "DEV: 모든 캐릭터 숙련도 MAX", ephemeral: true }); }
-    if (i.customId === "dev_crystal") { player.crystals += 9999; return i.reply({ content: `DEV: 💎 +9999 (합계 ${player.crystals})`, ephemeral: true }); }
+    if (i.customId === "dev_heal") { player.hp = CHARACTERS[player.active].maxHp; savePlayers(); return i.reply({ content: `DEV: HP 풀회복 (${player.hp})`, ephemeral: true }); }
+    if (i.customId === "dev_xp") { player.xp += 1000; savePlayers(); return i.reply({ content: `DEV: XP +1000 (합계 ${player.xp})`, ephemeral: true }); }
+    if (i.customId === "dev_mastery") { player.owned.forEach(id => { player.mastery[id] = 30; }); savePlayers(); return i.reply({ content: "DEV: 모든 캐릭터 숙련도 MAX", ephemeral: true }); }
+    if (i.customId === "dev_crystal") { player.crystals += 9999; savePlayers(); return i.reply({ content: `DEV: 💎 +9999 (합계 ${player.crystals})`, ephemeral: true }); }
     if (i.customId === "dev_kill" && battle) { battle.enemyHp = 0; return i.reply({ content: "DEV: 적 즉사", ephemeral: true }); }
+    if (i.customId === "dev_kill" && dungeon) { dungeon.enemyHp = 0; return i.reply({ content: "DEV: 던전 적 즉사", ephemeral: true }); }
     return i.reply({ content: "DEV 오류", ephemeral: true });
   }
-
+ 
+  // ── 던전 전투 버튼 ──
+  if (i.isButton() && i.customId.startsWith("d_")) {
+    if (!dungeon) return i.reply({ content: "던전 진행 중이 아닙니다! `!던전`으로 시작하세요.", ephemeral: true });
+ 
+    const dungeonDef = DUNGEONS.find(d => d.id === dungeon.dungeonId);
+    const ch = CHARACTERS[player.active];
+    const enemy = dungeon.currentEnemy;
+    const skill = getCurrentSkill(player, player.active);
+    const log = [];
+ 
+    if (i.customId === "d_escape") {
+      delete dungeons[i.user.id];
+      savePlayers();
+      return i.update({ content: `🏃 **${dungeonDef.name}**에서 도주했습니다. 보상 없음.`, embeds: [], components: [] });
+    }
+ 
+    if (i.customId === "d_attack") {
+      const dmg = calcDmg(ch.atk, enemy.def, 1.0);
+      dungeon.enemyHp -= dmg;
+      log.push(`👊 **${ch.name}**의 공격! → **${enemy.name}**에게 **${dmg}** 피해!`);
+    }
+    else if (i.customId === "d_skill") {
+      if (dungeon.skillUsed) return i.reply({ content: "술식은 층당 1회!", ephemeral: true });
+      const dmg = skill.dmg + Math.floor(Math.random() * 40);
+      dungeon.enemyHp -= dmg;
+      dungeon.skillUsed = true;
+      log.push(`✨ **${skill.name}**! → **${enemy.name}**에게 **${dmg}** 피해!`);
+    }
+    else if (i.customId === "d_domain") {
+      if (!ch.domain) return i.reply({ content: `${ch.name}은 영역전개가 없습니다!`, ephemeral: true });
+      if (dungeon.domainUsed) return i.reply({ content: "영역전개는 던전당 1회!", ephemeral: true });
+      const domainDmg = Math.floor(400 + ch.atk * 2 + getMastery(player, player.active) * 5);
+      dungeon.enemyHp -= domainDmg;
+      dungeon.domainUsed = true;
+      log.push(`🌌 **${ch.domain}** 발동! → **${enemy.name}**에게 **${domainDmg}** 피해!`);
+    }
+    else if (i.customId === "d_reverse") {
+      if (!REVERSE_CHARS.has(player.active)) return i.reply({ content: `❌ **${ch.name}**은 반전술식을 사용할 수 없습니다!`, ephemeral: true });
+      const heal = Math.floor(80 * player.reverseOutput);
+      player.hp = Math.min(ch.maxHp, player.hp + heal);
+      player.reverseOutput = Math.min(3.0, player.reverseOutput + 0.2);
+      log.push(`♻ 반전술식! HP **+${heal}** 회복 (출력 ${player.reverseOutput.toFixed(1)}배)`);
+    }
+ 
+    // 반전술식이 아닐 때만 적 반격
+    if (dungeon.enemyHp > 0 && i.customId !== "d_reverse") {
+      const enemyDmg = calcDmg(enemy.atk, ch.def);
+      player.hp -= enemyDmg;
+      log.push(`💥 **${enemy.name}**의 반격! → **${ch.name}**에게 **${enemyDmg}** 피해!`);
+    }
+ 
+    const playerDead = player.hp <= 0;
+    const enemyDead = dungeon.enemyHp <= 0;
+ 
+    // 플레이어 사망
+    if (playerDead) {
+      player.hp = 0;
+      player.losses++;
+      delete dungeons[i.user.id];
+      savePlayers();
+      log.push(`\n💀 **사망!** 던전 실패... 보상 없음.`);
+      return i.update({
+        embeds: [new EmbedBuilder()
+          .setTitle(`💀 던전 실패 — ${dungeonDef.name}`)
+          .setColor(0xe63946)
+          .setDescription(log.join("\n"))
+          .addFields(
+            { name: `${ch.emoji} 내 HP`, value: `${hpBar(0, ch.maxHp)} 0/${ch.maxHp}`, inline: true },
+            { name: "결과", value: "실패 — 보상 없음", inline: true },
+          )
+        ],
+        components: [],
+      });
+    }
+ 
+    // 적 처치
+    if (enemyDead) {
+      dungeon.totalXp += enemy.xp;
+      dungeon.totalCrystals += enemy.crystals;
+      dungeon.totalMastery += enemy.masteryXp;
+      log.push(`\n✅ **${enemy.name}** 처치! +${enemy.xp} XP | +${enemy.crystals}💎`);
+ 
+      const isBoss = dungeon.floor === dungeonDef.floors;
+ 
+      // 던전 클리어
+      if (isBoss) {
+        player.xp += dungeon.totalXp + dungeonDef.rewards.xp;
+        player.crystals += dungeon.totalCrystals + dungeonDef.rewards.crystals;
+        player.wins++;
+        if (!player.mastery[player.active]) player.mastery[player.active] = 0;
+        player.mastery[player.active] += dungeon.totalMastery;
+        if (!player.dungeonClears) player.dungeonClears = {};
+        player.dungeonClears[dungeonDef.id] = (player.dungeonClears[dungeonDef.id] || 0) + 1;
+        delete dungeons[i.user.id];
+        savePlayers();
+ 
+        const newSkill = getCurrentSkill(player, player.active);
+        log.push(`\n🏆 **${dungeonDef.name}** 클리어!`);
+        log.push(`총 보상: **+${dungeon.totalXp + dungeonDef.rewards.xp}** XP | **+${dungeon.totalCrystals + dungeonDef.rewards.crystals}**💎`);
+        log.push(`숙련도 **+${dungeon.totalMastery}** | 현재 스킬: **${newSkill.name}**`);
+ 
+        return i.update({
+          embeds: [new EmbedBuilder()
+            .setTitle(`🏆 던전 클리어! — ${dungeonDef.emoji} ${dungeonDef.name}`)
+            .setColor(0xF5C842)
+            .setDescription(log.join("\n"))
+            .addFields(
+              { name: `${ch.emoji} 내 HP`, value: `${hpBar(player.hp, ch.maxHp)} ${Math.max(0,player.hp)}/${ch.maxHp}`, inline: true },
+              { name: "🎁 클리어 보너스", value: `+${dungeonDef.rewards.xp} XP | +${dungeonDef.rewards.crystals}💎`, inline: true },
+            )
+            .setFooter({ text: `총 클리어 횟수: ${player.dungeonClears[dungeonDef.id]}회` })
+          ],
+          components: [],
+        });
+      }
+ 
+      // 다음 층으로
+      const nextFloor = dungeon.floor + 1;
+      const nextEnemy = pickDungeonEnemy(dungeonDef, nextFloor);
+      dungeon.floor = nextFloor;
+      dungeon.currentEnemy = nextEnemy;
+      dungeon.enemyHp = nextEnemy.hp;
+      dungeon.skillUsed = false; // 층 초기화 (도메인은 던전 전체 1회 유지)
+ 
+      const isBossFloor = nextFloor === dungeonDef.floors;
+      log.push(`\n➡️ **${nextFloor}층** 진입! ${isBossFloor ? "👑 **BOSS 등장!**" : ""}`);
+      log.push(`${nextEnemy.emoji} **${nextEnemy.name}** 출현!`);
+ 
+      return i.update({
+        embeds: [dungeonFloorEmbed(player, dungeon, log)],
+        components: [dungeonButtons()],
+      });
+    }
+ 
+    // 전투 계속
+    return i.update({
+      embeds: [dungeonFloorEmbed(player, dungeon, log)],
+      components: [dungeonButtons()],
+    });
+  }
+ 
+  // ── 일반 전투 버튼 ──
   if (!i.isButton() || !i.customId.startsWith("b_")) return;
   if (!battle) return i.reply({ content: "전투 중이 아닙니다! `!전투`로 시작하세요.", ephemeral: true });
-
+ 
   const ch = CHARACTERS[player.active];
   const enemy = battle.enemy;
   const skill = getCurrentSkill(player, player.active);
   const log = [];
-
+ 
   if (i.customId === "b_attack") {
     const dmg = calcDmg(ch.atk, enemy.def, 1.0);
     battle.enemyHp -= dmg;
@@ -538,20 +868,21 @@ client.on("interactionCreate", async (i) => {
   else if (i.customId === "b_run") {
     if (Math.random() < 0.6) {
       delete battles[i.user.id];
+      savePlayers();
       return i.update({ content: "🏃 도주 성공!", embeds: [], components: [] });
     }
     log.push("❌ 도주 실패!");
   }
-
+ 
   if (battle.enemyHp > 0 && i.customId !== "b_reverse") {
     const enemyDmg = calcDmg(enemy.atk, ch.def);
     player.hp -= enemyDmg;
     log.push(`💥 **${enemy.name}**의 반격! → **${ch.name}**에게 **${enemyDmg}** 피해!`);
   }
-
+ 
   const playerDead = player.hp <= 0;
   const enemyDead = battle.enemyHp <= 0;
-
+ 
   if (enemyDead) {
     player.xp += enemy.xp;
     player.crystals += enemy.crystals;
@@ -560,15 +891,17 @@ client.on("interactionCreate", async (i) => {
     player.mastery[player.active] += enemy.masteryXp;
     const newSkill = getCurrentSkill(player, player.active);
     delete battles[i.user.id];
+    savePlayers();
     log.push(`\n🏆 승리! +**${enemy.xp}** XP | +**${enemy.crystals}**💎 | 숙련도 **+${enemy.masteryXp}**`);
     log.push(`🔥 현재 스킬: **${newSkill.name}** (피해 ${newSkill.dmg})`);
   } else if (playerDead) {
     player.hp = 0;
     player.losses++;
     delete battles[i.user.id];
+    savePlayers();
     log.push(`\n💀 패배... !전투로 재도전하세요.`);
   }
-
+ 
   const over = playerDead || enemyDead;
   return i.update({
     embeds: [new EmbedBuilder()
@@ -584,10 +917,10 @@ client.on("interactionCreate", async (i) => {
     components: over ? [] : [battleButtons()],
   });
 });
-
+ 
 client.once("ready", () => {
   console.log(`✅ ${client.user.tag} 온라인!`);
   client.user.setActivity("주술회전 RPG | !도움", { type: 0 });
 });
-
+ 
 client.login(TOKEN);
