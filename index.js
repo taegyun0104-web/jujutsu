@@ -1,3 +1,22 @@
+const fs = require("fs");
+
+function safeReadJSON(path) {
+  try {
+    return JSON.parse(fs.readFileSync(path, "utf8"));
+  } catch (e) {
+    console.error("JSON 깨짐 → 초기화:", e);
+    fs.writeFileSync(path, "{}");
+    return {};
+  }
+}
+
+function safeWriteJSON(path, data) {
+  try {
+    fs.writeFileSync(path, JSON.stringify(data, null, 2));
+  } catch (e) {
+    console.error("JSON 저장 오류:", e);
+  }
+}
 require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
