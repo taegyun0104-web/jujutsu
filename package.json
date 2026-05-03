@@ -1,18 +1,15 @@
 {
   "name": "jjk-discord-bot",
   "version": "2.0.0",
-  "description": "주술회전 RPG 디스코드 봇",
+  "description": "주술회전 RPG Discord Bot with PostgreSQL",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "discord.js": "^14.16.3",
-    "dotenv": "^16.4.5",
-    "express": "^4.18.2"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "pg": "^8.11.3"
   }
 }
-
