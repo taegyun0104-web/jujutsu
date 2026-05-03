@@ -1394,6 +1394,20 @@ async function handleJujutsuDeath(i, player, jujutsu, log) {
 // ════════════════════════════════════════════════════════
 client.on("messageCreate", async (msg) => {
   if (!msg || msg.author.bot) return;
+
+  const content = msg.content.trim();
+
+  // 🔥 이것만 추가
+  if (content.startsWith("!프로필") || content.startsWith("!장착")) {
+    return handleProfile(msg);
+  }
+
+  const player = getPlayer(msg.author.id, msg.author.username);
+
+  // 기존 코드 계속 ↓↓↓
+});
+client.on("messageCreate", async (msg) => {
+  if (!msg || msg.author.bot) return;
   const content = msg.content.trim();
   const player  = getPlayer(msg.author.id, msg.author.username);
 
