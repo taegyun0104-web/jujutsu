@@ -114,7 +114,7 @@ async function drawProfile(character) {
   return canvas.toBuffer("image/png");
 }
 
-// 🔥 외부에서 호출하는 함수
+// 🔥 이 함수만 밖에서 호출됨
 module.exports = async function handleProfile(message) {
   const data = getData();
   const userId = message.author.id;
@@ -124,17 +124,15 @@ module.exports = async function handleProfile(message) {
     saveData(data);
   }
 
-  // 프로필
   if (message.content === "!프로필") {
     const charKey = data[userId].equipped;
     const buffer = await drawProfile(characters[charKey]);
 
-    await message.reply({
+    return message.reply({
       files: [{ attachment: buffer, name: "profile.png" }]
     });
   }
 
-  // 장착
   if (message.content.startsWith("!장착 ")) {
     const char = message.content.split(" ")[1];
 
@@ -145,6 +143,11 @@ module.exports = async function handleProfile(message) {
     data[userId].equipped = char;
     saveData(data);
 
-    await message.reply(`${characters[char].name} 장착 완료`);
+    return message.reply(`${characters[char].name} 장착 완료`);
   }
 };
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+
+  handleProfile(message);
+});
