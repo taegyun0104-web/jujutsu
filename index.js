@@ -2662,9 +2662,33 @@ client.on("interactionCreate", async (i) => {
         return i.update({ embeds: [new EmbedBuilder().setTitle("🏳 사멸회유 철수").setColor(0x7c5cfc).setDescription(`**${jujutsu.points}포인트** 획득 후 철수!\n+**${Math.floor(jujutsu.totalXp * kb.xp)}** XP | +**${Math.floor(jujutsu.totalCrystals * kb.crystal)}**💎 | 최고기록: **${player.jujutsuBest}**포인트`)], components: [] });
       }
 
-      if (i.customId === "j_skill") {
-        if (player.skillCooldown > 0) return i.reply({ content: `⚡ 쿨다운 중! (${player.skillCooldown}턴)`, ephemeral: true });
-        const skillRow = mkSkillSelectRow(player, "js");
-        if (!skillRow) return i.reply({ content: "사용 가능한 술식이 없습니다!", ephemeral: true });
-        return i.update({
-          embeds: [new EmbedBuilder().setTitle
+  if (i.customId === "j_skill") {
+  if (player.skillCooldown > 0)
+    return i.reply({ content: `⚡ 쿨다운 중! (${player.skillCooldown}턴)`, ephemeral: true });
+
+  const skillRow = mkSkillSelectRow(player, "js");
+  if (!skillRow)
+    return i.reply({ content: "사용 가능한 술식이 없습니다!", ephemeral: true });
+
+  return i.update({
+    embeds: [
+      new EmbedBuilder()
+        .setTitle(`🌀 술식 선택 — ${ch.name}`)
+        .setColor(0x7c5cfc)
+        .setDescription("사용할 술식을 선택하세요!")
+        .addFields(
+          {
+            name: `${ch.emoji} 내 HP`,
+            value: `${hpBar(player.hp, stats.maxHp)} \`${Math.max(0, player.hp)}/${stats.maxHp}\``,
+            inline: true,
+          },
+          {
+            name: `${jujutsu.currentEnemy.emoji} 적 HP`,
+            value: `${hpBar(jujutsu.enemyHp, jujutsu.currentEnemy.hp)} \`${Math.max(0, jujutsu.enemyHp)}/${jujutsu.currentEnemy.hp}\``,
+            inline: true,
+          }
+        ),
+    ],
+    components: [skillRow],
+  });
+}
