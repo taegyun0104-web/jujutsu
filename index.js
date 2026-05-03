@@ -1526,9 +1526,38 @@ function applyKoganeSkill(player, log) {
 // ════════════════════════════════════════════════════════
 client.on("messageCreate", async (msg) => {
   if (!msg || msg.author.bot) return;
-  const content = msg.content.trim();
-  const player  = getPlayer(msg.author.id, msg.author.username);
 
+  const content = msg.content.trim();
+
+  try {
+    // 🔥 플레이어 로드 (에러 방지)
+    let player;
+    try {
+      player = getPlayer(msg.author.id, msg.author.username);
+    } catch (e) {
+      console.error("플레이어 로드 오류:", e);
+      return msg.reply("데이터 로드 오류");
+    }
+
+    // 🔥 프로필 (예시 - 네 코드에 맞게 유지)
+    if (content === "!프로필") {
+      return msg.reply("프로필 기능 정상 작동");
+    }
+
+    // 🔥 장착 (예시)
+    if (content.startsWith("!장착 ")) {
+      const arg = content.split(" ")[1];
+      return msg.reply(`${arg} 장착 완료`);
+    }
+
+    // 🔥 기존 명령어 계속
+    // 여기에 네 기존 코드 그대로 유지
+
+  } catch (err) {
+    console.error("전체 오류:", err);
+    msg.reply("명령어 실행 중 오류 발생");
+  }
+});
   // ── 도움말 ──
   if (content === "!도움" || content === "!help") {
     return msg.reply({ embeds: [new EmbedBuilder()
