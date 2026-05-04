@@ -2269,8 +2269,9 @@ client.once("ready", async () => {
   console.log(`✅ 로그인: ${client.user.tag}`);
   // DB 연결 건너뛰기 (메모리 모드)
   try {
-    await dbInit();
-    players = await dbLoad();
+  // DB 연결 없이 메모리로 실행 (임시)
+players = {};
+console.log("⚠️ 긴급 복구 모드: DB 없이 실행");
   } catch(e) {
     console.log("⚠️ DB 연결 실패, 메모리 모드로 실행");
     players = {};
