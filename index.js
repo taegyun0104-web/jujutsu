@@ -876,11 +876,14 @@ function generateJujutsuChoices(wave) {
 // ════════════════════════════════════════════════════════
 // ── 임베드 함수들
 // ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// ── 새 profileEmbed — 이미지 카드 스타일
+// ════════════════════════════════════════════════════════
+// 기존 profileEmbed 함수를 아래 함수로 통째로 교체하세요.
+
 function profileEmbed(player) {
   const ch = CHARACTERS[player.active];
   const stats = getPlayerStats(player);
-  const skill = getCurrentSkill(player, player.active);
-  const next = getNextSkill(player, player.active);
   const mastery = getMastery(player, player.active);
   const awakened = isMakiAwakened(player);
   const lv = getLevel(player.xp);
@@ -893,82 +896,159 @@ function profileEmbed(player) {
   const kg = kogane ? KOGANE_GRADES[kogane.grade] : null;
   const gradeInfo = GACHA_RARITY[ch.grade] || GACHA_RARITY["3급"];
 
-  const HP_LEN = 18;
-  const hpFill = Math.round(hpPct * HP_LEN);
-  const hpColor = hpPct > 0.6 ? "🟢" : hpPct > 0.3 ? "🟡" : "🔴";
-  const hpBarStr = `${hpColor} \`${"█".repeat(Math.max(0, hpFill))}${"░".repeat(Math.max(0, HP_LEN - hpFill))}\` **${Math.max(0, player.hp)}**/**${stats.maxHp}**`;
-
-  const XP_LEN = 18;
-  const xpFill = Math.round((xpNow / 200) * XP_LEN);
-  const xpBarStr = `📊 \`${"▰".repeat(Math.max(0, xpFill))}${"▱".repeat(Math.max(0, XP_LEN - xpFill))}\` **${xpNow}**/200`;
-
-  const themes = {
-    "특급": { top: "╔══════ 🔱 SPECIAL GRADE 🔱 ══════╗", mid: "╠════════════════════════════════╣", bot: "╚════════════════════════════════╝", badge: "[ L E G E N D A R Y ]" },
-    "준특급": { top: "╔══════ 💠 SEMI-SPECIAL 💠 ════════╗", mid: "╠════════════════════════════════╣", bot: "╚════════════════════════════════╝", badge: "[ E P I C ]" },
-    "1급": { top: "╔══════ ⭐ GRADE-1 ⭐ ══════════════╗", mid: "╠════════════════════════════════╣", bot: "╚════════════════════════════════╝", badge: "[ R A R E ]" },
-    "준1급": { top: "╔══════ ⭐ SEMI GRADE-1 ⭐ ══════════╗", mid: "╠════════════════════════════════╣", bot: "╚════════════════════════════════╝", badge: "[ R A R E ]" },
-    "2급": { top: "╔══════ 🔹 GRADE-2 🔹 ══════════════╗", mid: "╠════════════════════════════════╣", bot: "╚════════════════════════════════╝", badge: "[ U N C O M M O N ]" },
-    "3급": { top: "╔══════ ◽ GRADE-3 ◽ ══════════════╗", mid: "╠════════════════════════════════╣", bot: "╚════════════════════════════════╝", badge: "[ C O M M O N ]" },
+  // 캐릭터별 테마 색상 (이미지 카드처럼 각자 다른 색)
+  const charTheme = {
+    gojo:     { color: 0x1a6bff, border: "━", accent: "🔵", bg: "◈" },
+    sukuna:   { color: 0x8b0000, border: "━", accent: "🔴", bg: "◈" },
+    geto:     { color: 0x2d6a2d, border: "━", accent: "🟢", bg: "◈" },
+    itadori:  { color: 0xff6600, border: "━", accent: "🟠", bg: "◈" },
+    megumi:   { color: 0x1a1a3a, border: "━", accent: "⚫", bg: "◈" },
+    nobara:   { color: 0xff69b4, border: "━", accent: "🌸", bg: "◈" },
+    nanami:   { color: 0xb8860b, border: "━", accent: "🟡", bg: "◈" },
+    maki:     { color: 0x708090, border: "━", accent: "⚪", bg: "◈" },
+    panda:    { color: 0x4a3728, border: "━", accent: "🐼", bg: "◈" },
+    inumaki:  { color: 0x8b4513, border: "━", accent: "🟤", bg: "◈" },
+    yuta:     { color: 0x9400d3, border: "━", accent: "🌟", bg: "◈" },
+    higuruma: { color: 0xcc7722, border: "━", accent: "⚖️", bg: "◈" },
+    jogo:     { color: 0xff4500, border: "━", accent: "🌋", bg: "◈" },
+    dagon:    { color: 0x006994, border: "━", accent: "🌊", bg: "◈" },
+    hanami:   { color: 0x228b22, border: "━", accent: "🌿", bg: "◈" },
+    mahito:   { color: 0x800080, border: "━", accent: "🩸", bg: "◈" },
+    todo:     { color: 0x1565c0, border: "━", accent: "💪", bg: "◈" },
   };
-  const th = themes[ch.grade] || themes["3급"];
+  const theme = charTheme[player.active] || { color: gradeInfo.color, border: "━", accent: ch.emoji, bg: "◈" };
+  const finalColor = awakened ? 0xFF2200 : theme.color;
 
-  const skillIcons = ["∞", "↗", "✳", "⊕", "⬡", "◈"];
-  const skillListLines = CHARACTERS[player.active].skills.map((s, idx) => {
+  // HP 바
+  const HP_LEN = 16;
+  const hpFill = Math.round(hpPct * HP_LEN);
+  const hpIcon = hpPct > 0.6 ? "🟢" : hpPct > 0.3 ? "🟡" : "🔴";
+  const hpBarStr = `${hpIcon} \`${"█".repeat(Math.max(0, hpFill))}${"░".repeat(Math.max(0, HP_LEN - hpFill))}\` **${Math.max(0, player.hp)}**/**${stats.maxHp}**`;
+
+  // XP 바
+  const XP_LEN = 16;
+  const xpFill = Math.round((xpNow / 200) * XP_LEN);
+  const xpBarStr = `\`${"▰".repeat(Math.max(0, xpFill))}${"▱".repeat(Math.max(0, XP_LEN - xpFill))}\` **${xpNow}**/200`;
+
+  // 스킬 목록 (이미지처럼 번호 + 이름 + 설명)
+  const skillLines = CHARACTERS[player.active].skills.map((s, idx) => {
     const unlocked = mastery >= s.minMastery;
-    const isCurrent = skill.name === s.name;
     const fingerLock = s.name === "스쿠나 발현" && fingers < 10;
     const ok = unlocked && !fingerLock;
-    const icon = ok ? skillIcons[idx] || "◆" : "🔒";
-    const statusNote = s.statusApply ? ` [${STATUS_EFFECTS[s.statusApply.statusId]?.emoji}${Math.round(s.statusApply.chance * 100)}%]` : "";
-    const curMark = isCurrent ? " ◀ 현재" : "";
-    return `> ${icon} **${s.name}**${statusNote}${curMark}\n> ⠀  *${s.desc}*`;
+    const statusNote = s.statusApply
+      ? ` [${STATUS_EFFECTS[s.statusApply.statusId]?.emoji}${Math.round(s.statusApply.chance * 100)}%]`
+      : "";
+    const selfBuff = s.statusApply?.target === "self" ? " 🔰" : "";
+    if (ok) {
+      return `> **${idx + 1}. ${s.name}**${statusNote}${selfBuff}\n> ⠀ *${s.desc}*`;
+    } else {
+      return `> 🔒 ~~${s.name}~~ *(숙련 ${s.minMastery} 필요)*`;
+    }
   }).join("\n");
 
-  const awakeBanner = awakened ? `\n║  🔥 ≪ 천여주박 각성 ≫ — DMG×2  ║` : "";
+  // 메인 카드 블록 (이미지 카드 레이아웃 모방)
+  const gradeLine = `${gradeInfo.stars}  ${JJK_GRADE_LABEL[ch.grade] || ch.grade}`;
+  const awakeLine = awakened ? "\n║  🔥 ≪ 천여주박 각성 ≫ — 전투력 2배  ║" : "";
+
   const cardBlock = [
     "```",
-    th.top,
-    `║  ${ch.emoji}  ${ch.name.padEnd(26)}  ║`,
-    `║  ${gradeInfo.stars}  ${th.badge.padEnd(22)}  ║`,
-    `║  ${(ch.lore || ch.desc).slice(0, 34).padEnd(34)}  ║`,
-    th.mid,
-    `║  🗡 ATK ${String(stats.atk).padEnd(6)} 🛡 DEF ${String(stats.def).padEnd(6)} 💨 SPD ${String(ch.spd).padEnd(4)}  ║`,
-    `║  🌌 영역: ${(ch.domain || "없음").padEnd(24)}  ║`,
-    awakeBanner,
-    th.bot,
+    `╔══════════════════════════════════════╗`,
+    `║  ${ch.emoji}  ${ch.name.padEnd(32)}║`,
+    `║  ${gradeLine.padEnd(38)}║`,
+    `╠══════════════════════════════════════╣`,
+    `║  ${ch.desc.slice(0, 38).padEnd(38)}║`,
+    `╠══════════════════════════════════════╣`,
+    `║  🗡 ATK ${String(stats.atk).padEnd(7)} 🛡 DEF ${String(stats.def).padEnd(7)} 💨 SPD ${String(ch.spd).padEnd(4)}║`,
+    `║  💚 HP  ${String(stats.maxHp).padEnd(31)}║`,
+    awakeLine,
+    `╚══════════════════════════════════════╝`,
     "```",
   ].filter(Boolean).join("\n");
 
-  const fingerBar = fingers > 0
-    ? `> 👹 **스쿠나 손가락** \`${"█".repeat(fingers)}${"░".repeat(SUKUNA_FINGER_MAX - fingers)}\` **${fingers}/${SUKUNA_FINGER_MAX}** — ${fingerBonus.label}`
-    : "";
+  // 영역전개 라인
+  const domainLine = ch.domain
+    ? `> 🌌 **영역전개** — \`${ch.domain}\``
+    : `> 🌌 **영역전개** — 없음`;
 
+  // 스쿠나 손가락 (이타도리 전용)
+  const fingerLine = player.active === "itadori" && fingers > 0
+    ? `> 👹 **스쿠나 손가락** \`${"█".repeat(fingers)}${"░".repeat(20 - fingers)}\` **${fingers}/20** — ${fingerBonus.label}`
+    : (player.active === "itadori" ? `> 👹 **스쿠나 손가락** \`${"░".repeat(20)}\` **0/20** — ${fingerBonus.label}` : "");
+
+  // 코가네 라인
   const koganeLine = kogane && kg
-    ? `> ${kg.emoji} **코가네 [${kogane.grade}]** — ${kg.passiveDesc}`
-    : `> 🐾 코가네 없음 — \`!코가네가챠\` (200💎)`;
+    ? `> ${kg.emoji} **코가네 [${kogane.grade}]** ${kg.stars} — ${kg.passiveDesc}`
+    : `> 🐾 코가네 없음 → \`!코가네가챠\` (200💎)`;
+
+  // 보유 캐릭터 목록
+  const ownedLines = player.owned.map(id => {
+    const c = CHARACTERS[id];
+    const m = getMastery(player, id);
+    const ri = GACHA_RARITY[c.grade] || GACHA_RARITY["3급"];
+    const isCur = id === player.active;
+    return `> ${isCur ? "▶️" : "　"} ${c.emoji} **${c.name}** \`${c.grade}\` ${ri.stars} · 숙련 \`${m}\``;
+  }).join("\n");
 
   const embed = new EmbedBuilder()
     .setTitle(awakened
-      ? `🔥 ≪ 천여주박 각성 ≫  ${player.name}의 카드`
+      ? `🔥 ≪ 천여주박 각성 ≫  ${player.name}의 주술사 카드`
       : `${gradeInfo.effect}  ${player.name}의 주술사 카드  ${gradeInfo.effect}`)
-    .setColor(awakened ? 0xFF2200 : gradeInfo.color)
+    .setColor(finalColor)
+
+    // ── 메인 카드 + 기본 정보
     .setDescription([
       cardBlock,
+      domainLine,
+      fingerLine,
       koganeLine,
-      fingerBar,
+      kogane && kg ? `> 🐾 보너스: ATK×${kb.atk.toFixed(2)} DEF×${kb.def.toFixed(2)} HP×${kb.hp.toFixed(2)}` : "",
     ].filter(Boolean).join("\n"))
+
+    // ── 전투 상태 필드
     .addFields({
-      name: "┌─ 🏅 주술사 정보 ─────────────────┐",
+      name: "💚 전투 상태",
       value: [
-        `> 🎖️ **LV.${lv}**  /  총 XP: **${player.xp}**`,
-        `> ${xpBarStr}`,
-        `> 💎 **${player.crystals}** 크리스탈   🧪 회복약 **${player.potion}개**`,
-        `> ⚔️ 일반 \`${player.wins}승 ${player.losses}패\`   /   PvP \`${player.pvpWins}승 ${player.pvpLosses}패\``,
-        `> 🌊 컬링 최고 WAVE: **${player.cullingBest}**   🎯 사멸회유: **${player.jujutsuBest}pt**`,
+        hpBarStr,
+        `📊 LV.**${lv}** — XP: ${xpBarStr}`,
+        `💎 **${player.crystals}** 크리스탈   🧪 회복약 **${player.potion}개**`,
+        `🩸 상태이상: **${statusStr(player.statusEffects)}**`,
+        `⚡ 술식 CD: ${player.skillCooldown > 0 ? `**${player.skillCooldown}턴**` : "✅ 가능"}  ♻ 반전 CD: ${player.reverseCooldown > 0 ? `**${player.reverseCooldown}턴**` : "✅ 가능"}`,
       ].join("\n"),
       inline: false,
     })
+
+    // ── SKILLS 필드 (이미지처럼 1~4번 스킬 목록)
     .addFields({
+      name: "🌀 SKILLS",
+      value: [
+        skillLines,
+        `📈 숙련도: ${masteryBar(mastery, player.active)}`,
+      ].join("\n"),
+      inline: false,
+    })
+
+    // ── 전적 & 기록 필드
+    .addFields({
+      name: "🏅 전적 & 기록",
+      value: [
+        `⚔️ 일반 \`${player.wins}승 ${player.losses}패\`  /  PvP \`${player.pvpWins}승 ${player.pvpLosses}패\``,
+        `🌊 컬링 최고 WAVE: **${player.cullingBest}**  /  🎯 사멸회유: **${player.jujutsuBest}pt**`,
+      ].join("\n"),
+      inline: false,
+    })
+
+    // ── 보유 캐릭터 필드
+    .addFields({
+      name: "📦 보유 캐릭터",
+      value: ownedLines || "> 없음",
+      inline: false,
+    })
+
+    .setFooter({ text: `!전투 !컬링 !사멸회유 !결투 !가챠 !코가네가챠 !출석 | ${player.name}` })
+    .setTimestamp();
+
+  return embed;
+}
       name: "┌─ 💚 전투 상태 ───────────────────┐",
       value: [
         `> ${hpBarStr}`,
