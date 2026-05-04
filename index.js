@@ -1,4 +1,3 @@
-process.env.DISCORD_TOKEN = "MTQ5OTQ0OTM2MDM0MDA5NDk4Ng.GzGm1f.dEDkxekjJhJMqnbaDcNfvF5cz09Q-vWwUqO5T8";
 require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
