@@ -2768,6 +2768,3 @@ client.on("interactionCreate", async (interaction) => {
 client.login(TOKEN);
 client.login(process.env.TOKEN);
 console.log("TOKEN:", process.env.TOKEN);
-client.on("messageCreate", msg => {
-  console.log("내용:", msg.content);
-});
