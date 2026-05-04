@@ -2767,3 +2767,4 @@ client.on("interactionCreate", async (interaction) => {
 
 client.login(TOKEN);
 client.login(process.env.TOKEN);
+console.log("TOKEN:", process.env.TOKEN);
