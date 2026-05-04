@@ -625,8 +625,10 @@ function rollGacha(count = 1) {
 }
 
 const REVERSE_CHARS = new Set(["gojo", "yuta"]);
-const CODES = { "release": { crystals: 200 } };
-
+const CODES = { 
+  "release": { crystals: 200 },
+  "sorryforbugs": { crystals: 1000 },
+};
 // ════════════════════════════════════════════════════════
 // ── 인메모리 세션
 // ════════════════════════════════════════════════════════
