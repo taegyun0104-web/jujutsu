@@ -564,7 +564,18 @@ const CHARACTERS = {
     ],
   },
 };
-
+hakari: {
+  name: "하카리 키리토", emoji: "🎰", grade: "1급",
+  atk: 125, def: 100, spd: 108, maxHp: 1650, domain: "좌살박도",
+  desc: "복권 술식을 사용하는 주술사.",
+  lore: "\"운도 실력이다! 철저하게 즐기자!\"",
+  skills: [
+    { name: "파칭코볼", minMastery: 0, dmg: 125, desc: "파칭코의 공을 던진!", statusApply: { target: "enemy", statusId: "stun", chance: 0.3 } },
+    { name: "럭키 펀치", minMastery: 5, dmg: 210, desc: "주력을 담아 강력하게 강타한다!", statusApply: { target: "enemy", statusId: "weaken", chance: 0.4 } },
+    { name: "셔터 방어", minMastery: 15, dmg: 320, desc: "셔터로 적을 막으며 공격력이 오른다!", statusApply: { target: "self", statusId: "battleInstinct", chance: 0.6 } },
+    { name: "좌살박도", minMastery: 30, dmg: 480, desc: "영역전개 — 잭팟이 터진다!", statusApply: { target: "enemy", statusId: "weaken", chance: 0.7 } },
+  ],
+},
 // ════════════════════════════════════════════════════════
 // ── 적 데이터
 // ════════════════════════════════════════════════════════
@@ -602,6 +613,7 @@ const GACHA_POOL = [
   { id: "nobara", rate: 6.5 },
   { id: "higuruma", rate: 6.5 },
   { id: "todo", rate: 5.0 },
+  { id: "hakari", rate: 5.0 }, 
   { id: "panda", rate: 32.0 },
   { id: "inumaki", rate: 23.75 },
 ];
@@ -3119,3 +3131,11 @@ client.on("messageCreate", async (message) => {
     savePlayer(userId);
   }
 });
+// dbInit, dbLoad, dbSave 함수에만 try-catch 추가
+async function dbInit() {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS players (...)`);
+  } catch(e) {
+    console.log("⚠️ DB 연결 실패, 메모리 모드로 실행");
+  }
+}
