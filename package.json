@@ -3,7 +3,6 @@
   "version": "2.1.0",
   "description": "주술회전 RPG 디스코드 봇 — 코가네 시스템 + 파티 완벽 수정",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js"
