@@ -2668,4 +2668,5 @@ client.once("ready", async () => {
   console.log("🔱 주술회전 RPG 봇 가동 완료!");
 });
 
+console.log("TOKEN CHECK:", process.env.TOKEN);
 client.login(TOKEN);
