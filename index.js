@@ -115,7 +115,7 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
   ],
 });
-const TOKEN = process.env.DISCORD_TOKEN;
+const TOKEN = process.env.TOKEN;
 if (!TOKEN) { console.error("❌ DISCORD_TOKEN 없음!"); process.exit(1); }
 
 const DEV_IDS = new Set(["1284771557633425470", "1397218266505678881"]);
