@@ -2692,4 +2692,3 @@ client.on("interactionCreate", async (i) => {
     components: [skillRow],
   });
 }
-client.login(MTQ5OTQ0OTM2MDM0MDA5NDk4Ng.GLeZnU.9_rpxqc3n5EE6sa82lrfbnSFPPFeFV7lgwwuus)
