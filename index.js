@@ -2668,15 +2668,3 @@ client.on("interactionCreate", async (i) => {
         if (!skillRow) return i.reply({ content: "사용 가능한 술식이 없습니다!", ephemeral: true });
         return i.update({
           embeds: [new EmbedBuilder().setTitle
-const fs = require("fs");
-
-let players = {};
-
-try {
-  if (fs.existsSync("players.json")) {
-    players = JSON.parse(fs.readFileSync("players.json", "utf-8"));
-  }
-} catch (err) {
-  console.error("players 로딩 실패:", err);
-  players = {};
-}
