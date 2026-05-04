@@ -2267,8 +2267,14 @@ async function handlePartyCullingAction(interaction, player, session, action) {
 // ════════════════════════════════════════════════════════
 client.once("ready", async () => {
   console.log(`✅ 로그인: ${client.user.tag}`);
-  await dbInit();
-  players = await dbLoad();
+  // DB 연결 건너뛰기 (메모리 모드)
+  try {
+    await dbInit();
+    players = await dbLoad();
+  } catch(e) {
+    console.log("⚠️ DB 연결 실패, 메모리 모드로 실행");
+    players = {};
+  }
   console.log("🚀 주술회전 RPG 봇 활성화");
 
   // 슬래시 커맨드 등록
