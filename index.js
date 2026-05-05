@@ -756,223 +756,136 @@ const CHARACTERS = {
   // ═══════════════════════════════════════════════════════════════════════════════
   // 판다
   // ═══════════════════════════════════════════════════════════════════════════════
-  panda: {
+   panda: {
     name: "판다",
     emoji: "🐼",
     grade: "2급",
-    atk: 105,
-    def: 118,
-    spd: 85,
-    maxHp: 1400,
-    domain: null,
-    desc: "저주로 만든 특이체질의 주술사.",
-    lore: "\"난 판다야. 진짜 판다.\"",
+    atk: 105, def: 118, spd: 85, maxHp: 1400, domain: null,
+    desc: "저주로 만든 특이체질",
     skills: [
-      { name: "박치기", minMastery: 0, dmg: 108, desc: "머리로 힘차게 들이받는다.", statusApply: { target: "enemy", statusId: "stun", chance: 0.2 } },
-      { name: "곰 발바닥", minMastery: 5, dmg: 175, desc: "두꺼운 발바닥으로 내리친다." },
-      { name: "팬더 변신", minMastery: 15, dmg: 255, desc: "진짜 팬더로 변신해 공격.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.4 } },
-      { name: "고릴라 변신", minMastery: 30, dmg: 360, desc: "고릴라 형태로 폭발적 강화.", statusApply: { target: "enemy", statusId: "stun", chance: 0.5 } },
-    ],
+      { name: "박치기", minMastery: 0, dmg: 108, desc: "머리 박치기" },
+      { name: "곰 발바닥", minMastery: 5, dmg: 175, desc: "발바닥 내리치기" },
+      { name: "팬더 변신", minMastery: 15, dmg: 255, desc: "팬더 변신" },
+      { name: "고릴라 변신", minMastery: 30, dmg: 360, desc: "고릴라 변신" }
+    ]
   },
-  
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 이누마키 토게
-  // ═══════════════════════════════════════════════════════════════════════════════
   inumaki: {
     name: "이누마키 토게",
     emoji: "🟤",
     grade: "준1급",
-    atk: 112,
-    def: 90,
-    spd: 110,
-    maxHp: 1120,
-    domain: null,
-    desc: "주술언어를 구사하는 준1급 주술사.",
-    lore: "\"연어알— (그냥 따라가.)\"",
+    atk: 112, def: 90, spd: 110, maxHp: 1120, domain: null,
+    desc: "주술언어 사용자",
     skills: [
-      { name: "멈춰라", minMastery: 0, dmg: 115, desc: "상대의 움직임을 봉쇄한다.", statusApply: { target: "enemy", statusId: "freeze", chance: 0.5 } },
-      { name: "달려라", minMastery: 5, dmg: 180, desc: "상대를 무작위로 달리게 한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.5 } },
-      { name: "주술언어", minMastery: 15, dmg: 265, desc: "강력한 주술 명령을 내린다.", statusApply: { target: "enemy", statusId: "stun", chance: 0.6 } },
-      { name: "폭발해라", minMastery: 30, dmg: 375, desc: "상대를 그 자리에서 폭발시킨다.", statusApply: { target: "enemy", statusId: "burn", chance: 0.8 } },
-    ],
+      { name: "멈춰라", minMastery: 0, dmg: 115, desc: "움직임 봉쇄" },
+      { name: "달려라", minMastery: 5, dmg: 180, desc: "강제 이동" },
+      { name: "주술언어", minMastery: 15, dmg: 265, desc: "강력 명령" },
+      { name: "폭발해라", minMastery: 30, dmg: 375, desc: "폭발 명령" }
+    ]
   },
-  
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 오코츠 유타
-  // ═══════════════════════════════════════════════════════════════════════════════
   yuta: {
     name: "오코츠 유타",
     emoji: "🌟",
     grade: "특급",
-    atk: 128,
-    def: 112,
-    spd: 115,
-    maxHp: 1750,
-    domain: "진안상애",
-    desc: "특급 주술사. 리카의 저주를 다루는 최강급 주술사.",
-    lore: "\"리카... 나는 아직 살아야 해.\"",
+    atk: 128, def: 112, spd: 115, maxHp: 1750, domain: "진안상애",
+    desc: "특급 주술사",
     skills: [
-      { name: "모방술식", minMastery: 0, dmg: 135, desc: "다른 술식을 모방해 공격한다." },
-      { name: "리카 소환", minMastery: 5, dmg: 220, desc: "저주의 여왕 리카를 소환한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.5 } },
-      { name: "순애빔", minMastery: 15, dmg: 340, desc: "리카와의 순수한 사랑을 에너지로 발사.", statusApply: { target: "enemy", statusId: "burn", chance: 0.6 } },
-      { name: "진안상애", minMastery: 30, dmg: 480, desc: "영역전개로 모든 것을 사랑으로 파괴.", statusApply: { target: "enemy", statusId: "freeze", chance: 0.9 } },
-    ],
+      { name: "모방술식", minMastery: 0, dmg: 135, desc: "술식 복사" },
+      { name: "리카 소환", minMastery: 5, dmg: 220, desc: "리카 소환" },
+      { name: "순애빔", minMastery: 15, dmg: 340, desc: "사랑의 빔" },
+      { name: "진안상애", minMastery: 30, dmg: 480, desc: "영역전개" }
+    ]
   },
-  
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 히구루마 히로미
-  // ═══════════════════════════════════════════════════════════════════════════════
   higuruma: {
     name: "히구루마 히로미",
     emoji: "⚖️",
     grade: "1급",
-    atk: 118,
-    def: 105,
-    spd: 95,
-    maxHp: 1320,
-    domain: "주복사사",
-    desc: "전직 변호사 출신 주술사. 심판의 영역전개를 구사한다.",
-    lore: "\"이 법정에서는 — 내가 판사다.\"",
+    atk: 118, def: 105, spd: 95, maxHp: 1320, domain: "주복사사",
+    desc: "전직 변호사",
     skills: [
-      { name: "저주도구", minMastery: 0, dmg: 120, desc: "저주 에너지를 담은 도구로 공격." },
-      { name: "몰수", minMastery: 5, dmg: 195, desc: "상대의 술식을 몰수한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.7 } },
-      { name: "사형판결", minMastery: 15, dmg: 285, desc: "재판 결과에 따른 강력한 제재.", statusApply: { target: "enemy", statusId: "stun", chance: 0.5 } },
-      { name: "집행인 인형", minMastery: 30, dmg: 410, desc: "집행인 인형을 소환해 즉시 처형.", statusApply: { target: "enemy", statusId: "freeze", chance: 0.7 } },
-    ],
+      { name: "저주도구", minMastery: 0, dmg: 120, desc: "도구 공격" },
+      { name: "몰수", minMastery: 5, dmg: 195, desc: "술식 몰수" },
+      { name: "사형판결", minMastery: 15, dmg: 285, desc: "강력 제재" },
+      { name: "집행인 인형", minMastery: 30, dmg: 410, desc: "인형 소환" }
+    ]
   },
-  
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 죠고
-  // ═══════════════════════════════════════════════════════════════════════════════
   jogo: {
     name: "죠고",
     emoji: "🌋",
     grade: "특급",
-    atk: 125,
-    def: 100,
-    spd: 105,
-    maxHp: 1680,
-    domain: "개관철위산",
-    desc: "화염을 다루는 준특급 저주령.",
-    lore: "\"인간이야말로 진정한 저주다.\"",
+    atk: 125, def: 100, spd: 105, maxHp: 1680, domain: "개관철위산",
+    desc: "화염 저주령",
     skills: [
-      { name: "화염 분사", minMastery: 0, dmg: 130, desc: "강렬한 불꽃을 내뿜는다.", statusApply: { target: "enemy", statusId: "burn", chance: 0.5 } },
-      { name: "용암 폭발", minMastery: 5, dmg: 215, desc: "발밑의 용암을 폭발시킨다.", statusApply: { target: "enemy", statusId: "burn", chance: 0.7 } },
-      { name: "극번 운", minMastery: 15, dmg: 315, desc: "하늘에서 불타는 운석을 소환한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.5 } },
-      { name: "개관철위산", minMastery: 30, dmg: 460, desc: "화산을 소환하는 궁극 영역전개.", statusApply: { target: "enemy", statusId: "burn", chance: 1.0 } },
-    ],
+      { name: "화염 분사", minMastery: 0, dmg: 130, desc: "불꽃 방사" },
+      { name: "용암 폭발", minMastery: 5, dmg: 215, desc: "용암 폭발" },
+      { name: "극번 운", minMastery: 15, dmg: 315, desc: "운석 소환" },
+      { name: "개관철위산", minMastery: 30, dmg: 460, desc: "영역전개" }
+    ]
   },
-  
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 다곤
-  // ═══════════════════════════════════════════════════════════════════════════════
   dagon: {
     name: "다곤",
     emoji: "🌊",
     grade: "특급",
-    atk: 118,
-    def: 108,
-    spd: 96,
-    maxHp: 1620,
-    domain: "탕온평선",
-    desc: "수중 저주령.",
-    lore: "\"물은 모든 것을 삼킨다.\"",
+    atk: 118, def: 108, spd: 96, maxHp: 1620, domain: "탕온평선",
+    desc: "수중 저주령",
     skills: [
-      { name: "물고기 소환", minMastery: 0, dmg: 125, desc: "날카로운 물고기 떼를 소환한다.", statusApply: { target: "enemy", statusId: "poison", chance: 0.4 } },
-      { name: "해수 폭발", minMastery: 5, dmg: 205, desc: "강력한 해수를 압축해 발사한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.5 } },
-      { name: "조류 소용돌이", minMastery: 15, dmg: 295, desc: "거대한 물의 소용돌이로 공격한다.", statusApply: { target: "enemy", statusId: "freeze", chance: 0.4 } },
-      { name: "탕온평선", minMastery: 30, dmg: 450, desc: "무수한 물고기로 가득 찬 영역전개.", statusApply: { target: "enemy", statusId: "poison", chance: 0.9 } },
-    ],
+      { name: "물고기 소환", minMastery: 0, dmg: 125, desc: "물고기 떼" },
+      { name: "해수 폭발", minMastery: 5, dmg: 205, desc: "해수 압축" },
+      { name: "조류 소용돌이", minMastery: 15, dmg: 295, desc: "물 소용돌이" },
+      { name: "탕온평선", minMastery: 30, dmg: 450, desc: "영역전개" }
+    ]
   },
-  
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 하나미
-  // ═══════════════════════════════════════════════════════════════════════════════
   hanami: {
     name: "하나미",
     emoji: "🌿",
     grade: "특급",
-    atk: 115,
-    def: 118,
-    spd: 93,
-    maxHp: 1750,
-    domain: null,
-    desc: "식물 저주령. 나무뿌리와 꽃을 이용한 자연 술식을 구사한다.",
-    lore: "\"자연은 인간의 적이 아니다 — 다만 인간이 자연의 적일 뿐.\"",
+    atk: 115, def: 118, spd: 93, maxHp: 1750, domain: null,
+    desc: "식물 저주령",
     skills: [
-      { name: "나무뿌리 채찍", minMastery: 0, dmg: 122, desc: "나무뿌리를 채찍처럼 휘두른다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.3 } },
-      { name: "꽃비", minMastery: 5, dmg: 198, desc: "독성 꽃가루를 비처럼 쏟아낸다.", statusApply: { target: "enemy", statusId: "poison", chance: 0.6 } },
-      { name: "대지의 저주", minMastery: 15, dmg: 285, desc: "대지 전체에 저주 에너지를 퍼뜨린다.", statusApply: { target: "enemy", statusId: "poison", chance: 0.7 } },
-      { name: "재앙의 꽃", minMastery: 30, dmg: 425, desc: "거대한 꽃을 소환해 모든 것을 흡수한다.", statusApply: { target: "enemy", statusId: "stun", chance: 0.6 } },
-    ],
+      { name: "나무뿌리", minMastery: 0, dmg: 122, desc: "나무뿌리 채찍" },
+      { name: "꽃비", minMastery: 5, dmg: 198, desc: "독성 꽃가루" },
+      { name: "대지의 저주", minMastery: 15, dmg: 285, desc: "대지 에너지" },
+      { name: "재앙의 꽃", minMastery: 30, dmg: 425, desc: "거대 꽃 소환" }
+    ]
   },
-  
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 마히토
-  // ═══════════════════════════════════════════════════════════════════════════════
   mahito: {
     name: "마히토",
     emoji: "🩸",
     grade: "특급",
-    atk: 120,
-    def: 98,
-    spd: 110,
-    maxHp: 1560,
-    domain: "자폐원돈과",
-    desc: "영혼을 자유자재로 변형하는 준특급 저주령.",
-    lore: "\"영혼이 육체를 만드는 거야. 반대가 아니라.\"",
+    atk: 120, def: 98, spd: 110, maxHp: 1560, domain: "자폐원돈과",
+    desc: "영혼 변형 저주령",
     skills: [
-      { name: "영혼 변형", minMastery: 0, dmg: 128, desc: "영혼을 변형해 직접 타격한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.4 } },
-      { name: "무위전변", minMastery: 5, dmg: 212, desc: "접촉한 신체를 기괴하게 변형한다.", statusApply: { target: "enemy", statusId: "stun", chance: 0.4 } },
-      { name: "편사지경체", minMastery: 15, dmg: 308, desc: "신체를 무한히 변형해 공격한다.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.6 } },
-      { name: "자폐원돈과", minMastery: 30, dmg: 455, desc: "영혼과 육체의 경계를 무너뜨리는 영역.", statusApply: { target: "enemy", statusId: "freeze", chance: 0.8 } },
-    ],
+      { name: "영혼 변형", minMastery: 0, dmg: 128, desc: "영혼 타격" },
+      { name: "무위전변", minMastery: 5, dmg: 212, desc: "신체 변형" },
+      { name: "편사지경체", minMastery: 15, dmg: 308, desc: "무한 변형" },
+      { name: "자폐원돈과", minMastery: 30, dmg: 455, desc: "영역전개" }
+    ]
   },
-  
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 토도 아오이
-  // ═══════════════════════════════════════════════════════════════════════════════
   todo: {
     name: "토도 아오이",
     emoji: "💪",
     grade: "1급",
-    atk: 128,
-    def: 108,
-    spd: 112,
-    maxHp: 1500,
-    domain: null,
-    desc: "보조 공격술(부기우기)을 구사하는 1급 주술사. 親友(베프)를 중시한다.",
-    lore: "\"너의 이상형은 어떤 여자야?\" — 그리고 전설의 주먹이 날아온다.",
+    atk: 128, def: 108, spd: 112, maxHp: 1500, domain: null,
+    desc: "보조공격술 사용자",
     skills: [
-      { name: "부기우기", minMastery: 0, dmg: 130, desc: "보조공격술 — 위치 전환 + 빙결 40%.", statusApply: { target: "enemy", statusId: "freeze", chance: 0.40 } },
-      { name: "브루탈 펀치", minMastery: 5, dmg: 215, desc: "최대 저주력을 실은 파괴적 주먹.", statusApply: { target: "enemy", statusId: "weaken", chance: 0.30 } },
-      { name: "흑섬", minMastery: 15, dmg: 320, desc: "이타도리에게 배운 흑섬 — 토도 특유 방식!", statusApply: { target: "enemy", statusId: "burn", chance: 0.45 } },
-      { name: "전투본능", minMastery: 30, dmg: 200, desc: "자신에게 전투본능 버프! (ATK 40%↑, 회피 25%↑, 3턴) + 즉시 타격", statusApply: { target: "self", statusId: "battleInstinct", chance: 1.0 } },
-    ],
+      { name: "부기우기", minMastery: 0, dmg: 130, desc: "위치 전환" },
+      { name: "브루탈 펀치", minMastery: 5, dmg: 215, desc: "파괴적 주먹" },
+      { name: "흑섬", minMastery: 15, dmg: 320, desc: "흑섬" },
+      { name: "전투본능", minMastery: 30, dmg: 450, desc: "자기 버프" }
+    ]
   },
-  
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 하카리 키리토
-  // ═══════════════════════════════════════════════════════════════════════════════
   hakari: {
-    name: "하카리 키리토",
+    name: "하카리 킨지",
     emoji: "🎰",
     grade: "1급",
-    atk: 125,
-    def: 105,
-    spd: 110,
-    maxHp: 1650,
-    domain: "질풍강운",
-    desc: "복권 술식을 사용하는 주술사.",
-    lore: "\"운도 실력이다! 철저하게 즐기자!\"",
+    atk: 125, def: 105, spd: 110, maxHp: 1650, domain: "좌살박도",
+    desc: "복권 술식 사용자",
     skills: [
-      { name: "험한 도박", minMastery: 0, dmg: 125, desc: "운에 맡긴 도박 공격!", statusApply: { target: "enemy", statusId: "stun", chance: 0.3 } },
-      { name: "질풍열차", minMastery: 5, dmg: 210, desc: "강력한 열차처럼 돌진!", statusApply: { target: "enemy", statusId: "weaken", chance: 0.4 } },
-      { name: "유한 소설", minMastery: 15, dmg: 315, desc: "불멸의 몸으로 싸운다!", statusApply: { target: "self", statusId: "battleInstinct", chance: 0.6 } },
-      { name: "질풍강운", minMastery: 30, dmg: 480, desc: "영역전개 — 운이 터진다!", statusApply: { target: "enemy", statusId: "freeze", chance: 0.7 } },
-    ],
+      { name: "파칭코볼", minMastery: 0, dmg: 125, desc: "공으로 상대를 견제" },
+      { name: "좌살박도", minMastery: 5, dmg: 210, desc: "질풍처럼 돌진해서 강력하게 타격한다" },
+      { name: "셔터공격", minMastery: 15, dmg: 315, desc: "하카리의 술식인 셔터로 공격한다" },
+      { name: "좌살박도", minMastery: 30, dmg: 480, desc: "영역전개" }
+    ]
   },
-};
 // ════════════════════════════════════════════════════════════════════════════════
 // ── 적 데이터
 // ════════════════════════════════════════════════════════════════════════════════
