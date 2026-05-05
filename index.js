@@ -3038,3 +3038,168 @@ client.on("messageCreate", async (message) => {
 // ── 로그인 (딱 한 번)
 // ════════════════════════════════════════════════════════
 client.login(TOKEN);
+const { Client, GatewayIntentBits, AttachmentBuilder } = require("discord.js");
+const { createCanvas, loadImage } = require("@napi-rs/canvas");
+const GIFEncoder = require("gif-encoder-2");
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
+});
+
+/* =========================
+   DB (임시)
+========================= */
+const userData = new Map();
+
+/* =========================
+   캐릭터
+========================= */
+const characters = {
+  고죠: { color:"#60a5fa", glow:"#3b82f6", title:"The Strongest" },
+  스쿠나: { color:"#ef4444", glow:"#dc2626", title:"King of Curses" },
+  이타도리: { color:"#f97316", glow:"#fb923c", title:"Vessel" },
+  메구미: { color:"#1e293b", glow:"#334155", title:"Ten Shadows" },
+  노바라: { color:"#ec4899", glow:"#db2777", title:"Straw Doll" },
+  게토: { color:"#a855f7", glow:"#9333ea", title:"Curse Manipulator" },
+  마키: { color:"#84cc16", glow:"#65a30d", title:"Heavenly Restriction" },
+  유타: { color:"#d1d5db", glow:"#9ca3af", title:"Special Grade" }
+};
+
+/* =========================
+   캐릭터 선택
+========================= */
+function setCharacter(userId, name) {
+  userData.set(userId, name);
+}
+
+/* =========================
+   GIF 프로필 렌더
+========================= */
+async function renderGIFProfile(user, char) {
+  const w = 900, h = 350;
+
+  const encoder = new GIFEncoder(w, h);
+  encoder.setRepeat(0);
+  encoder.setDelay(70);
+  encoder.setQuality(20);
+  encoder.start();
+
+  const canvas = createCanvas(w, h);
+  const ctx = canvas.getContext("2d");
+
+  const avatar = await loadImage(
+    user.displayAvatarURL({ extension:"png", size:512 })
+  );
+
+  for (let i = 0; i < 25; i++) {
+
+    const pulse = Math.sin(i * 0.3) * 15;
+
+    // 배경
+    ctx.fillStyle = "#0b0f1a";
+    ctx.fillRect(0,0,w,h);
+
+    // 카드
+    ctx.shadowColor = char.glow;
+    ctx.shadowBlur = 40;
+
+    ctx.fillStyle = char.color;
+    roundRect(ctx, 60, 60 + pulse, 780, 240, 25);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    // 아바타
+    const shake = Math.sin(i * 0.5) * 3;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(160 + shake, 180, 80, 0, Math.PI*2);
+    ctx.clip();
+    ctx.drawImage(avatar, 80, 100, 160, 160);
+    ctx.restore();
+
+    // 링
+    ctx.strokeStyle = char.glow;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(160, 180, 90 + pulse, 0, Math.PI*2);
+    ctx.stroke();
+
+    // 텍스트
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 36px sans-serif";
+    ctx.fillText(user.username, 280, 170);
+
+    ctx.fillStyle = "#93c5fd";
+    ctx.font = "20px sans-serif";
+    ctx.fillText(char.title, 280, 210);
+
+    encoder.addFrame(ctx);
+  }
+
+  encoder.finish();
+
+  return new AttachmentBuilder(encoder.out.getData(), {
+    name:"profile.gif"
+  });
+}
+
+/* =========================
+   roundRect
+========================= */
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+/* =========================
+   봇 이벤트
+========================= */
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+
+  const args = message.content.split(" ");
+  const cmd = args[0];
+
+  /* 캐릭터 선택 */
+  if (cmd === "!캐릭터선택") {
+    const name = args[1];
+
+    if (!characters[name]) {
+      return message.reply("캐릭터: 고죠/스쿠나/이타도리/메구미/노바라/게토/마키/유타");
+    }
+
+    setCharacter(message.author.id, name);
+    return message.reply(`${name} 선택 완료`);
+  }
+
+  /* 프로필 */
+  if (cmd === "!프로필") {
+    const selected = userData.get(message.author.id);
+
+    if (!selected) {
+      return message.reply("먼저 !캐릭터선택");
+    }
+
+    const img = await renderGIFProfile(
+      message.author,
+      characters[selected]
+    );
+
+    return message.reply({ files:[img] });
+  }
+});
