@@ -3186,3 +3186,4 @@ client.on("messageCreate", async msg => {
   }
 });
 client.login(process.env.DISCORD_TOKEN);
+npm install discord.js pg dotenv express canvas gifencoder
