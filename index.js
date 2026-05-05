@@ -3221,3 +3221,4 @@ client.on("messageCreate", async (message) => {
 // ── 로그인
 // ════════════════════════════════════════════════════════
 client.login(TOKEN);
+npm install discord.js @napi-rs/canvas gif-encoder-2 express pg dotenv
