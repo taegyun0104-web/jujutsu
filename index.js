@@ -2786,3 +2786,444 @@ client.on("messageCreate", async (message) => {
 });
 
 client.login(TOKEN);
+require("dotenv").config();
+const express = require("express");
+const { Pool } = require("pg");
+const {
+  Client, GatewayIntentBits, EmbedBuilder,
+  ActionRowBuilder, ButtonBuilder, ButtonStyle,
+} = require("discord.js");
+
+const app = express();
+app.get("/", (_, res) => res.send("🔱 주술회전 RPG 봇 가동 중"));
+app.get("/health", (_, res) => res.json({ status: "ok", uptime: process.uptime() }));
+app.listen(process.env.PORT || 3000, () => console.log(`🌐 HTTP 포트 ${process.env.PORT || 3000}`));
+
+// ── PostgreSQL ──────────────────────────────────────────
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL?.includes("railway") ? { rejectUnauthorized: false } : false,
+  max: 10, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000,
+});
+pool.on("error", (err) => console.error("PostgreSQL 오류:", err.message));
+
+async function dbInit() {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS players (user_id TEXT PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ DEFAULT NOW())`);
+    console.log("✅ DB 준비");
+  } catch (e) { console.log("⚠️ DB 연결 실패"); }
+}
+async function dbLoad() {
+  try {
+    const res = await pool.query("SELECT user_id, data FROM players");
+    const obj = {};
+    for (const row of res.rows) obj[row.user_id] = row.data;
+    return obj;
+  } catch (e) { return {}; }
+}
+const saveQueue = new Map(), savePending = new Set();
+async function dbSave(userId, data) {
+  try {
+    const c = await pool.connect();
+    try { await c.query(`INSERT INTO players(user_id,data,updated_at) VALUES($1,$2,NOW()) ON CONFLICT(user_id) DO UPDATE SET data=$2,updated_at=NOW()`, [userId, JSON.stringify(data)]); }
+    finally { c.release(); }
+  } catch (e) { console.error(`DB저장오류[${userId}]:`, e.message); }
+}
+function savePlayer(userId) {
+  if (!players[userId]) return;
+  if (saveQueue.has(userId)) clearTimeout(saveQueue.get(userId));
+  saveQueue.set(userId, setTimeout(async () => {
+    saveQueue.delete(userId);
+    if (savePending.has(userId)) { savePlayer(userId); return; }
+    savePending.add(userId);
+    try { await dbSave(userId, players[userId]); }
+    catch { setTimeout(() => savePlayer(userId), 5000); }
+    finally { savePending.delete(userId); }
+  }, 300));
+}
+setInterval(async () => {
+  for (const uid of Object.keys(players))
+    if (!saveQueue.has(uid) && !savePending.has(uid)) try { await dbSave(uid, players[uid]); } catch {}
+}, 3 * 60 * 1000);
+
+// ── Discord 클라이언트 ──────────────────────────────────
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+const TOKEN = process.env.DISCORD_TOKEN;
+if (!TOKEN) { console.error("❌ DISCORD_TOKEN 없음!"); process.exit(1); }
+const DEV_IDS = new Set(["1284771557633425470", "1397218266505678881"]);
+const isDev = (id) => DEV_IDS.has(id);
+
+// ── 등급/색상 ───────────────────────────────────────────
+const GACHA_RARITY = {
+  "특급":  { stars:"★★★★★", color:0xF5C842, effect:"✨🔱✨🔱✨", flash:"LEGENDARY" },
+  "준특급":{ stars:"★★★★☆", color:0xff8c00, effect:"💠💠💠💠💠", flash:"EPIC" },
+  "1급":   { stars:"★★★☆☆", color:0x7C5CFC, effect:"⭐⭐⭐⭐",   flash:"RARE" },
+  "준1급": { stars:"★★★☆☆", color:0x9b72cf, effect:"⭐⭐⭐",     flash:"RARE" },
+  "2급":   { stars:"★★☆☆☆", color:0x4ade80, effect:"🔹🔹🔹",   flash:"UNCOMMON" },
+  "3급":   { stars:"★☆☆☆☆", color:0x94a3b8, effect:"◽◽",       flash:"COMMON" },
+};
+const JJK_GRADE_LABEL = {
+  "특급":"【 특 급 】","준특급":"【준특급】","1급":"【 1 급 】",
+  "준1급":"【준 1급】","2급":"【 2 급 】","3급":"【 3 급 】","4급":"【 4 급 】",
+};
+
+// ── 재료 & 주구 ─────────────────────────────────────────
+const MATERIALS = {
+  cursed_thread:  { name:"저주 실",   emoji:"🧵", desc:"저급 저주령에서 획득." },
+  cursed_bone:    { name:"저주 뼈",   emoji:"🦴", desc:"1급 저주령에서 획득." },
+  cursed_core:    { name:"저주 핵",   emoji:"💜", desc:"특급 저주령에서 획득." },
+  cursed_crystal: { name:"저주 수정", emoji:"💎", desc:"보스에서 획득." },
+  iron_fragment:  { name:"철 파편",   emoji:"⚙️", desc:"모든 적에서 획득." },
+  spirit_essence: { name:"영혼 정수", emoji:"✨", desc:"특급 이상 적에서 획득." },
+  dragon_scale:   { name:"용 비늘",   emoji:"🐉", desc:"보스에서 획득." },
+};
+const WEAPONS = {
+  cursed_knife:  { name:"저주 단검",     emoji:"🗡️",  grade:"일반", atkBonus:15,  defBonus:0,  hpBonus:0,   desc:"저주 에너지가 깃든 단검.",  recipe:{cursed_thread:3,iron_fragment:5},                          color:0x94a3b8 },
+  cursed_blade:  { name:"저주 도검",     emoji:"⚔️",  grade:"희귀", atkBonus:35,  defBonus:5,  hpBonus:100, desc:"날카로운 저주 도검.",        recipe:{cursed_bone:4,iron_fragment:8,cursed_thread:2},            color:0x4ade80 },
+  cursed_spear:  { name:"저주 창",       emoji:"🔱",  grade:"희귀", atkBonus:45,  defBonus:0,  hpBonus:0,   desc:"원거리 공격이 가능한 창.",   recipe:{cursed_bone:5,cursed_thread:5},                            color:0x4ade80 },
+  spirit_shield: { name:"영혼 방패",     emoji:"🛡️",  grade:"고급", atkBonus:5,   defBonus:40, hpBonus:300, desc:"영혼 정수로 만든 방패.",     recipe:{spirit_essence:3,cursed_core:2,iron_fragment:10},          color:0x7C5CFC },
+  cursed_hammer: { name:"저주 망치",     emoji:"🔨",  grade:"고급", atkBonus:60,  defBonus:10, hpBonus:150, desc:"묵직한 저주 망치.",          recipe:{cursed_core:3,cursed_bone:6,iron_fragment:12},             color:0x7C5CFC },
+  dragon_sword:  { name:"용의 검",       emoji:"🐉⚔️",grade:"전설", atkBonus:100, defBonus:30, hpBonus:500, desc:"용 비늘로 만든 전설의 검.",  recipe:{dragon_scale:3,cursed_crystal:2,spirit_essence:5,cursed_core:4}, color:0xF5C842 },
+  sukuna_vessel: { name:"스쿠나의 그릇", emoji:"👹",  grade:"전설", atkBonus:80,  defBonus:20, hpBonus:800, desc:"스쿠나의 힘이 깃든 주구.",   recipe:{cursed_crystal:3,dragon_scale:2,cursed_core:6},            color:0x8b0000 },
+};
+const ENEMY_DROPS = {
+  e1:[{mat:"cursed_thread",min:1,max:3,chance:.80},{mat:"iron_fragment",min:1,max:2,chance:.60},{mat:"cursed_bone",min:1,max:1,chance:.10}],
+  e2:[{mat:"cursed_bone",min:1,max:2,chance:.70},{mat:"iron_fragment",min:2,max:4,chance:.80},{mat:"cursed_thread",min:2,max:4,chance:.50},{mat:"cursed_core",min:1,max:1,chance:.08}],
+  e3:[{mat:"cursed_core",min:1,max:2,chance:.65},{mat:"spirit_essence",min:1,max:2,chance:.55},{mat:"cursed_bone",min:2,max:4,chance:.80},{mat:"iron_fragment",min:3,max:6,chance:.90},{mat:"cursed_crystal",min:1,max:1,chance:.05}],
+  e4:[{mat:"cursed_crystal",min:1,max:2,chance:.80},{mat:"dragon_scale",min:1,max:2,chance:.60},{mat:"spirit_essence",min:2,max:4,chance:.90},{mat:"cursed_core",min:2,max:4,chance:.90},{mat:"iron_fragment",min:5,max:10,chance:1.0}],
+};
+const JUJUTSU_DROPS = {
+  j1:[{mat:"cursed_thread",min:1,max:2,chance:.70},{mat:"iron_fragment",min:1,max:2,chance:.60}],
+  j2:[{mat:"cursed_thread",min:1,max:3,chance:.70},{mat:"cursed_bone",min:1,max:1,chance:.35},{mat:"iron_fragment",min:1,max:3,chance:.65}],
+  j3:[{mat:"cursed_bone",min:1,max:2,chance:.55},{mat:"iron_fragment",min:1,max:3,chance:.70}],
+  j4:[{mat:"cursed_core",min:1,max:1,chance:.30},{mat:"cursed_bone",min:1,max:3,chance:.65},{mat:"spirit_essence",min:1,max:1,chance:.20}],
+  j5:[{mat:"cursed_core",min:1,max:2,chance:.55},{mat:"spirit_essence",min:1,max:2,chance:.40},{mat:"cursed_crystal",min:1,max:1,chance:.08}],
+  j6:[{mat:"cursed_crystal",min:1,max:1,chance:.50},{mat:"dragon_scale",min:1,max:1,chance:.30},{mat:"spirit_essence",min:2,max:3,chance:.80}],
+};
+function rollDrops(id, isJ=false) {
+  const t = isJ ? JUJUTSU_DROPS[id] : ENEMY_DROPS[id]; if (!t) return {};
+  const r = {};
+  for (const e of t) if (Math.random() < e.chance) { const q = e.min + Math.floor(Math.random()*(e.max-e.min+1)); r[e.mat]=(r[e.mat]||0)+q; }
+  return r;
+}
+function addMaterials(p, d) { if (!p.materials) p.materials={}; for (const [m,q] of Object.entries(d)) p.materials[m]=(p.materials[m]||0)+q; }
+function formatDrops(d) { const r=[]; for (const [m,q] of Object.entries(d)) { const mat=MATERIALS[m]; if(mat) r.push(`${mat.emoji}**${mat.name}**×${q}`); } return r.length?r.join(" "):"없음"; }
+function getWeaponStats(p) { if (!p.equippedWeapon) return {atk:0,def:0,hp:0}; const w=WEAPONS[p.equippedWeapon]; return w?{atk:w.atkBonus,def:w.defBonus,hp:w.hpBonus}:{atk:0,def:0,hp:0}; }
+
+// ── 일일/주간 퀘스트 ────────────────────────────────────
+const DAILY_QUESTS = [
+  {id:"dq_battle3", type:"battle_win",   target:3, name:"오늘의 수련",   desc:"전투 3회 승리",          reward:{crystals:80, xp:150,materials:{iron_fragment:3}}},
+  {id:"dq_culling5",type:"culling_wave", target:5, name:"컬링 특훈",     desc:"컬링 5웨이브 달성",      reward:{crystals:100,xp:200,materials:{cursed_thread:5}}},
+  {id:"dq_jujutsu3",type:"jujutsu_point",target:3,name:"사멸회유 임무", desc:"사멸회유 3포인트",       reward:{crystals:90, xp:180,materials:{cursed_bone:2}}},
+  {id:"dq_skill5",  type:"skill_use",    target:5, name:"술식 연마",     desc:"술식 5회 사용",          reward:{crystals:70, xp:130,materials:{cursed_thread:3,iron_fragment:2}}},
+  {id:"dq_gacha1",  type:"gacha_pull",   target:1, name:"운명의 소환",   desc:"가챠 1회 소환",          reward:{crystals:60, xp:100,materials:{iron_fragment:5}}},
+  {id:"dq_nokill2", type:"boss_kill",    target:2, name:"정예 사냥",     desc:"특급 저주령 이상 2마리", reward:{crystals:150,xp:300,materials:{cursed_core:1}}},
+];
+const WEEKLY_QUESTS = [
+  {id:"wq_battle20", type:"battle_win",    target:20,name:"주간 전사",      desc:"전투 20회 승리",         reward:{crystals:500, xp:1000,materials:{cursed_core:3,spirit_essence:2}}},
+  {id:"wq_culling15",type:"culling_wave",  target:15,name:"컬링 마스터",    desc:"컬링 15웨이브 달성",     reward:{crystals:600, xp:1200,materials:{cursed_crystal:1,cursed_bone:8}}},
+  {id:"wq_jujutsu15",type:"jujutsu_point", target:15,name:"사멸회유 전문가",desc:"사멸회유 15포인트",      reward:{crystals:550, xp:1100,materials:{spirit_essence:4,cursed_core:2}}},
+  {id:"wq_boss5",    type:"boss_kill",     target:5, name:"보스 사냥꾼",    desc:"특급 이상 5마리",        reward:{crystals:700, xp:1400,materials:{dragon_scale:1,cursed_crystal:1}}},
+  {id:"wq_craft1",   type:"weapon_craft",  target:1, name:"주구 장인",      desc:"주구 1개 제작",          reward:{crystals:400, xp:800, materials:{spirit_essence:3,dragon_scale:1}}},
+  {id:"wq_pvpwin3",  type:"pvp_win",       target:3, name:"결투 챔피언",    desc:"PvP 3회 승리",           reward:{crystals:800, xp:1600,materials:{cursed_crystal:2,dragon_scale:1}}},
+];
+function getTodayKey() { const d=new Date(); return `${d.getUTCFullYear()}-${d.getUTCMonth()+1}-${d.getUTCDate()}`; }
+function getWeekKey()  { const d=new Date(); const w=new Date(d); w.setUTCDate(d.getUTCDate()-d.getUTCDay()); return `${w.getUTCFullYear()}-${w.getUTCMonth()+1}-${w.getUTCDate()}`; }
+function initQuests(p) {
+  const today=getTodayKey(), week=getWeekKey();
+  if (!p.quests) p.quests={};
+  if (p.quests.dailyKey!==today) { p.quests.dailyKey=today; p.quests.daily=[...DAILY_QUESTS].sort(()=>Math.random()-.5).slice(0,3).map(q=>({id:q.id,progress:0,done:false,claimed:false})); }
+  if (p.quests.weekKey!==week)   { p.quests.weekKey=week;   p.quests.weekly=[...WEEKLY_QUESTS].sort(()=>Math.random()-.5).slice(0,3).map(q=>({id:q.id,progress:0,done:false,claimed:false})); }
+  if (!p.quests.daily)  p.quests.daily=[];
+  if (!p.quests.weekly) p.quests.weekly=[];
+}
+function updateQuestProgress(p, type, amt=1) {
+  initQuests(p);
+  for (const qp of p.quests.daily)  { if(qp.done) continue; const d=DAILY_QUESTS.find(q=>q.id===qp.id);  if(!d||d.type!==type) continue; qp.progress=Math.min(qp.progress+amt,d.target);  if(qp.progress>=d.target)  qp.done=true; }
+  for (const qp of p.quests.weekly) { if(qp.done) continue; const d=WEEKLY_QUESTS.find(q=>q.id===qp.id); if(!d||d.type!==type) continue; qp.progress=Math.min(qp.progress+amt,d.target); if(qp.progress>=d.target) qp.done=true; }
+}
+function claimQuestReward(p, questId, isWeekly=false) {
+  initQuests(p);
+  const list=isWeekly?p.quests.weekly:p.quests.daily, defs=isWeekly?WEEKLY_QUESTS:DAILY_QUESTS;
+  const qp=list.find(q=>q.id===questId); if(!qp||!qp.done||qp.claimed) return null;
+  const def=defs.find(q=>q.id===questId); if(!def) return null;
+  qp.claimed=true; p.crystals+=def.reward.crystals||0; p.xp+=def.reward.xp||0;
+  if(def.reward.materials) addMaterials(p,def.reward.materials);
+  return def.reward;
+}
+
+// ── 주력 퀘스트 체인 (캐릭터별 전용, 완료 시 주력 스킬 해금) ──
+const MAIN_SKILL_QUESTS = {
+  itadori:{
+    skillName:"세계참(世界斬)", skillDmg:700,
+    skillDesc:"스쿠나의 궁극기 — 세계를 베어버린다!",
+    chain:[
+      {step:0,name:"🩸 그릇의 각성",  desc:"스쿠나 손가락 5개 삼키기",                  type:"sukuna_fingers",   target:5,  story:"\"남은 건 내가 어떻게 죽느냐다.\" 스쿠나의 목소리가 선명해진다.",         reward:{crystals:300,xp:500}},
+      {step:1,name:"💀 공존의 대가",  desc:"특급 저주령 5마리 처치 (손가락 5개 이상)",   type:"boss_kill",        target:5,  story:"스쿠나가 몸을 빌려 싸우기 시작한다. \"네 몸은 내 것이다.\"",             reward:{crystals:500,xp:800},  prereqFingers:5},
+      {step:2,name:"👑 세계참 각성",  desc:"PvP 3회 승리 (손가락 10개 이상)",            type:"pvp_win",          target:3,  story:"\"세계참 — 세계조차 베어버리겠다.\" 이타도리와 스쿠나의 의지가 하나로.", reward:{crystals:1000,xp:2000},prereqFingers:10},
+    ],
+  },
+  gojo:{
+    skillName:"자폭 무라사키(紫)", skillDmg:640,
+    skillDesc:"전 재산 방출 — HP 1이 되지만 압도적 파괴력!",
+    chain:[
+      {step:0,name:"🔵 무한의 경지",  desc:"전투 20회 승리",                  type:"battle_win",       target:20, story:"\"아오와 아카를 동시에 다루면...\" 고조는 위험한 실험을 시작한다.",       reward:{crystals:400,xp:600}},
+      {step:1,name:"🔴 극한 집중",    desc:"컬링 WAVE 10 이상 달성",          type:"culling_wave_max", target:10, story:"수백의 저주령 처리로 무라사키 완성에 필요한 극한의 집중력을 익힌다.",      reward:{crystals:600,xp:1000}},
+      {step:2,name:"💥 자폭 무라사키",desc:"PvP에서 특급 상대로 2회 승리",    type:"pvp_win_sp",       target:2,  story:"\"전 재산을 쏟아붓는다. 이게 내 최강이다.\"",                             reward:{crystals:1200,xp:2500}},
+    ],
+  },
+  sukuna:{
+    skillName:"복마어주자 진형(伏魔御廚子)", skillDmg:750,
+    skillDesc:"천지개벽의 영역전개 — 이 영역 안에서 신이 된다.",
+    chain:[
+      {step:0,name:"✂️ 해(解) 완성", desc:"술식 30회 사용",             type:"skill_use",      target:30, story:"\"닥치고 배워라. 해(解)는 만물을 베는 기본이다.\"",                       reward:{crystals:300,xp:500}},
+      {step:1,name:"🌌 팔(捌) 개방", desc:"보스 10마리 처치",           type:"boss_kill",      target:10, story:"공간 자체를 베어내는 팔(捌) — 저주의 왕의 서명.",                          reward:{crystals:600,xp:1000}},
+      {step:2,name:"👑 천지개벽",    desc:"사멸회유 클리어 2회",         type:"jujutsu_clear",  target:2,  story:"\"이 영역 안에서는 내가 신이다.\" 이타도리의 육체를 완전히 지배한다.",      reward:{crystals:1500,xp:3000}},
+    ],
+  },
+  megumi:{
+    skillName:"마허라가라 강림", skillDmg:520,
+    skillDesc:"최강의 식신이 완전한 형태로 강림한다.",
+    chain:[
+      {step:0,name:"🐺 식신의 주인", desc:"전투 15회 승리",             type:"battle_win",     target:15, story:"\"식신은 나의 분신이다.\" 열 가지 식신을 하나씩 각성시킨다.",               reward:{crystals:300,xp:500}},
+      {step:1,name:"🌑 강압암예정",  desc:"컬링 WAVE 12 이상 달성",     type:"culling_wave_max",target:12, story:"영역전개 강압암예정 — 이 영역 안에서 모든 식신이 각성한다.",               reward:{crystals:500,xp:900}},
+      {step:2,name:"🌟 마허라가라",  desc:"PvP 3회 승리",               type:"pvp_win",         target:3,  story:"\"후루베 유라유라토 후루베!\" 최강의 식신이 소환된다.",                    reward:{crystals:1200,xp:2500}},
+    ],
+  },
+  nanami:{
+    skillName:"무제한 초과근무", skillDmg:480,
+    skillDesc:"한계를 넘어선 폭발적 강화!",
+    chain:[
+      {step:0,name:"🟡 의무의 무게",  desc:"전투 25회 승리",             type:"battle_win",      target:25, story:"\"초과근무는 사절. 하지만 이건 의무다.\" 나나미는 묵묵히 싸운다.",         reward:{crystals:350,xp:600}},
+      {step:1,name:"⚖️ 칠할삼분 극의",desc:"사멸회유 포인트 20 달성",   type:"jujutsu_point",   target:20, story:"7:3 지점 — 어떤 존재든 약점이 있다. 나나미의 분석이 극에 달한다.",         reward:{crystals:600,xp:1000}},
+      {step:2,name:"🔥 무제한 초과",  desc:"컬링 WAVE 15 이상 달성",    type:"culling_wave_max", target:15, story:"\"한계 따위 없다.\" 나나미가 처음으로 모든 저주 에너지를 해방시킨다.",     reward:{crystals:1200,xp:2500}},
+    ],
+  },
+  yuta:{
+    skillName:"진안상애 완전해방", skillDmg:600,
+    skillDesc:"리카 완전해방 — 저주의 여왕이 전력으로 싸운다.",
+    chain:[
+      {step:0,name:"💜 사랑의 저주",  desc:"전투 20회 승리",                  type:"battle_win",   target:20, story:"\"리카, 나는 아직 살아야 해.\" 유타는 리카의 힘을 능숙하게 다룬다.",    reward:{crystals:400,xp:700}},
+      {step:1,name:"♾️ 모방의 완성",  desc:"술식 40회 사용",                  type:"skill_use",    target:40, story:"모방술식 극의 — 어떤 술식이든 단 한 번에 완벽히 재현한다.",             reward:{crystals:600,xp:1000}},
+      {step:2,name:"👑 진안상애 해방",desc:"PvP에서 특급 상대로 2회 승리",    type:"pvp_win_sp",   target:2,  story:"\"리카, 해방돼줘 — 전부!\" 영역 안에서 저주의 여왕이 완전히 해방된다.", reward:{crystals:1200,xp:2500}},
+    ],
+  },
+};
+
+function getMQProg(p, charId) {
+  if (!p.mqProgress) p.mqProgress={};
+  if (!p.mqProgress[charId]) p.mqProgress[charId]={step:0,progress:0,completed:[]};
+  return p.mqProgress[charId];
+}
+function getCurrentMQ(p, charId) {
+  const chain=MAIN_SKILL_QUESTS[charId]?.chain; if (!chain) return null;
+  const prog=getMQProg(p,charId); if (prog.step>=chain.length) return null;
+  return chain[prog.step];
+}
+function updateMQProgress(p, type, amt=1) {
+  const charId=p.active, mq=MAIN_SKILL_QUESTS[charId]; if (!mq) return;
+  const quest=getCurrentMQ(p,charId); if (!quest) return;
+  const prog=getMQProg(p,charId);
+  if (quest.prereqFingers && (p.sukunaFingers||0)<quest.prereqFingers) return;
+  if (quest.type!==type) return;
+  prog.progress=Math.min((prog.progress||0)+amt, quest.target);
+}
+function tryCompleteMQ(p) {
+  const charId=p.active, mq=MAIN_SKILL_QUESTS[charId]; if (!mq) return null;
+  const quest=getCurrentMQ(p,charId); if (!quest) return null;
+  const prog=getMQProg(p,charId); if ((prog.progress||0)<quest.target) return null;
+  prog.step++; prog.progress=0; prog.completed.push(quest.step);
+  p.crystals+=quest.reward?.crystals||0; p.xp+=quest.reward?.xp||0;
+  if (prog.step>=mq.chain.length) { if (!p.mainSkillUnlocked) p.mainSkillUnlocked={}; p.mainSkillUnlocked[charId]=true; }
+  return quest;
+}
+
+// ── 스쿠나 손가락 시스템 (리메이크) ───────────────────
+// 손가락 1개 이상 → 스쿠나 즉시 해금
+// 손가락 수에 따라 단계적 강화
+const SUKUNA_FINGER_MAX = 20;
+const SUKUNA_STAGES = [
+  {min:0,  label:"봉인 중",             bar:"⬛", atkBonus:0,   defBonus:0,   hpBonus:0,    dmgMult:1.00},
+  {min:1,  label:"Lv.1 봉인 해제",      bar:"🟩", atkBonus:15,  defBonus:10,  hpBonus:300,  dmgMult:1.05},
+  {min:3,  label:"Lv.2 기억 회복",      bar:"🟨", atkBonus:30,  defBonus:20,  hpBonus:600,  dmgMult:1.12},
+  {min:5,  label:"Lv.3 해(解) 각성",    bar:"🟧", atkBonus:50,  defBonus:35,  hpBonus:1000, dmgMult:1.20},
+  {min:8,  label:"Lv.4 팔(捌) 개방",    bar:"🟥", atkBonus:80,  defBonus:55,  hpBonus:1600, dmgMult:1.30},
+  {min:10, label:"Lv.5 지배 각성",      bar:"🔴", atkBonus:100, defBonus:70,  hpBonus:2000, dmgMult:1.40},
+  {min:15, label:"Lv.6 복마어주자",     bar:"🟣", atkBonus:130, defBonus:90,  hpBonus:2800, dmgMult:1.55},
+  {min:20, label:"Lv.MAX 저주의 왕",    bar:"🔱", atkBonus:160, defBonus:110, hpBonus:3500, dmgMult:1.70},
+];
+function getFingerStage(f) { let s=SUKUNA_STAGES[0]; for (const st of SUKUNA_STAGES) if(f>=st.min) s=st; return s; }
+function getFingerBonus(f) { return getFingerStage(f); }
+function checkSukunaUnlock(p) {
+  if ((p.sukunaFingers||0)>=1 && !p.owned.includes("sukuna")) {
+    p.owned.push("sukuna");
+    if (!p.mastery) p.mastery={};
+    if (p.mastery.sukuna===undefined) p.mastery.sukuna=0;
+    return true;
+  }
+  return false;
+}
+
+// ── 코가네 펫 ───────────────────────────────────────────
+const KOGANE_GRADES = {
+  "전설":{ color:0xF5C842,emoji:"🌟",stars:"★★★★★",rate:0.5, atkBonus:.25,defBonus:.20,hpBonus:.20,xpBonus:.30,crystalBonus:.25,skill:"황금 포효",skillDesc:"전투 시작 시 ATK 50% 추가 피해",passiveDesc:"ATK+25% DEF+20% HP+20% XP+30% 크리스탈+25%"},
+  "특급":{ color:0xff8c00,emoji:"🔶",stars:"★★★★☆",rate:2.0, atkBonus:.18,defBonus:.15,hpBonus:.15,xpBonus:.20,crystalBonus:.18,skill:"황금 이빨",skillDesc:"공격 시 15% 확률로 약화",passiveDesc:"ATK+18% DEF+15% HP+15% XP+20% 크리스탈+18%"},
+  "1급": { color:0x7C5CFC,emoji:"🔷",stars:"★★★☆☆",rate:8.0, atkBonus:.12,defBonus:.10,hpBonus:.10,xpBonus:.12,crystalBonus:.10,skill:"황금 발톱",skillDesc:"공격 시 10% 확률로 추가타",passiveDesc:"ATK+12% DEF+10% HP+10% XP+12% 크리스탈+10%"},
+  "2급": { color:0x4ade80,emoji:"🟢",stars:"★★☆☆☆",rate:22.5,atkBonus:.07,defBonus:.06,hpBonus:.06,xpBonus:.07,crystalBonus:.06,skill:"황금 보호막",skillDesc:"HP 30% 이하 시 피해 50% 감소",passiveDesc:"ATK+7% DEF+6% HP+6% XP+7% 크리스탈+6%"},
+  "3급": { color:0x94a3b8,emoji:"⚪",stars:"★☆☆☆☆",rate:67.0,atkBonus:.03,defBonus:.02,hpBonus:.02,xpBonus:.03,crystalBonus:.02,skill:"황금 냄새",skillDesc:"전투 후 크리스탈 +5%",passiveDesc:"ATK+3% DEF+2% HP+2% XP+3% 크리스탈+2%"},
+};
+const KOGANE_POOL = [{grade:"전설",rate:.5},{grade:"특급",rate:2},{grade:"1급",rate:8},{grade:"2급",rate:22.5},{grade:"3급",rate:67}];
+function rollKogane() { const t=KOGANE_POOL.reduce((s,p)=>s+p.rate,0); let r=Math.random()*t; for(const e of KOGANE_POOL){r-=e.rate;if(r<=0)return e.grade;} return "3급"; }
+function getKoganeBonus(p) { if(!p.kogane?.grade) return {atk:1,def:1,hp:1,xp:1,crystal:1}; const g=KOGANE_GRADES[p.kogane.grade]; return g?{atk:1+g.atkBonus,def:1+g.defBonus,hp:1+g.hpBonus,xp:1+g.xpBonus,crystal:1+g.crystalBonus}:{atk:1,def:1,hp:1,xp:1,crystal:1}; }
+// ── 상태이상 ────────────────────────────────────────────
+const STATUS_EFFECTS = {
+  poison:        {id:"poison",        name:"독",      emoji:"☠️",  desc:"매 턴 최대HP 5% 피해",  duration:3},
+  burn:          {id:"burn",          name:"화상",    emoji:"🔥",  desc:"매 턴 최대HP 8% 피해",  duration:2},
+  freeze:        {id:"freeze",        name:"빙결",    emoji:"❄️",  desc:"1턴 행동 불가",          duration:1},
+  weaken:        {id:"weaken",        name:"약화",    emoji:"💔",  desc:"공격력 30% 감소",        duration:2},
+  stun:          {id:"stun",          name:"기절",    emoji:"⚡",  desc:"1턴 행동 불가",          duration:1},
+  battleInstinct:{id:"battleInstinct",name:"전투본능",emoji:"🔥💪",desc:"ATK 40%↑ 회피 25%↑",   duration:3},
+  cursed_wound:  {id:"cursed_wound",  name:"저주상처",emoji:"🩸",  desc:"매 턴 최대HP 10% 피해", duration:2},
+  blind:         {id:"blind",         name:"실명",    emoji:"🌑",  desc:"명중률 50% 감소",        duration:2},
+};
+function applyStatus(target, id) {
+  if (!target.statusEffects) target.statusEffects=[];
+  const ex=target.statusEffects.find(s=>s.id===id);
+  if (ex) ex.turns=STATUS_EFFECTS[id].duration;
+  else target.statusEffects.push({id,turns:STATUS_EFFECTS[id].duration});
+}
+function tickStatus(target, maxHp) {
+  if (!target.statusEffects?.length) return {dmg:0,log:[]};
+  let dmg=0; const log=[];
+  for (const se of target.statusEffects) {
+    const def=STATUS_EFFECTS[se.id]; if(!def){se.turns=0;continue;}
+    if(se.id==="poison")       {const d=Math.max(1,Math.floor(maxHp*.05));dmg+=d;log.push(`${def.emoji}**${def.name}** — **${d}** 피해!`);}
+    if(se.id==="burn")         {const d=Math.max(1,Math.floor(maxHp*.08));dmg+=d;log.push(`${def.emoji}**${def.name}** — **${d}** 피해!`);}
+    if(se.id==="cursed_wound") {const d=Math.max(1,Math.floor(maxHp*.10));dmg+=d;log.push(`${def.emoji}**${def.name}** — **${d}** 피해!`);}
+    se.turns--;
+  }
+  target.statusEffects=target.statusEffects.filter(s=>s.turns>0);
+  if(dmg>0) target.hp=Math.max(0,target.hp-dmg);
+  return {dmg,log};
+}
+function statusStr(se) { if(!se?.length) return "없음"; return se.map(s=>`${STATUS_EFFECTS[s.id]?.emoji||""}${STATUS_EFFECTS[s.id]?.name||s.id}(${s.turns}턴)`).join(" "); }
+function isIncapacitated(se) { return !!(se?.some(s=>s.id==="freeze"||s.id==="stun")); }
+function isBlind(se)          { return !!(se?.some(s=>s.id==="blind")); }
+function getWeakenMult(se)    { let m=1; if(se?.some(s=>s.id==="weaken"))m*=.7; if(se?.some(s=>s.id==="battleInstinct"))m*=1.4; return m; }
+function rollHit(aSe,dSe)     { if(isBlind(aSe)&&Math.random()<.5) return false; return Math.random()>(0.05+(dSe?.some(s=>s.id==="battleInstinct")?.25:0)); }
+
+// ── 흑섬 & 스킬 이펙트 (고퀄 ANSI 아트) ─────────────
+function isBlackFlash() { return Math.random()<.10; }
+function getBlackFlashArt() {
+  return ["```ansi",
+    "\u001b[1;30m╔════════════════════════════════════════════╗",
+    "\u001b[1;31m║  ██████╗ ██╗      █████╗  ██████╗██╗  ██╗ ║",
+    "\u001b[1;31m║  ██╔══██╗██║     ██╔══██╗██╔════╝██║ ██╔╝ ║",
+    "\u001b[1;33m║  ██████╔╝██║     ███████║██║     █████╔╝  ║",
+    "\u001b[1;33m║  ██╔══██╗██║     ██╔══██║██║     ██╔═██╗  ║",
+    "\u001b[1;31m║  ██████╔╝███████╗██║  ██║╚██████╗██║  ██╗ ║",
+    "\u001b[1;30m╠════════════════════════════════════════════╣",
+    "\u001b[1;33m║      ⚫  B L A C K   F L A S H  ⚫         ║",
+    "\u001b[1;31m║     저주 에너지 순간 최대 방출!! ×2.5      ║",
+    "\u001b[1;30m╚════════════════════════════════════════════╝",
+    "```"].join("\n");
+}
+const SKILL_EFFECTS = {
+  "주먹질":          {art:["```ansi","\u001b[1;31m    ╔═══════╗","\u001b[1;33m    ║  💥💥 ║","\u001b[1;31m    ║ ▓▓▓▓▓ ║","\u001b[1;33m    ║  💥💥 ║","\u001b[1;31m    ╚═══════╝","```"].join("\n"), color:0xff6b35, flavorText:"저주 에너지를 주먹에 집중시킨다!"},
+  "다이버전트 주먹": {art:["```ansi","\u001b[1;31m ⚡\u001b[1;33m💥\u001b[1;31m⚡\u001b[1;33m💥\u001b[1;31m⚡","\u001b[1;33m▓▓▓\u001b[1;31m【発散】\u001b[1;33m▓▓▓","\u001b[1;31m ⚡\u001b[1;33m💥\u001b[1;31m⚡\u001b[1;33m💥\u001b[1;31m⚡","```"].join("\n"), color:0xff4500, flavorText:"발산하는 저주 에너지 — 몸의 내부에서 폭발!"},
+  "흑섬":            {art:["```ansi","\u001b[1;30m🌑🌑🌑🌑🌑🌑🌑","\u001b[1;35m⬛\u001b[1;31m 黒 閃 \u001b[1;35m⬛","\u001b[1;30m🌑🌑🌑🌑🌑🌑🌑","```"].join("\n"), color:0x1a0a2e, flavorText:"순간적으로 발산되는 최대 저주 에너지!"},
+  "어주자":          {art:["```ansi","\u001b[1;31m👹\u001b[1;33m✨\u001b[1;31m👹\u001b[1;33m✨\u001b[1;31m👹","\u001b[1;33m✨\u001b[1;31m 廻 夏 \u001b[1;33m✨","\u001b[1;31m👹\u001b[1;33m✨\u001b[1;31m👹\u001b[1;33m✨\u001b[1;31m👹","```"].join("\n"), color:0xb5451b, flavorText:"스쿠나의 힘이 몸을 가득 채운다..."},
+  "스쿠나 발현":     {art:["```ansi","\u001b[1;31m🔴\u001b[1;33m👹\u001b[1;31m🔴\u001b[1;33m👹\u001b[1;31m🔴","\u001b[1;33m👹\u001b[1;31m 両面宿儺 \u001b[1;33m👹","\u001b[1;31m🔴\u001b[1;33m👹\u001b[1;31m🔴\u001b[1;33m👹\u001b[1;31m🔴","```"].join("\n"), color:0x8b0000, flavorText:"저주의 왕이 이타도리의 몸을 장악한다!"},
+  "아오":            {art:["```ansi","\u001b[1;34m  🔵🔵🔵  ","\u001b[1;36m🔵\u001b[1;34m  蒼  \u001b[1;36m🔵","\u001b[1;34m  🔵🔵🔵  ","```"].join("\n"), color:0x0066ff, flavorText:"무한에 의한 인력 — 모든 것을 끌어당긴다"},
+  "아카":            {art:["```ansi","\u001b[1;31m  🔴🔴🔴  ","\u001b[1;33m🔴\u001b[1;31m  赫  \u001b[1;33m🔴","\u001b[1;31m  🔴🔴🔴  ","```"].join("\n"), color:0xff0033, flavorText:"무한에 의한 척력 — 모든 것을 날려버린다"},
+  "무라사키":        {art:["```ansi","\u001b[1;31m🔴\u001b[1;34m⚡\u001b[1;35m🔵\u001b[1;34m⚡\u001b[1;31m🔴","\u001b[1;35m⚡\u001b[1;31m  紫  \u001b[1;35m⚡","\u001b[1;34m🔵\u001b[1;31m⚡\u001b[1;35m🔴\u001b[1;31m⚡\u001b[1;34m🔵","```"].join("\n"), color:0x9900ff, flavorText:"아오와 아카의 융합 — 허공을 찢는 허수!"},
+  "무량공처":        {art:["```ansi","\u001b[1;36m∞∞∞∞∞∞∞∞∞","\u001b[1;37m∞\u001b[1;36m 無量空処 \u001b[1;37m∞","\u001b[1;36m∞∞∞∞∞∞∞∞∞","```"].join("\n"), color:0x00ffff, flavorText:"\"나는 최강이니까\" — 무한이 세계를 지배한다"},
+  "자폭 무라사키(紫)":{art:["```ansi","\u001b[1;31m╔══════════════════════════════╗","\u001b[1;35m║  💥 自爆 紫 💥  HP→1 !!      ║","\u001b[1;31m╚══════════════════════════════╝","```"].join("\n"), color:0xff0000, flavorText:"모든 힘을 쏟아붓는 자폭 공격!"},
+  "해":              {art:["```ansi","\u001b[1;31m  ✂️✂️✂️  ","\u001b[1;31m✂️\u001b[1;33m  解  \u001b[1;31m✂️","\u001b[1;31m  ✂️✂️✂️  ","```"].join("\n"), color:0xcc0000, flavorText:"만물을 베어내는 저주의 왕의 손톱!"},
+  "팔":              {art:["```ansi","\u001b[1;35m🌌\u001b[1;31m✂️\u001b[1;35m🌌\u001b[1;31m✂️\u001b[1;35m🌌","\u001b[1;31m✂️\u001b[1;33m  捌  \u001b[1;31m✂️","\u001b[1;35m🌌\u001b[1;31m✂️\u001b[1;35m🌌\u001b[1;31m✂️\u001b[1;35m🌌","```"].join("\n"), color:0x8b0000, flavorText:"공간 자체를 베어내는 절대적 술식!"},
+  "푸가":            {art:["```ansi","\u001b[1;31m💀🔥\u001b[1;33m💀🔥\u001b[1;31m💀","\u001b[1;31m🔥\u001b[1;33m 不 雅 \u001b[1;31m🔥","\u001b[1;33m💀🔥\u001b[1;31m💀🔥\u001b[1;33m💀","```"].join("\n"), color:0x4a0000, flavorText:"닿는 모든 것을 분해한다!"},
+  "복마어주자":      {art:["```ansi","\u001b[1;31m╔══════════════════════════╗","\u001b[1;33m║ 👑 伏魔御廚子 👑         ║","\u001b[1;31m║   천 지 개 벽 !          ║","\u001b[1;31m╚══════════════════════════╝","```"].join("\n"), color:0x2a0000, flavorText:"천지개벽 — 저주의 왕의 궁극 영역전개!"},
+  "복마어주자 진형(伏魔御廚子)":{art:["```ansi","\u001b[1;31m╔══════════════════════════════╗","\u001b[1;33m║  👑 両面宿儺 伏魔御廚子 👑  ║","\u001b[1;31m║    이 영역 안에서 신이 된다!  ║","\u001b[1;31m╚══════════════════════════════╝","```"].join("\n"), color:0x1a0000, flavorText:"이 영역 안에서는 내가 신이다!"},
+  "세계참(世界斬)":  {art:["```ansi","\u001b[1;35m🌍\u001b[1;31m✂️\u001b[1;35m🌍\u001b[1;31m✂️\u001b[1;35m🌍","\u001b[1;31m✂️\u001b[1;33m 世界斬 \u001b[1;31m✂️","\u001b[1;35m🌍\u001b[1;31m✂️\u001b[1;35m🌍\u001b[1;31m✂️\u001b[1;35m🌍","```"].join("\n"), color:0x4a0000, flavorText:"세계조차 베어버린다!"},
+  "부기우기":        {art:["```ansi","\u001b[1;34m🎵\u001b[1;32m💪\u001b[1;34m🎵\u001b[1;32m💪\u001b[1;34m🎵","\u001b[1;32m💪\u001b[1;34m Boogie \u001b[1;32m💪","\u001b[1;34m🎵\u001b[1;32m💪\u001b[1;34m🎵\u001b[1;32m💪\u001b[1;34m🎵","```"].join("\n"), color:0x1e90ff, flavorText:"\"댄스홀 가수!\" — 위치 전환! 빙결!"},
+  "전투본능":        {art:["```ansi","\u001b[1;31m⚔️🔥\u001b[1;33m⚔️🔥\u001b[1;31m⚔️","\u001b[1;31m🔥\u001b[1;33m戦闘本能\u001b[1;31m🔥","\u001b[1;33m⚔️🔥\u001b[1;31m⚔️🔥\u001b[1;33m⚔️","```"].join("\n"), color:0xff8c00, flavorText:"전사의 본능이 각성한다! 공격력·회피 극대화!"},
+  "마허라가라 강림": {art:["```ansi","\u001b[1;30m╔══════════════════════════╗","\u001b[1;35m║  🌟 摩虎羅 강림! 🌟      ║","\u001b[1;33m║   최강의 식신 해방!       ║","\u001b[1;30m╚══════════════════════════╝","```"].join("\n"), color:0x7C5CFC, flavorText:"후루베 유라유라토 후루베!"},
+  "무제한 초과근무": {art:["```ansi","\u001b[1;33m╔══════════════════════════╗","\u001b[1;33m║  🟡 超過勤務 無制限 !!   ║","\u001b[1;31m║   한계 따위 없다!         ║","\u001b[1;33m╚══════════════════════════╝","```"].join("\n"), color:0xF5C842, flavorText:"한계를 넘어선 폭발적 강화!"},
+  "진안상애 완전해방":{art:["```ansi","\u001b[1;35m╔══════════════════════════╗","\u001b[1;35m║  💜 真愛相愛 完全解放!   ║","\u001b[1;33m║   리카, 전부 해방!        ║","\u001b[1;35m╚══════════════════════════╝","```"].join("\n"), color:0xff69b4, flavorText:"리카, 해방돼줘 — 전부!"},
+  "험한 도박":       {art:["```ansi","\u001b[1;33m🎰🎰🎰🎰🎰","\u001b[1;31m  険 賭 博  ","\u001b[1;33m🎰🎰🎰🎰🎰","```"].join("\n"), color:0xffaa00, flavorText:"운에 맡긴 도박 공격!"},
+  "질풍열차":        {art:["```ansi","\u001b[1;34m🚂💨🚂💨🚂","\u001b[1;36m  疾 風 列  ","\u001b[1;34m🚂💨🚂💨🚂","```"].join("\n"), color:0x44aaff, flavorText:"강력한 열차처럼 돌진!"},
+  "유한 소설":       {art:["```ansi","\u001b[1;32m📖✨📖✨📖","\u001b[1;33m✨ 有限小説 ✨","\u001b[1;32m📖✨📖✨📖","```"].join("\n"), color:0x88ff88, flavorText:"불멸의 몸으로 싸운다!"},
+  "질풍강운":        {art:["```ansi","\u001b[1;33m🎰🌪️🎰🌪️🎰","\u001b[1;31m🌪️ 疾風強運 🌪️","\u001b[1;33m🎰🌪️🎰🌪️🎰","```"].join("\n"), color:0xffcc00, flavorText:"영역전개 — 운이 터진다!"},
+  "_default":        {art:["```ansi","\u001b[1;35m  ✨✨✨  ","\u001b[1;35m✨ 術 式 ✨","\u001b[1;35m  ✨✨✨  ","```"].join("\n"), color:0x7c5cfc, flavorText:"저주 에너지가 폭발한다!"},
+};
+function getSkillEffect(name) { return SKILL_EFFECTS[name]||SKILL_EFFECTS["_default"]; }
+
+// ── 캐릭터 데이터 ────────────────────────────────────────
+const CHARACTERS = {
+  itadori:{name:"이타도리 유지",emoji:"🟠",grade:"준1급",atk:90,def:75,spd:85,maxHp:1000,domain:null,desc:"스쿠나의 그릇.",lore:"\"남은 건 내가 어떻게 죽느냐다.\"",fingerSkills:true,
+    skills:[{name:"주먹질",minMastery:0,dmg:95,desc:"강력한 주먹 공격."},{name:"다이버전트 주먹",minMastery:5,dmg:160,desc:"저주 에너지를 실은 주먹.",statusApply:{target:"enemy",statusId:"stun",chance:.3}},{name:"흑섬",minMastery:15,dmg:240,desc:"최대 저주 에너지 방출!",statusApply:{target:"enemy",statusId:"weaken",chance:.5}},{name:"어주자",minMastery:30,dmg:340,desc:"스쿠나의 힘을 빌린 궁극기.",statusApply:{target:"enemy",statusId:"burn",chance:.7}},{name:"스쿠나 발현",minMastery:50,dmg:520,desc:"스쿠나가 몸을 장악! 10손가락 이상 필요.",statusApply:{target:"enemy",statusId:"freeze",chance:.8}}]},
+  gojo:{name:"고조 사토루",emoji:"🔵",grade:"특급",atk:130,def:120,spd:110,maxHp:1800,domain:"무량공처",desc:"최강의 주술사.",lore:"\"사람들이 왜 내가 최강이라고 하는지 알아?\"",
+    skills:[{name:"아오",minMastery:0,dmg:145,desc:"적을 끌어당겨 공격."},{name:"아카",minMastery:5,dmg:220,desc:"폭발 충격파.",statusApply:{target:"enemy",statusId:"burn",chance:.5}},{name:"무라사키",minMastery:15,dmg:320,desc:"아오와 아카 융합.",statusApply:{target:"enemy",statusId:"weaken",chance:.6}},{name:"무량공처",minMastery:30,dmg:480,desc:"무한을 지배.",statusApply:{target:"enemy",statusId:"freeze",chance:.8}}]},
+  megumi:{name:"후시구로 메구미",emoji:"⚫",grade:"1급",atk:110,def:108,spd:100,maxHp:1250,domain:"강압암예정",desc:"식신술 주술사.",lore:"\"나는 선한 사람을 구하기 위해 싸운다.\"",
+    skills:[{name:"옥견",minMastery:0,dmg:115,desc:"식신 옥견."},{name:"탈토",minMastery:5,dmg:180,desc:"식신 대호.",statusApply:{target:"enemy",statusId:"weaken",chance:.4}},{name:"만상",minMastery:15,dmg:265,desc:"열 가지 식신.",statusApply:{target:"enemy",statusId:"poison",chance:.5}},{name:"후루베 유라유라",minMastery:30,dmg:380,desc:"마허라가라 강림.",statusApply:{target:"enemy",statusId:"stun",chance:.6}}]},
+  nobara:{name:"쿠기사키 노바라",emoji:"🌸",grade:"1급",atk:115,def:95,spd:105,maxHp:1180,domain:null,desc:"영혼 공격 주술사.",lore:"\"도쿄에 올 때부터 각오는 되어 있었어.\"",
+    skills:[{name:"망치질",minMastery:0,dmg:118,desc:"저주 못."},{name:"공명",minMastery:5,dmg:195,desc:"허수아비 공명.",statusApply:{target:"enemy",statusId:"poison",chance:.5}},{name:"철정",minMastery:15,dmg:280,desc:"에너지 못.",statusApply:{target:"enemy",statusId:"weaken",chance:.5}},{name:"발화",minMastery:30,dmg:390,desc:"동시 폭발.",statusApply:{target:"enemy",statusId:"burn",chance:.8}}]},
+  nanami:{name:"나나미 켄토",emoji:"🟡",grade:"1급",atk:118,def:108,spd:90,maxHp:1380,domain:null,desc:"1급 주술사.",lore:"\"초과 근무는 사절이지만... 이건 의무다.\"",
+    skills:[{name:"둔기 공격",minMastery:0,dmg:120,desc:"둔기 타격."},{name:"칠할삼분",minMastery:5,dmg:200,desc:"7:3 지점 약점.",statusApply:{target:"enemy",statusId:"weaken",chance:.6}},{name:"십수할",minMastery:15,dmg:290,desc:"10배 에너지."},{name:"초과근무",minMastery:30,dmg:410,desc:"한계 돌파."}]},
+  sukuna:{name:"료멘 스쿠나",emoji:"🔴",grade:"특급",atk:140,def:115,spd:120,maxHp:2500,domain:"복마어주자",desc:"저주의 왕.",lore:"\"약한 놈이 강한 놈을 거스르는 건 죄악이다.\"",
+    skills:[{name:"해",minMastery:0,dmg:145,desc:"손톱으로 베어낸다.",statusApply:{target:"enemy",statusId:"burn",chance:.4}},{name:"팔",minMastery:5,dmg:235,desc:"공간 자체를 벤다.",statusApply:{target:"enemy",statusId:"weaken",chance:.5}},{name:"푸가",minMastery:15,dmg:345,desc:"모든 것을 분해.",statusApply:{target:"enemy",statusId:"poison",chance:.7}},{name:"복마어주자",minMastery:30,dmg:500,desc:"천지개벽 영역전개.",statusApply:{target:"enemy",statusId:"freeze",chance:.9}}]},
+  geto:{name:"게토 스구루",emoji:"🟢",grade:"특급",atk:115,def:105,spd:100,maxHp:1600,domain:null,desc:"저주를 다루는 전 특급.",lore:"\"주술사는 비주술사를 지켜야 한다.\"",
+    skills:[{name:"저주 방출",minMastery:0,dmg:125,desc:"저급 저주령 방출."},{name:"최대출력",minMastery:5,dmg:210,desc:"전력 방출.",statusApply:{target:"enemy",statusId:"poison",chance:.4}},{name:"저주영조종",minMastery:15,dmg:300,desc:"수천의 저주령.",statusApply:{target:"enemy",statusId:"weaken",chance:.6}},{name:"감로대법",minMastery:30,dmg:425,desc:"모든 저주 흡수.",statusApply:{target:"enemy",statusId:"stun",chance:.5}}]},
+  maki:{name:"마키 젠인",emoji:"⚪",grade:"준1급",atk:122,def:110,spd:115,maxHp:1300,domain:null,desc:"저주력 없는 강인한 주술사. HP 30%↓ 천여주박 각성!",lore:"\"젠인 가문 — 내가 직접 끝내주지.\"",awakening:{threshold:.30,dmgMult:2.0,label:"천여주박 각성"},
+    skills:[{name:"봉술",minMastery:0,dmg:122,desc:"봉 타격."},{name:"저주창",minMastery:5,dmg:200,desc:"창 투척.",statusApply:{target:"enemy",statusId:"weaken",chance:.4}},{name:"저주도구술",minMastery:15,dmg:285,desc:"저주 도구 구사.",statusApply:{target:"enemy",statusId:"burn",chance:.5}},{name:"천개봉파",minMastery:30,dmg:400,desc:"연속 공격.",statusApply:{target:"enemy",statusId:"stun",chance:.6}}]},
+  panda:{name:"판다",emoji:"🐼",grade:"2급",atk:105,def:118,spd:85,maxHp:1400,domain:null,desc:"저주로 만든 특이체질.",lore:"\"난 판다야. 진짜 판다.\"",
+    skills:[{name:"박치기",minMastery:0,dmg:108,desc:"머리로 들이받기.",statusApply:{target:"enemy",statusId:"stun",chance:.2}},{name:"곰 발바닥",minMastery:5,dmg:175,desc:"두꺼운 발바닥."},{name:"팬더 변신",minMastery:15,dmg:255,desc:"진짜 팬더 변신.",statusApply:{target:"enemy",statusId:"weaken",chance:.4}},{name:"고릴라 변신",minMastery:30,dmg:360,desc:"고릴라 형태.",statusApply:{target:"enemy",statusId:"stun",chance:.5}}]},
+  inumaki:{name:"이누마키 토게",emoji:"🟤",grade:"준1급",atk:112,def:90,spd:110,maxHp:1120,domain:null,desc:"주술언어 구사.",lore:"\"연어알—\"",
+    skills:[{name:"멈춰라",minMastery:0,dmg:115,desc:"움직임 봉쇄.",statusApply:{target:"enemy",statusId:"freeze",chance:.5}},{name:"달려라",minMastery:5,dmg:180,desc:"무작위 이동.",statusApply:{target:"enemy",statusId:"weaken",chance:.5}},{name:"주술언어",minMastery:15,dmg:265,desc:"강력한 명령.",statusApply:{target:"enemy",statusId:"stun",chance:.6}},{name:"폭발해라",minMastery:30,dmg:375,desc:"그 자리에서 폭발.",statusApply:{target:"enemy",statusId:"burn",chance:.8}}]},
+  yuta:{name:"오코츠 유타",emoji:"🌟",grade:"특급",atk:128,def:112,spd:115,maxHp:1750,domain:"진안상애",desc:"리카의 저주를 다루는 특급.",lore:"\"리카... 나는 아직 살아야 해.\"",
+    skills:[{name:"모방술식",minMastery:0,dmg:135,desc:"다른 술식 모방."},{name:"리카 소환",minMastery:5,dmg:220,desc:"저주의 여왕 리카.",statusApply:{target:"enemy",statusId:"weaken",chance:.5}},{name:"순애빔",minMastery:15,dmg:340,desc:"사랑을 에너지로.",statusApply:{target:"enemy",statusId:"burn",chance:.6}},{name:"진안상애",minMastery:30,dmg:480,desc:"사랑으로 파괴.",statusApply:{target:"enemy",statusId:"freeze",chance:.9}}]},
+  higuruma:{name:"히구루마 히로미",emoji:"⚖️",grade:"1급",atk:118,def:105,spd:95,maxHp:1320,domain:"주복사사",desc:"변호사 출신 주술사.",lore:"\"이 법정에서는 — 내가 판사다.\"",
+    skills:[{name:"저주도구",minMastery:0,dmg:120,desc:"도구로 공격."},{name:"몰수",minMastery:5,dmg:195,desc:"술식 몰수.",statusApply:{target:"enemy",statusId:"weaken",chance:.7}},{name:"사형판결",minMastery:15,dmg:285,desc:"재판 제재.",statusApply:{target:"enemy",statusId:"stun",chance:.5}},{name:"집행인 인형",minMastery:30,dmg:410,desc:"인형 소환 처형.",statusApply:{target:"enemy",statusId:"freeze",chance:.7}}]},
+  jogo:{name:"죠고",emoji:"🌋",grade:"특급",atk:125,def:100,spd:105,maxHp:1680,domain:"개관철위산",desc:"화염 저주령.",lore:"\"인간이야말로 진정한 저주다.\"",
+    skills:[{name:"화염 분사",minMastery:0,dmg:130,desc:"불꽃.",statusApply:{target:"enemy",statusId:"burn",chance:.5}},{name:"용암 폭발",minMastery:5,dmg:215,desc:"용암 폭발.",statusApply:{target:"enemy",statusId:"burn",chance:.7}},{name:"극번 운",minMastery:15,dmg:315,desc:"운석 소환.",statusApply:{target:"enemy",statusId:"weaken",chance:.5}},{name:"개관철위산",minMastery:30,dmg:460,desc:"화산 영역전개.",statusApply:{target:"enemy",statusId:"burn",chance:1.0}}]},
+  dagon:{name:"다곤",emoji:"🌊",grade:"특급",atk:118,def:108,spd:96,maxHp:1620,domain:"탕온평선",desc:"수중 저주령.",lore:"\"물은 모든 것을 삼킨다.\"",
+    skills:[{name:"물고기 소환",minMastery:0,dmg:125,desc:"물고기 떼.",statusApply:{target:"enemy",statusId:"poison",chance:.4}},{name:"해수 폭발",minMastery:5,dmg:205,desc:"압축 해수.",statusApply:{target:"enemy",statusId:"weaken",chance:.5}},{name:"조류 소용돌이",minMastery:15,dmg:295,desc:"소용돌이.",statusApply:{target:"enemy",statusId:"freeze",chance:.4}},{name:"탕온평선",minMastery:30,dmg:450,desc:"물고기 영역.",statusApply:{target:"enemy",statusId:"poison",chance:.9}}]},
+  hanami:{name:"하나미",emoji:"🌿",grade:"특급",atk:115,def:118,spd:93,maxHp:1750,domain:null,desc:"식물 저주령.",lore:"\"자연은 인간의 적이 아니다.\"",
+    skills:[{name:"나무뿌리 채찍",minMastery:0,dmg:122,desc:"뿌리 채찍.",statusApply:{target:"enemy",statusId:"weaken",chance:.3}},{name:"꽃비",minMastery:5,dmg:198,desc:"독 꽃가루.",statusApply:{target:"enemy",statusId:"poison",chance:.6}},{name:"대지의 저주",minMastery:15,dmg:285,desc:"저주 에너지 확산.",statusApply:{target:"enemy",statusId:"poison",chance:.7}},{name:"재앙의 꽃",minMastery:30,dmg:425,desc:"거대한 꽃.",statusApply:{target:"enemy",statusId:"stun",chance:.6}}]},
+  mahito:{name:"마히토",emoji:"🩸",grade:"특급",atk:120,def:98,spd:110,maxHp:1560,domain:"자폐원돈과",desc:"영혼을 변형하는 저주령.",lore:"\"영혼이 육체를 만드는 거야.\"",
+    skills:[{name:"영혼 변형",minMastery:0,dmg:128,desc:"영혼 타격.",statusApply:{target:"enemy",statusId:"weaken",chance:.4}},{name:"무위전변",minMastery:5,dmg:212,desc:"신체 변형.",statusApply:{target:"enemy",statusId:"stun",chance:.4}},{name:"편사지경체",minMastery:15,dmg:308,desc:"무한 변형.",statusApply:{target:"enemy",statusId:"weaken",chance:.6}},{name:"자폐원돈과",minMastery:30,dmg:455,desc:"경계 파괴 영역.",statusApply:{target:"enemy",statusId:"freeze",chance:.8}}]},
+  todo:{name:"토도 아오이",emoji:"💪",grade:"1급",atk:128,def:108,spd:112,maxHp:1500,domain:null,desc:"부기우기 구사 주술사.",lore:"\"너의 이상형은 어떤 여자야?\"",
+    skills:[{name:"부기우기",minMastery:0,dmg:130,desc:"위치 전환 + 빙결.",statusApply:{target:"enemy",statusId:"freeze",chance:.4}},{name:"브루탈 펀치",minMastery:5,dmg:215,desc:"파괴적 주먹.",statusApply:{target:"enemy",statusId:"weaken",chance:.3}},{name:"흑섬",minMastery:15,dmg:320,desc:"이타도리에게 배운 흑섬!",statusApply:{target:"enemy",statusId:"burn",chance:.45}},{name:"전투본능",minMastery:30,dmg:200,desc:"ATK 40%↑ 버프!",statusApply:{target:"self",statusId:"battleInstinct",chance:1.0}}]},
+  hakari:{name:"하카리 키리토",emoji:"🎰",grade:"1급",atk:125,def:105,spd:110,maxHp:1650,domain:"질풍강운",desc:"복권 술식 주술사.",lore:"\"운도 실력이다!\"",
+    skills:[{name:"험한 도박",minMastery:0,dmg:125,desc:"도박 공격.",statusApply:{target:"enemy",statusId:"stun",chance:.3}},{name:"질풍열차",minMastery:5,dmg:210,desc:"열차처럼 돌진.",statusApply:{target:"enemy",statusId:"weaken",chance:.4}},{name:"유한 소설",minMastery:15,dmg:315,desc:"불멸의 몸.",statusApply:{target:"self",statusId:"battleInstinct",chance:.6}},{name:"질풍강운",minMastery:30,dmg:480,desc:"운 영역전개.",statusApply:{target:"enemy",statusId:"freeze",chance:.7}}]},
+};
+
+// ── 적 데이터 ────────────────────────────────────────────
+const ENEMIES = [
+  {id:"e1",name:"저급 저주령",   emoji:"👹",hp:550, atk:38, def:12, xp:75, crystals:18, masteryXp:1, fingers:0,statusAttack:null},
+  {id:"e2",name:"1급 저주령",    emoji:"👺",hp:1100,atk:80, def:40, xp:190,crystals:40, masteryXp:3, fingers:0,statusAttack:{statusId:"poison",chance:.3}},
+  {id:"e3",name:"특급 저주령",   emoji:"💀",hp:2400,atk:128,def:72, xp:440,crystals:90, masteryXp:7, fingers:1,statusAttack:{statusId:"burn",chance:.4}},
+  {id:"e4",name:"저주의 왕 보스",emoji:"👑",hp:5500,atk:195,def:110,xp:1000,crystals:200,masteryXp:15,fingers:3,statusAttack:{statusId:"weaken",chance:.5}},
+];
+const JUJUTSU_ENEMIES = [
+  {id:"j1",name:"약화된 저주령",  emoji:"💧",hp:300, atk:25, def:8,  xp:55, crystals:12, masteryXp:1, points:1,fingers:0,statusAttack:null,          desc:"⚡ 빠르지만 약함 (1포인트)"},
+  {id:"j2",name:"중간급 저주령",  emoji:"🌀",hp:620, atk:55, def:28, xp:115,crystals:28, masteryXp:2, points:1,fingers:0,statusAttack:{statusId:"weaken",chance:.2},desc:"⚖️ 균형잡힌 몹 (1포인트)"},
+  {id:"j3",name:"강화 저주령",    emoji:"🔥",hp:450, atk:75, def:22, xp:95, crystals:23, masteryXp:2, points:1,fingers:0,statusAttack:{statusId:"burn",chance:.35},  desc:"💥 공격적 (1포인트)"},
+  {id:"j4",name:"특수 저주령",    emoji:"☠️",hp:960, atk:88, def:48, xp:190,crystals:45, masteryXp:4, points:2,fingers:0,statusAttack:{statusId:"poison",chance:.4}, desc:"🧪 독 공격 (2포인트)"},
+  {id:"j5",name:"엘리트 저주령",  emoji:"💀",hp:1380,atk:108,def:60, xp:280,crystals:70, masteryXp:6, points:3,fingers:1,statusAttack:{statusId:"burn",chance:.5},   desc:"⚔️ 강력한 엘리트 (3포인트)"},
+  {id:"j6",name:"사멸회유 수호자",emoji:"👹",hp:2100,atk:135,def:82, xp:440,crystals:100,masteryXp:10,points:5,fingers:2,statusAttack:{statusId:"weaken",chance:.6}, desc:"🏆 최강 수호자 (5포인트)"},
+];
+
+// ── 가챠 풀 ──────────────────────────────────────────────
+const GACHA_POOL = [
+  {id:"gojo",rate:.3},{id:"yuta",rate:.45},{id:"geto",rate:.9},{id:"jogo",rate:.6},
+  {id:"mahito",rate:.6},{id:"hanami",rate:.7},{id:"dagon",rate:.7},{id:"itadori",rate:2.5},
+  {id:"megumi",rate:6},{id:"nanami",rate:6},{id:"maki",rate:6.5},{id:"nobara",rate:6.5},
+  {id:"higuruma",rate:6.5},{id:"todo",rate:5},{id:"panda",rate:32},{id:"inumaki",rate:23.75},{id:"hakari",rate:5},
+];
+function rollGacha(count=1) {
+  const total=GACHA_POOL.reduce((s,p)=>s+p.rate,0);
+  return Array.from({length:count},()=>{ let r=Math.random()*total; for(const e of GACHA_POOL){r-=e.rate;if(r<=0)return e.id;} return GACHA_POOL.at(-1).id; });
+}
+const REVERSE_CHARS = new Set(["gojo","yuta"]);
+const CODES = {"release":{crystals:200},"sorryforbugs":{crystals:1000}};
