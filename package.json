@@ -1,6 +1,6 @@
 {
   "name": "jjk-rpg-bot",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "주술회전 RPG 디스코드 봇",
   "main": "index.js",
   "scripts": {
