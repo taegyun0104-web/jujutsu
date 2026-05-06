@@ -2587,7 +2587,7 @@ async function handleSlashCommand(interaction,commandName,player,userId,user) {
 // PART 2 는 별도 파일로 계속됩니다 (!명령어 핸들러 + client.login)
 module.exports = { client, players, battles, cullings, jujutsus, parties, partyInvites, pvpSessions, pvpChallenges, raidSessions };
 // ════════════════════════════════════════════════════════
-// ── ! 명령어 핸들러 (PART 2 - 원본 UI 유지)
+// ── ! 명령어 핸들러 (PART 2 - 상태이상 수정)
 // ════════════════════════════════════════════════════════
 
 client.on("messageCreate", async (message) => {
@@ -2719,18 +2719,17 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  // ==================== 활성 (수정됨 - 셀렉트 메뉴 사용) ====================
+  // ==================== 활성 ====================
   if (cmd === "활성") {
     if (player.owned.length === 0) return message.reply("❌ 보유 캐릭터 없음!");
     
-    // 셀렉트 메뉴 생성
     const options = [];
     for (const id of player.owned) {
       const ch = CHARACTERS[id];
       const isActive = id === player.active;
       options.push({
         label: `${ch.name} [${ch.grade}]`,
-        description: `${ch.desc.slice(0, 50)}${ch.desc.length > 50 ? "..." : ""}`,
+        description: ch.desc.slice(0, 50),
         value: id,
         emoji: ch.emoji,
         default: isActive
@@ -3120,10 +3119,10 @@ client.on("messageCreate", async (message) => {
 });
 
 // ════════════════════════════════════════════════════════
-// ── 버튼 핸들러 (수정됨 - PART 1의 원본 버튼 처리 유지)
+// ── 버튼 및 셀렉트 메뉴 핸들러
 // ════════════════════════════════════════════════════════
 client.on("interactionCreate", async (interaction) => {
-  // ========== 셀렉트 메뉴 ==========
+  // 셀렉트 메뉴
   if (interaction.isStringSelectMenu()) {
     const userId = interaction.user.id;
     const player = getPlayer(userId, interaction.user.username);
@@ -3146,7 +3145,7 @@ client.on("interactionCreate", async (interaction) => {
     }
   }
 
-  // ========== 버튼 ==========
+  // 버튼
   if (!interaction.isButton()) return;
   
   const { customId, user } = interaction;
@@ -3231,7 +3230,6 @@ client.once("ready", async () => {
   await dbInit();
   players = await dbLoad();
   console.log(`🚀 주술회전 RPG 봇 활성화 (${Object.keys(players).length}명 로드)`);
-  console.log(`✨ 기능: 흑섬(10%) | 스쿠나 레이드 | 마허라가라 | PvP | 파티 | 회복약 드랍(40~75%)`);
 });
 
 client.login(TOKEN);
