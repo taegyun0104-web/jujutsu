@@ -2547,3 +2547,228 @@ client.on("messageCreate", async (message) => {
 });
 
 client.login(TOKEN);
+// ============================================================
+// 주술회전 RPG 봇 - 추가 기능 코드 모음
+// 아래 코드를 원본 index.js 맨 아래에 통째로 붙여넣으세요
+// ============================================================
+
+// ==================== 1. 필요한 패키지 임포트 (맨 위에 추가) ====================
+/*
+const { createCanvas, loadImage } = require("canvas");
+const GIFEncoder = require("gifencoder");
+const { createWriteStream, readFileSync, unlinkSync, existsSync, mkdirSync } = require("fs");
+const path = require("path");
+*/
+
+// ==================== 2. GIF 프로필 카드 ====================
+const GIF_DIR = path.join(__dirname, "temp_gifs");
+if (!existsSync(GIF_DIR)) mkdirSync(GIF_DIR);
+
+async function createJJKGifProfileCard(player, stats, ch, avatarUrl) {
+  const width = 600, height = 800;
+  const encoder = new GIFEncoder(width, height);
+  const tempPath = path.join(GIF_DIR, `profile_${player.id || Date.now()}.gif`);
+  const stream = createWriteStream(tempPath);
+  encoder.createReadStream().pipe(stream);
+  encoder.start(); encoder.setRepeat(0); encoder.setDelay(120); encoder.setQuality(10);
+  for (let f = 0; f < 12; f++) {
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+    const grad = ctx.createLinearGradient(0, 0, width, height);
+    grad.addColorStop(0, "#0a0a1a"); grad.addColorStop(0.5, "#1a1a2e"); grad.addColorStop(1, "#0d0d1a");
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, width, height);
+    ctx.font = "bold 80px 'Noto Sans KR'"; ctx.fillStyle = "rgba(255,255,255,0.03)";
+    ctx.fillText("呪", 50, 200); ctx.fillText("術", 450, 400); ctx.fillText("迴", 100, 600); ctx.fillText("戦", 480, 750);
+    const colors = ["#F5C842", "#ff8c00", "#e63946", "#7C5CFC"];
+    ctx.strokeStyle = colors[f % 4]; ctx.lineWidth = 6; ctx.strokeRect(12, 12, width - 24, height - 24);
+    ctx.lineWidth = 3; ctx.strokeStyle = "#F5C842";
+    ctx.beginPath(); ctx.moveTo(12, 52); ctx.lineTo(12, 12); ctx.lineTo(52, 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(width - 12, 52); ctx.lineTo(width - 12, 12); ctx.lineTo(width - 52, 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(12, height - 52); ctx.lineTo(12, height - 12); ctx.lineTo(52, height - 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(width - 12, height - 52); ctx.lineTo(width - 12, height - 12); ctx.lineTo(width - 52, height - 12); ctx.stroke();
+    const as = 80, ax = width - as - 25, ay = 25;
+    try { const img = await loadImage(avatarUrl); ctx.save(); ctx.beginPath(); ctx.arc(ax + as / 2, ay + as / 2, as / 2, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(img, ax, ay, as, as); ctx.restore(); } catch (e) { ctx.fillStyle = "#2a2a3e"; ctx.beginPath(); ctx.arc(ax + as / 2, ay + as / 2, as / 2, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#aaa"; ctx.font = "40px sans-serif"; ctx.fillText("👤", ax + 20, ay + 55); }
+    ctx.font = "bold 32px 'Noto Sans KR'"; ctx.fillStyle = "#F5C842"; ctx.textAlign = "center"; ctx.fillText(ch.name, width / 2, 80);
+    ctx.font = "18px 'Noto Sans KR'"; ctx.fillStyle = "#ff8c00"; ctx.fillText(JJK_GRADE_LABEL[ch.grade] || `【${ch.grade}】`, width / 2, 120);
+    if (ch.domain) { ctx.font = "14px monospace"; ctx.fillStyle = "#7C5CFC"; ctx.fillText(`🌌 영역: ${ch.domain}`, width / 2, 150); }
+    const hpPct = Math.max(0, player.hp) / stats.maxHp;
+    ctx.fillStyle = "#330000"; ctx.fillRect(50, 190, 500, 20);
+    if (hpPct > 0.6) ctx.fillStyle = "#4ade80"; else if (hpPct > 0.3) ctx.fillStyle = "#facc15"; else ctx.fillStyle = "#ef4444";
+    ctx.fillRect(50, 190, 500 * hpPct, 20);
+    ctx.font = "bold 14px monospace"; ctx.fillStyle = "#fff"; ctx.fillText(`${Math.max(0, player.hp)}/${stats.maxHp} HP`, width / 2, 206);
+    ctx.font = "16px monospace"; ctx.fillStyle = "#ddd"; ctx.fillText(`🗡️ ATK ${stats.atk}    🛡️ DEF ${stats.def}    💨 SPD ${ch.spd}`, width / 2, 250);
+    const skill = getCurrentSkill(player, player.active);
+    ctx.font = "bold 18px 'Noto Sans KR'"; ctx.fillStyle = "#7C5CFC"; ctx.fillText(`🌀 ${skill.name}`, width / 2, 300);
+    ctx.font = "12px monospace"; ctx.fillStyle = "#aaa"; ctx.fillText(`피해 ${skill.dmg}  ·  숙련도 ${getMastery(player, player.active)}`, width / 2, 325);
+    ctx.font = "18px monospace"; ctx.fillStyle = "#F5C842"; ctx.fillText(`💎 ${player.crystals}`, width / 2 - 80, 380);
+    ctx.fillStyle = "#4ade80"; ctx.fillText(`⭐ LV.${getLevel(player.xp)}`, width / 2 + 40, 380);
+    const xpNow = player.xp % 200; ctx.fillStyle = "#2a2a3e"; ctx.fillRect(50, 400, 500, 12); ctx.fillStyle = "#F5C842"; ctx.fillRect(50, 400, 500 * (xpNow / 200), 12);
+    ctx.font = "italic 14px 'Noto Sans KR'"; ctx.fillStyle = "rgba(245,200,66,0.5)"; ctx.fillText("🔱 JUJUTSU KAISEN · 呪術廻戦 🔱", width / 2, height - 25);
+    encoder.addFrame(ctx);
+  }
+  encoder.finish(); await new Promise(r => stream.on("finish", r)); const buf = readFileSync(tempPath); unlinkSync(tempPath); return buf;
+}
+
+// ==================== 3. 일일/주간 퀘스트 시스템 ====================
+const DAILY_QUESTS = [
+  { id: "d1", name: "일반 전투 3회 승리", target: 3, type: "battle_win", reward: { crystals: 50, xp: 100 } },
+  { id: "d2", name: "컬링 5웨이브 클리어", target: 5, type: "culling_wave", reward: { crystals: 80, xp: 150 } },
+  { id: "d3", name: "스킬 사용 10회", target: 10, type: "skill_use", reward: { crystals: 40, xp: 80, masteryXp: 5 } },
+  { id: "d4", name: "적 5마리 처치", target: 5, type: "enemy_kill", reward: { crystals: 45, xp: 90 } },
+];
+const WEEKLY_QUESTS = [
+  { id: "w1", name: "일반 전투 20회 승리", target: 20, type: "battle_win", reward: { crystals: 300, xp: 500, fingers: 1 } },
+  { id: "w2", name: "컬링 30웨이브 클리어", target: 30, type: "culling_wave", reward: { crystals: 400, xp: 600 } },
+  { id: "w3", name: "PvP 5회 승리", target: 5, type: "pvp_win", reward: { crystals: 500, xp: 800 } },
+  { id: "w4", name: "스쿠나 손가락 3개 획득", target: 3, type: "finger_get", reward: { crystals: 600, xp: 1000 } },
+];
+function initQuestData(p) { const now = Date.now(); if (!p.quests) p.quests = { daily: DAILY_QUESTS.map(q => ({ ...q, progress: 0, completed: false, claimed: false })), weekly: WEEKLY_QUESTS.map(q => ({ ...q, progress: 0, completed: false, claimed: false })), lastDailyReset: now, lastWeeklyReset: now }; if (now - p.quests.lastDailyReset >= 86400000) { p.quests.daily.forEach(q => { q.progress = 0; q.completed = false; q.claimed = false; }); p.quests.lastDailyReset = now; } if (now - p.quests.lastWeeklyReset >= 604800000) { p.quests.weekly.forEach(q => { q.progress = 0; q.completed = false; q.claimed = false; }); p.quests.lastWeeklyReset = now; } }
+function updateQuestProgress(p, type, amt = 1) { initQuestData(p); for (const q of p.quests.daily) if (!q.completed && q.type === type) { q.progress += amt; if (q.progress >= q.target) q.completed = true; } for (const q of p.quests.weekly) if (!q.completed && q.type === type) { q.progress += amt; if (q.progress >= q.target) q.completed = true; } }
+function claimQuestReward(p, qid, isDaily) { const list = isDaily ? p.quests.daily : p.quests.weekly; const q = list.find(q => q.id === qid); if (!q || !q.completed || q.claimed) return { success: false, message: "보상을 받을 수 없습니다" }; const r = q.reward; p.crystals += r.crystals || 0; p.xp += r.xp || 0; if (r.masteryXp && p.active) p.mastery[p.active] = (p.mastery[p.active] || 0) + r.masteryXp; if (r.fingers) p.sukunaFingers = Math.min(SUKUNA_FINGER_MAX, (p.sukunaFingers || 0) + r.fingers); q.claimed = true; return { success: true, message: `✅ ${q.name} 보상 지급!` }; }
+function getQuestEmbed(p) { initQuestData(p); return new EmbedBuilder().setTitle("📋 일일/주간 퀘스트").setColor(0xF5C842).addFields({ name: "🌞 일일 퀘스트", value: p.quests.daily.map(q => `${q.completed ? (q.claimed ? "✅" : "🎁") : "⏳"} ${q.name} ${q.progress}/${q.target}`).join("\n") || "없음" }, { name: "📅 주간 퀘스트", value: p.quests.weekly.map(q => `${q.completed ? (q.claimed ? "✅" : "🎁") : "⏳"} ${q.name} ${q.progress}/${q.target}`).join("\n") || "없음" }); }
+
+// ==================== 4. 주구(주술구) 제작 시스템 ====================
+const JUJUTSU_TOOLS = {
+  "흑단 지팡이": { grade: "특급", materials: { "어두운 결정": 5, "저주의 파편": 10, "스쿠나의 손톱": 1 }, atkBonus: 50, effect: "공격 시 20% 확률로 약화 부여", emoji: "🪄" },
+  "옥운": { grade: "1급", materials: { "빛나는 구슬": 3, "저주의 파편": 8 }, atkBonus: 30, effect: "HP 30% 이하 시 방어력 50% 증가", emoji: "🔮" },
+  "저주 못": { grade: "2급", materials: { "저주의 파편": 5, "녹슨 못": 3 }, atkBonus: 15, effect: "공격 시 10% 확률로 출혈", emoji: "📌" },
+  "저주 도구": { grade: "3급", materials: { "저주의 파편": 3 }, atkBonus: 8, effect: "기본 공격 데미지 +8", emoji: "⚔️" },
+};
+const MATERIAL_DROPS = { "저주의 파편": { rate: 0.6, min: 1, max: 3 }, "어두운 결정": { rate: 0.2, min: 1, max: 1 }, "녹슨 못": { rate: 0.3, min: 1, max: 2 }, "빛나는 구슬": { rate: 0.1, min: 1, max: 1 }, "스쿠나의 손톱": { rate: 0.05, min: 1, max: 1 } };
+function dropMaterials() { const drops = []; for (const [m, d] of Object.entries(MATERIAL_DROPS)) if (Math.random() < d.rate) drops.push({ material: m, amount: d.min + Math.floor(Math.random() * (d.max - d.min + 1)) }); return drops; }
+function addMaterials(p, drops) { if (!p.materials) p.materials = {}; for (const d of drops) p.materials[d.material] = (p.materials[d.material] || 0) + d.amount; }
+function canCraftTool(p, name) { const t = JUJUTSU_TOOLS[name]; if (!t) return { success: false, message: "없는 주구" }; for (const [mat, need] of Object.entries(t.materials)) if ((p.materials?.[mat] || 0) < need) return { success: false, message: `${mat} ${need}개 부족` }; return { success: true }; }
+function craftTool(p, name) { const check = canCraftTool(p, name); if (!check.success) return check; const t = JUJUTSU_TOOLS[name]; for (const [mat, need] of Object.entries(t.materials)) { p.materials[mat] -= need; if (p.materials[mat] <= 0) delete p.materials[mat]; } if (!p.tools) p.tools = []; const exist = p.tools.find(t => t.name === name); if (exist) exist.count++; else p.tools.push({ name, count: 1, equipped: false }); return { success: true, message: `✅ ${name} 제작 완료!` }; }
+function equipTool(p, name) { const t = p.tools?.find(t => t.name === name); if (!t) return { success: false, message: "해당 주구 없음" }; p.tools.forEach(t => t.equipped = false); t.equipped = true; p.equippedTool = name; return { success: true, message: `✅ ${name} 장착!` }; }
+function unequipTool(p) { if (p.tools) p.tools.forEach(t => t.equipped = false); p.equippedTool = null; return { success: true, message: "주구 해제!" }; }
+function getMaterialsEmbed(p) { return new EmbedBuilder().setTitle("🎒 재료 인벤토리").setColor(0x7C5CFC).setDescription(Object.entries(p.materials || {}).map(([m, c]) => `> ${m}: ${c}개`).join("\n") || "보유 재료 없음"); }
+
+// ==================== 5. 전투/영역전개 개선 ====================
+// 영역전개 함수 (기존 domain 버튼용)
+async function useDomain(interaction, player, enemy, sessionType = "battle") {
+  const ch = CHARACTERS[player.active];
+  if (!ch.domain) return interaction.reply({ content: "❌ 영역전개가 없습니다!", ephemeral: true });
+  let dmg = Math.floor(getPlayerStats(player).atk * 3 - (enemy.def || 0) * 0.3);
+  if (player.active === "gojo") dmg = Math.floor(dmg * 1.2);
+  if (player.active === "sukuna") dmg = Math.floor(dmg * 1.3);
+  if (sessionType === "battle") enemy.currentHp = Math.max(0, enemy.currentHp - dmg);
+  else enemy.enemyHp = Math.max(0, enemy.enemyHp - dmg);
+  updateQuestProgress(player, "domain_use", 1);
+  const embed = new EmbedBuilder().setTitle(`🌌 ${ch.domain}!`).setColor(0x00ffff).setDescription(`**${dmg}** 데미지! 영역전개 발동!`);
+  await interaction.update({ embeds: [embed], components: [] });
+  return dmg;
+}
+
+// 반전술식 개선 (더 많은 캐릭터 사용 가능)
+const REVERSE_CHARS = new Set(["gojo", "yuta", "sukuna", "geto", "hakari"]);
+
+// 흑섬 확률 증가 및 효과 강화
+function checkBlackFlash() {
+  if (Math.random() < 0.2) { return { isBlackFlash: true, dmgMult: 2.2, crystals: 60 }; }
+  return { isBlackFlash: false, dmgMult: 1, crystals: 0 };
+}
+
+// ==================== 6. 프로필 명령어 수정용 (GIF 버전) ====================
+// 기존 프로필 명령어 부분을 아래로 교체하세요
+/*
+if (cmd === "프로필" || commandName === "프로필") {
+  const stats = getPlayerStats(player);
+  const ch = CHARACTERS[player.active];
+  const avatarUrl = (interaction?.user || message.author).displayAvatarURL({ extension: "png", size: 256 });
+  try {
+    const gifBuffer = await createJJKGifProfileCard(player, stats, ch, avatarUrl);
+    const reply = { content: `🔱 **${player.name}**님의 주술사 프로필`, files: [{ attachment: gifBuffer, name: "profile.gif" }] };
+    if (interaction) await interaction.editReply(reply);
+    else await message.reply(reply);
+  } catch (err) {
+    if (interaction) await interaction.editReply({ embeds: [profileEmbed(player)] });
+    else await message.reply({ embeds: [profileEmbed(player)] });
+  }
+}
+*/
+
+// ==================== 7. 플레이어 초기화에 추가할 필드 ====================
+// getPlayer 함수 내 players[userId] 생성 시 아래 필드들을 추가하세요
+/*
+quests: null,
+materials: {},
+tools: [],
+equippedTool: null,
+achievements: { ...기존 도전과제, toolCrafter: false }
+*/
+
+// ==================== 8. 전투 승리 시 추가할 코드 ====================
+// 적 처치 후 보상 지급 전에 아래 코드를 추가하세요
+/*
+updateQuestProgress(player, "battle_win", 1);
+updateQuestProgress(player, "enemy_kill", 1);
+const drops = dropMaterials();
+if (drops.length > 0) {
+  addMaterials(player, drops);
+  await interaction.followUp({ content: `🎁 재료 획득! ${drops.map(d => `${d.material} x${d.amount}`).join(", ")}` });
+}
+*/
+
+// ==================== 9. 컬링 승리 시 추가할 코드 ====================
+// 웨이브 클리어 후 아래 코드를 추가하세요
+/*
+updateQuestProgress(player, "culling_wave", 1);
+updateQuestProgress(player, "enemy_kill", 1);
+const drops = dropMaterials();
+if (drops.length > 0) addMaterials(player, drops);
+*/
+
+// ==================== 10. 새 명령어 추가 ====================
+// commands 배열에 아래 명령어들을 추가하세요
+/*
+{ name: "퀘스트", description: "일일/주간 퀘스트 확인" },
+{ name: "퀘스트보상", description: "퀘스트 보상 수령", options: [{ name: "타입", type: 3, description: "일일 또는 주간", required: true }, { name: "번호", type: 4, description: "퀘스트 번호", required: true }] },
+{ name: "제작", description: "주구 제작", options: [{ name: "주구명", type: 3, description: "제작할 주구 이름", required: true }] },
+{ name: "장착", description: "주구 장착", options: [{ name: "주구명", type: 3, description: "장착할 주구 이름", required: true }] },
+{ name: "해제", description: "주구 해제" },
+{ name: "재료", description: "재료 확인" },
+*/
+
+// ==================== 11. 명령어 핸들러 추가 ====================
+// interactionCreate와 messageCreate에 아래 핸들러를 추가하세요
+/*
+else if (cmd === "퀘스트" || commandName === "퀘스트") {
+  await (interaction?.reply || message.reply).call(interaction || message, { embeds: [getQuestEmbed(player)] });
+}
+else if (cmd === "퀘스트보상" || commandName === "퀘스트보상") {
+  const type = interaction?.options?.getString("타입") || args[1];
+  const num = interaction?.options?.getInteger("번호") || parseInt(args[2]);
+  const isDaily = type === "일일";
+  const list = isDaily ? player.quests.daily : player.quests.weekly;
+  if (num < 1 || num > list.length) return (interaction?.reply || message.reply).call(interaction || message, "잘못된 번호");
+  const result = claimQuestReward(player, list[num - 1].id, isDaily);
+  await (interaction?.reply || message.reply).call(interaction || message, result.message);
+  if (result.success) savePlayer(userId);
+}
+else if (cmd === "제작" || commandName === "제작") {
+  const toolName = interaction?.options?.getString("주구명") || args[1];
+  if (!toolName) return (interaction?.reply || message.reply).call(interaction || message, "!제작 [주구명]");
+  const result = craftTool(player, toolName);
+  await (interaction?.reply || message.reply).call(interaction || message, result.message);
+  if (result.success) { updateQuestProgress(player, "tool_craft", 1); savePlayer(userId); }
+}
+else if (cmd === "장착" || commandName === "장착") {
+  const toolName = interaction?.options?.getString("주구명") || args[1];
+  if (!toolName) return (interaction?.reply || message.reply).call(interaction || message, "!장착 [주구명]");
+  const result = equipTool(player, toolName);
+  await (interaction?.reply || message.reply).call(interaction || message, result.message);
+  if (result.success) savePlayer(userId);
+}
+else if (cmd === "해제" || commandName === "해제") {
+  const result = unequipTool(player);
+  await (interaction?.reply || message.reply).call(interaction || message, result.message);
+  savePlayer(userId);
+}
+else if (cmd === "재료" || commandName === "재료") {
+  await (interaction?.reply || message.reply).call(interaction || message, { embeds: [getMaterialsEmbed(player)] });
+}
+*/
+
+// ============================================================
+console.log("✅ 추가 기능 코드 로드 완료!");
+// ============================================================
