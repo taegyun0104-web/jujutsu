@@ -2692,7 +2692,6 @@ async function processBattleWinV2(player, enemy) {
   const dropText = Object.keys(drops).length > 0 ? `\n\n📦 **재료 드롭:**\n${formatDrops(drops)}` : "";
   const questDone = getNewlyCompletedQuestMsg(player);
 
-  const embed = new EmbedBuilder()
     .setTitle(enemy.isSukuna ? "👹 스쿠나 격파!!" : "🏆 전투 승리!")
     .setColor(enemy.isSukuna ? 0x8b0000 : 0xF5C842)
     .setDescription([
