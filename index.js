@@ -625,8 +625,10 @@ function rollGacha(count = 1) {
 }
 
 const REVERSE_CHARS = new Set(["gojo", "yuta"]);
-const CODES = { "release": { crystals: 200 } };
-
+const CODES = { 
+  "release": { crystals: 200 },
+  "sorryforbugs": { crystals: 1000 },
+};
 // ════════════════════════════════════════════════════════
 // ── 인메모리 세션
 // ════════════════════════════════════════════════════════
@@ -2768,6 +2770,352 @@ client.on("interactionCreate", async (interaction) => {
 client.login(TOKEN);
 client.login(process.env.TOKEN);
 console.log("TOKEN:", process.env.TOKEN);
-client.on("messageCreate", msg => {
-  console.log("내용:", msg.content);
+// ════════════════════════════════════════════════════════
+// ── 느낌표(!) 명령어 핸들러 (messageCreate)
+// ════════════════════════════════════════════════════════
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+  const content = message.content.trim();
+  if (!content.startsWith("!")) return;
+
+  const args = content.slice(1).trim().split(/\s+/);
+  const cmd = args[0].toLowerCase();
+  const userId = message.author.id;
+  const player = getPlayer(userId, message.author.username);
+
+  // ── !프로필
+  if (cmd === "프로필") {
+    await message.reply({ embeds: [profileEmbed(player)] });
+  }
+
+  // ── !전투
+  else if (cmd === "전투") {
+    if (battles[userId]) return message.reply("❌ 이미 전투 중입니다!");
+    const enemy = { ...ENEMIES[0], currentHp: ENEMIES[0].hp };
+    battles[userId] = { enemy };
+    const embed = new EmbedBuilder()
+      .setTitle("⚔️ 전투 시작!")
+      .setColor(0xff0000)
+      .setDescription(`**${enemy.name}** 등장!`)
+      .addFields(
+        { name: "내 HP", value: `${player.hp}/${getPlayerStats(player).maxHp}`, inline: true },
+        { name: "적 HP", value: `${enemy.currentHp}/${enemy.hp}`, inline: true }
+      );
+    await message.reply({ embeds: [embed], components: [mkBattleButtons(player)] });
+  }
+
+  // ── !술식
+  else if (cmd === "술식") {
+    await message.reply({ embeds: [skillEmbed(player)] });
+  }
+
+  // ── !가챠 [1/10]
+  else if (cmd === "가챠") {
+    const count = parseInt(args[1]) || 1;
+    if (count !== 1 && count !== 10) return message.reply("❌ `!가챠 1` 또는 `!가챠 10` 으로 사용하세요!");
+    const cost = count === 1 ? 150 : 1350;
+    if (player.crystals < cost) return message.reply(`💎 크리스탈이 부족합니다! (필요: ${cost}, 보유: ${player.crystals})`);
+
+    player.crystals -= cost;
+    const loadingMsg = await message.reply({ embeds: [gachaLoadingEmbed(1)] });
+    await new Promise(r => setTimeout(r, 1500));
+    await loadingMsg.edit({ embeds: [gachaLoadingEmbed(2)] });
+    await new Promise(r => setTimeout(r, 1500));
+
+    if (count === 1) {
+      const result = rollGacha(1)[0];
+      const isNew = !player.owned.includes(result);
+      if (isNew) player.owned.push(result);
+      else player.crystals += 50;
+      const grade = CHARACTERS[result].grade;
+      await loadingMsg.edit({ embeds: [gachaRevealEmbed(grade), gachaResultEmbed(result, isNew, player)] });
+    } else {
+      const results = rollGacha(10);
+      const dupCrystals = results.filter(id => player.owned.includes(id)).length * 50;
+      const newOnes = results.filter(id => !player.owned.includes(id));
+      for (const id of newOnes) player.owned.push(id);
+      player.crystals += dupCrystals;
+      await loadingMsg.edit({ embeds: [gacha10ResultEmbed(results, newOnes, dupCrystals, player)] });
+    }
+    savePlayer(userId);
+  }
+
+  // ── !가챠10
+  else if (cmd === "가챠10") {
+    const cost = 1350;
+    if (player.crystals < cost) return message.reply(`💎 크리스탈이 부족합니다! (필요: ${cost})`);
+    player.crystals -= cost;
+    const loadingMsg = await message.reply({ embeds: [gachaLoadingEmbed(1)] });
+    await new Promise(r => setTimeout(r, 1500));
+    await loadingMsg.edit({ embeds: [gachaLoadingEmbed(2)] });
+    await new Promise(r => setTimeout(r, 1500));
+    const results = rollGacha(10);
+    const dupCrystals = results.filter(id => player.owned.includes(id)).length * 50;
+    const newOnes = results.filter(id => !player.owned.includes(id));
+    for (const id of newOnes) player.owned.push(id);
+    player.crystals += dupCrystals;
+    await loadingMsg.edit({ embeds: [gacha10ResultEmbed(results, newOnes, dupCrystals, player)] });
+    savePlayer(userId);
+  }
+
+  // ── !활성 [캐릭터id]
+  else if (cmd === "활성") {
+    const charId = (args[1] || "").toLowerCase();
+    if (!CHARACTERS[charId]) return message.reply("❌ 존재하지 않는 캐릭터입니다!\n사용 가능: " + Object.keys(CHARACTERS).join(", "));
+    if (!player.owned.includes(charId)) return message.reply("❌ 해당 캐릭터를 보유하지 않았습니다!");
+    player.active = charId;
+    const stats = getPlayerStats(player);
+    player.hp = stats.maxHp;
+    await message.reply(`✅ 활성 캐릭터를 **${CHARACTERS[charId].name}**(으)로 변경했습니다! HP가 회복되었습니다.`);
+    savePlayer(userId);
+  }
+
+  // ── !출석
+  else if (cmd === "출석") {
+    const now = Date.now();
+    const last = player.lastDaily || 0;
+    const diff = now - last;
+    if (diff < 86400000) {
+      const remaining = Math.ceil((86400000 - diff) / 3600000);
+      return message.reply(`⏰ 이미 출석했습니다! ${remaining}시간 후 다시 가능합니다.`);
+    }
+    const streakBonus = Math.min(player.dailyStreak || 0, 30);
+    const totalCrystals = 100 + streakBonus * 5;
+    player.crystals += totalCrystals;
+    player.lastDaily = now;
+    player.dailyStreak = (player.dailyStreak || 0) + 1;
+    await message.reply(`✅ 출석 체크! **+${totalCrystals}**💎 (연속 ${player.dailyStreak}일)`);
+    savePlayer(userId);
+  }
+
+  // ── !회복
+  else if (cmd === "회복") {
+    if (player.potion <= 0) return message.reply("❌ 회복약이 없습니다!");
+    const stats = getPlayerStats(player);
+    player.hp = stats.maxHp;
+    player.potion--;
+    await message.reply(`✅ HP가 가득 회복되었습니다! (남은 회복약: ${player.potion}개)`);
+    savePlayer(userId);
+  }
+
+  // ── !코가네가챠
+  else if (cmd === "코가네가챠") {
+    if (player.crystals < 200) return message.reply("💎 크리스탈이 부족합니다! (필요: 200)");
+    player.crystals -= 200;
+    player.koganeGachaCount = (player.koganeGachaCount || 0) + 1;
+    const grade = rollKogane();
+    const gradeOrder = ["3급", "2급", "1급", "특급", "전설"];
+    const isUpgrade = !player.kogane || gradeOrder.indexOf(grade) > gradeOrder.indexOf(player.kogane.grade);
+    if (isUpgrade) player.kogane = { grade };
+    else player.crystals += 50;
+    await message.reply({ embeds: [koganeGachaEmbed(grade, true, player)] });
+    savePlayer(userId);
+  }
+
+  // ── !코가네
+  else if (cmd === "코가네") {
+    await message.reply({ embeds: [koganeProfileEmbed(player)] });
+  }
+
+  // ── !손가락
+  else if (cmd === "손가락") {
+    const fingers = player.sukunaFingers || 0;
+    const bonus = getFingerBonus(fingers);
+    const embed = new EmbedBuilder()
+      .setTitle("👹 스쿠나 손가락")
+      .setColor(0x8b0000)
+      .setDescription([
+        "```",
+        `╔══════════════════════════════════╗`,
+        `║   🖕  R Y O M E N   S U K U N A  ║`,
+        `╠══════════════════════════════════╣`,
+        `║  ${"█".repeat(fingers)}${"░".repeat(20 - fingers)}  ║`,
+        `║        ${fingers} / 20         ║`,
+        `╚══════════════════════════════════╝`,
+        "```",
+        `> **${bonus.label}**`,
+        `> 🗡️ ATK +${bonus.atkBonus}`,
+        `> 🛡️ DEF +${bonus.defBonus}`,
+        `> 💚 HP +${bonus.hpBonus}`,
+      ].join("\n"));
+    await message.reply({ embeds: [embed] });
+  }
+
+  // ── !컬링
+  else if (cmd === "컬링") {
+    if (cullings[userId]) return message.reply("🌊 이미 컬링 중입니다!");
+    const firstEnemy = pickCullingEnemy(1);
+    cullings[userId] = {
+      wave: 1, kills: 0, totalXp: 0, totalCrystals: 0,
+      currentEnemy: firstEnemy, enemyHp: firstEnemy.hp,
+    };
+    await message.reply({ embeds: [cullingEmbed(player, cullings[userId])], components: [mkCullingButtons(player)] });
+  }
+
+  // ── !사멸회유
+  else if (cmd === "사멸회유") {
+    if (jujutsus[userId]) return message.reply("🎯 이미 사멸회유 중입니다!");
+    const choices = generateJujutsuChoices(1);
+    jujutsus[userId] = {
+      wave: 1, points: 0, totalXp: 0, totalCrystals: 0,
+      choices, currentEnemy: null, enemyHp: 0,
+    };
+    await message.reply({ embeds: [jujutsuEmbed(player, jujutsus[userId], [], choices)], components: mkJujutsuButtons(player, choices) });
+  }
+
+  // ── !결투 @유저
+  else if (cmd === "결투") {
+    const target = message.mentions.users.first();
+    if (!target) return message.reply("❌ 대상을 멘션하세요! `!결투 @유저`");
+    if (target.id === userId) return message.reply("❌ 자신과 결투할 수 없습니다!");
+    if (getPvpSessionByUser(userId) || getPvpSessionByUser(target.id)) {
+      return message.reply("❌ 둘 중 한 명이 이미 PvP 중입니다!");
+    }
+    pvpChallenges[userId] = { target: target.id };
+    const embed = new EmbedBuilder()
+      .setTitle("⚔️ PvP 결투 신청")
+      .setColor(0xF5C842)
+      .setDescription(`${target}님, **${message.author.username}**님이 결투를 신청했습니다!`)
+      .setFooter({ text: "30초 내에 수락/거절 가능" });
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`pvp_challenge_accept_${userId}`).setLabel("✅ 수락").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`pvp_challenge_decline_${userId}`).setLabel("❌ 거절").setStyle(ButtonStyle.Danger)
+    );
+    await message.reply({ content: `${target}`, embeds: [embed], components: [buttons] });
+    setTimeout(() => { if (pvpChallenges[userId]) delete pvpChallenges[userId]; }, 30000);
+  }
+
+  // ── !파티생성
+  else if (cmd === "파티생성") {
+    if (getPartyId(userId)) return message.reply("❌ 이미 파티에 소속되어 있습니다!");
+    const partyId = `${_partyIdSeq++}`;
+    parties[partyId] = { id: partyId, leader: userId, members: [userId], bestWave: 0 };
+    await message.reply(`✅ 파티가 생성되었습니다! ID: \`${partyId}\`\n\`!파티초대 @유저\` 로 초대하세요.`);
+  }
+
+  // ── !파티초대 @유저
+  else if (cmd === "파티초대") {
+    const target = message.mentions.users.first();
+    if (!target) return message.reply("❌ 대상을 멘션하세요! `!파티초대 @유저`");
+    const party = getParty(userId);
+    if (!party) return message.reply("❌ 파티에 소속되어 있지 않습니다!");
+    if (party.leader !== userId) return message.reply("❌ 파티장만 초대할 수 있습니다!");
+    if (party.members.length >= 4) return message.reply("❌ 파티가 가득 찼습니다! (최대 4명)");
+    if (getPartyId(target.id)) return message.reply("❌ 상대방이 이미 다른 파티에 소속되어 있습니다!");
+    partyInvites[target.id] = { partyId: party.id, inviter: userId };
+    const embed = new EmbedBuilder()
+      .setTitle("👥 파티 초대")
+      .setColor(0x4ade80)
+      .setDescription(`${target}님, **${message.author.username}**님이 파티에 초대했습니다!`);
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`party_invite_accept_${party.id}_${target.id}`).setLabel("✅ 수락").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`party_invite_decline_${party.id}_${target.id}`).setLabel("❌ 거절").setStyle(ButtonStyle.Danger)
+    );
+    await message.reply({ content: `${target}`, embeds: [embed], components: [buttons] });
+    setTimeout(() => { if (partyInvites[target.id]) delete partyInvites[target.id]; }, 60000);
+  }
+
+  // ── !파티나가기
+  else if (cmd === "파티나가기") {
+    const party = getParty(userId);
+    if (!party) return message.reply("❌ 파티에 소속되어 있지 않습니다!");
+    const isLeader = party.leader === userId;
+    party.members = party.members.filter(id => id !== userId);
+    if (party.members.length === 0) {
+      delete parties[party.id];
+      await message.reply("✅ 파티에서 나갔습니다. (파티가 해체되었습니다)");
+    } else {
+      if (isLeader) party.leader = party.members[0];
+      await message.reply(`✅ 파티에서 나갔습니다.${isLeader ? " 새 파티장이 지정되었습니다." : ""}`);
+    }
+  }
+
+  // ── !파티컬링
+  else if (cmd === "파티컬링") {
+    const party = getParty(userId);
+    if (!party) return message.reply("❌ 파티에 소속되어 있지 않습니다!");
+    if (party.leader !== userId) return message.reply("❌ 파티장만 시작할 수 있습니다!");
+    if (cullings[party.id]) return message.reply("🌊 이미 파티 컬링 중입니다!");
+    for (const uid of party.members) {
+      const p = players[uid];
+      if (p && p.hp <= 0) return message.reply(`❌ ${p.name}님이 전투 불능 상태입니다!`);
+    }
+    const firstEnemy = pickCullingEnemy(1);
+    cullings[party.id] = {
+      wave: 1, kills: 0, totalXp: 0, totalCrystals: 0,
+      currentEnemy: firstEnemy, enemyHp: firstEnemy.hp,
+    };
+    await message.reply({ embeds: [partyCullingEmbed(party, cullings[party.id])], components: [mkCullingButtons(player)] });
+  }
+
+  // ── !코드 [코드명]
+  else if (cmd === "코드") {
+    const code = (args[1] || "").toLowerCase();
+    if (!code) return message.reply("❌ 코드를 입력하세요! `!코드 [코드명]`");
+    if (player.usedCodes.includes(code)) return message.reply("❌ 이미 사용한 코드입니다!");
+    if (CODES[code]) {
+      player.crystals += CODES[code].crystals || 0;
+      player.usedCodes.push(code);
+      await message.reply(`✅ 코드 \`${code}\` 사용 완료! **+${CODES[code].crystals || 0}**💎`);
+      savePlayer(userId);
+    } else {
+      await message.reply("❌ 유효하지 않은 코드입니다!");
+    }
+  }
+
+  // ── !도움말
+  else if (cmd === "도움말" || cmd === "help") {
+    const embed = new EmbedBuilder()
+      .setTitle("🔱 주술회전 RPG — 명령어 목록")
+      .setColor(0xF5C842)
+      .setDescription([
+        "**⚔️ 전투**",
+        "`!전투` - 일반 전투 시작",
+        "`!컬링` - 웨이브 컬링 게임",
+        "`!사멸회유` - 포인트 수집 모드",
+        "`!결투 @유저` - PvP 결투 신청",
+        "",
+        "**👥 파티**",
+        "`!파티생성` - 파티 만들기",
+        "`!파티초대 @유저` - 파티 초대",
+        "`!파티나가기` - 파티 탈퇴",
+        "`!파티컬링` - 파티 컬링 시작",
+        "",
+        "**🎲 시스템**",
+        "`!프로필` - 내 정보 확인",
+        "`!가챠 [1/10]` - 캐릭터 뽑기",
+        "`!가챠10` - 10연차 단축",
+        "`!코가네가챠` - 펫 뽑기 (200💎)",
+        "`!코가네` - 코가네 펫 정보",
+        "`!활성 [캐릭터id]` - 주력 변경",
+        "`!술식` - 스킬 트리 보기",
+        "`!출석` - 매일 출석 보상",
+        "`!회복` - 회복약 사용",
+        "`!손가락` - 스쿠나 손가락 현황",
+        "`!코드 [코드]` - 쿠폰 사용",
+        "",
+        "슬래시 커맨드(`/`)도 동일하게 사용 가능합니다!",
+      ].join("\n"))
+      .setFooter({ text: "즐거운 게임 되세요! 🔱" });
+    await message.reply({ embeds: [embed] });
+  }
+
+  // ── 개발자 전용
+  else if (cmd === "쿨다운초기화" && isDev(userId)) {
+    player.skillCooldown = 0;
+    player.reverseCooldown = 0;
+    await message.reply("✅ 쿨다운이 초기화되었습니다!");
+    savePlayer(userId);
+  }
+
+  else if (cmd === "아이템지급" && isDev(userId)) {
+    const item = args[1] || "";
+    const amount = parseInt(args[2]) || 1;
+    if (item === "크리스탈") player.crystals += amount;
+    else if (item === "회복약") player.potion += amount;
+    else if (item === "손가락") player.sukunaFingers = Math.min(20, (player.sukunaFingers || 0) + amount);
+    else return message.reply("❌ 아이템: 크리스탈, 회복약, 손가락");
+    await message.reply(`✅ ${item} +${amount} 지급!`);
+    savePlayer(userId);
+  }
 });
