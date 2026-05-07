@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════
-// 주술회전 RPG 봇 — 완전 개선판 v3.0
+// 주술회전 RPG 봇 — 완전 수정본 (코가네 컷씬 추가)
 // ════════════════════════════════════════════════════════
 require("dotenv").config();
 const express = require("express");
@@ -103,7 +103,7 @@ const GACHA_RARITY = {
 };
 
 // ════════════════════════════════════════════════════════
-// ── 재료 시스템
+// ── 📦 재료 시스템 (한글 키)
 // ════════════════════════════════════════════════════════
 const MATERIALS = {
   "저주 실":   { name:"저주 실",   emoji:"🧵", desc:"저급 저주령에서 획득" },
@@ -116,50 +116,128 @@ const MATERIALS = {
 };
 
 // ════════════════════════════════════════════════════════
-// ── 주구 시스템
+// ── 주구 시스템 (이름으로 검색)
 // ════════════════════════════════════════════════════════
 const WEAPONS = {
-  "저주 단검": { id:"cursed_knife",   name:"저주 단검",   emoji:"🗡️",    grade:"일반", atkBonus:15,  defBonus:0,  hpBonus:0,   desc:"저주 에너지가 깃든 단검.",        recipe:{"저주 실":3,"철 파편":5},                              color:0x94a3b8 },
-  "저주 도검": { id:"cursed_blade",   name:"저주 도검",   emoji:"⚔️",    grade:"희귀", atkBonus:35,  defBonus:5,  hpBonus:100, desc:"날카로운 저주 도검.",             recipe:{"저주 뼈":4,"철 파편":8,"저주 실":2},                  color:0x4ade80 },
-  "저주 창":   { id:"cursed_spear",   name:"저주 창",     emoji:"🔱",    grade:"희귀", atkBonus:45,  defBonus:0,  hpBonus:0,   desc:"원거리 공격이 가능한 저주 창.",   recipe:{"저주 뼈":5,"저주 실":5},                              color:0x4ade80 },
-  "영혼 방패": { id:"spirit_shield",  name:"영혼 방패",   emoji:"🛡️",   grade:"고급", atkBonus:5,   defBonus:40, hpBonus:300, desc:"영혼 정수로 만든 방어 도구.",     recipe:{"영혼 정수":3,"저주 핵":2,"철 파편":10},               color:0x7C5CFC },
-  "저주 망치": { id:"cursed_hammer",  name:"저주 망치",   emoji:"🔨",    grade:"고급", atkBonus:60,  defBonus:10, hpBonus:150, desc:"묵직한 저주 망치.",               recipe:{"저주 핵":3,"저주 뼈":6,"철 파편":12},                 color:0x7C5CFC },
-  "용의 검":   { id:"dragon_sword",   name:"용의 검",     emoji:"🐉⚔️", grade:"전설", atkBonus:100, defBonus:30, hpBonus:500, desc:"용 비늘로 만든 전설의 검.",       recipe:{"용 비늘":3,"저주 수정":2,"영혼 정수":5,"저주 핵":4},  color:0xF5C842 },
-  "스쿠나의 그릇": { id:"sukuna_vessel", name:"스쿠나의 그릇", emoji:"👹", grade:"전설", atkBonus:80, defBonus:20, hpBonus:800, desc:"스쿠나의 힘이 깃든 주구.", recipe:{"저주 수정":3,"용 비늘":2,"저주 핵":6}, color:0x8b0000 },
+  "저주 단검": { 
+    id: "cursed_knife", name: "저주 단검", emoji: "🗡️", grade: "일반", 
+    atkBonus: 15, defBonus: 0, hpBonus: 0, 
+    desc: "저주 에너지가 깃든 단검.", 
+    recipe: { "저주 실": 3, "철 파편": 5 }, 
+    color: 0x94a3b8 
+  },
+  "저주 도검": { 
+    id: "cursed_blade", name: "저주 도검", emoji: "⚔️", grade: "희귀", 
+    atkBonus: 35, defBonus: 5, hpBonus: 100, 
+    desc: "날카로운 저주 도검.", 
+    recipe: { "저주 뼈": 4, "철 파편": 8, "저주 실": 2 }, 
+    color: 0x4ade80 
+  },
+  "저주 창": { 
+    id: "cursed_spear", name: "저주 창", emoji: "🔱", grade: "희귀", 
+    atkBonus: 45, defBonus: 0, hpBonus: 0, 
+    desc: "원거리 공격이 가능한 저주 창.", 
+    recipe: { "저주 뼈": 5, "저주 실": 5 }, 
+    color: 0x4ade80 
+  },
+  "영혼 방패": { 
+    id: "spirit_shield", name: "영혼 방패", emoji: "🛡️", grade: "고급", 
+    atkBonus: 5, defBonus: 40, hpBonus: 300, 
+    desc: "영혼 정수로 만든 방어 도구.", 
+    recipe: { "영혼 정수": 3, "저주 핵": 2, "철 파편": 10 }, 
+    color: 0x7C5CFC 
+  },
+  "저주 망치": { 
+    id: "cursed_hammer", name: "저주 망치", emoji: "🔨", grade: "고급", 
+    atkBonus: 60, defBonus: 10, hpBonus: 150, 
+    desc: "묵직한 저주 망치.", 
+    recipe: { "저주 핵": 3, "저주 뼈": 6, "철 파편": 12 }, 
+    color: 0x7C5CFC 
+  },
+  "용의 검": { 
+    id: "dragon_sword", name: "용의 검", emoji: "🐉⚔️", grade: "전설", 
+    atkBonus: 100, defBonus: 30, hpBonus: 500, 
+    desc: "용 비늘로 만든 전설의 검.", 
+    recipe: { "용 비늘": 3, "저주 수정": 2, "영혼 정수": 5, "저주 핵": 4 }, 
+    color: 0xF5C842 
+  },
+  "스쿠나의 그릇": { 
+    id: "sukuna_vessel", name: "스쿠나의 그릇", emoji: "👹", grade: "전설", 
+    atkBonus: 80, defBonus: 20, hpBonus: 800, 
+    desc: "스쿠나의 힘이 깃든 주구.", 
+    recipe: { "저주 수정": 3, "용 비늘": 2, "저주 핵": 6 }, 
+    color: 0x8b0000 
+  },
 };
 
 function getWeaponByName(name) {
   return WEAPONS[name] || Object.values(WEAPONS).find(w => w.id === name);
 }
+
 function getWeaponStats(player) {
-  if (!player.equippedWeapon) return { atk:0, def:0, hp:0 };
+  if (!player.equippedWeapon) return { atk: 0, def: 0, hp: 0 };
   const w = getWeaponByName(player.equippedWeapon);
-  if (!w) return { atk:0, def:0, hp:0 };
-  return { atk:w.atkBonus, def:w.defBonus, hp:w.hpBonus };
+  if (!w) return { atk: 0, def: 0, hp: 0 };
+  return { atk: w.atkBonus, def: w.defBonus, hp: w.hpBonus };
 }
 
 // ════════════════════════════════════════════════════════
-// ── 적 드롭 테이블
+// ── 적 드롭 테이블 (회복약 드랍 추가)
 // ════════════════════════════════════════════════════════
 const ENEMY_DROPS = {
-  e1: [{ mat:"저주 실",min:1,max:3,chance:0.80 },{ mat:"철 파편",min:1,max:2,chance:0.60 },{ mat:"저주 뼈",min:1,max:1,chance:0.10 }],
-  e2: [{ mat:"저주 뼈",min:1,max:2,chance:0.70 },{ mat:"철 파편",min:2,max:4,chance:0.80 },{ mat:"저주 실",min:2,max:4,chance:0.50 },{ mat:"저주 핵",min:1,max:1,chance:0.08 }],
-  e3: [{ mat:"저주 핵",min:1,max:2,chance:0.65 },{ mat:"영혼 정수",min:1,max:2,chance:0.55 },{ mat:"저주 뼈",min:2,max:4,chance:0.80 },{ mat:"철 파편",min:3,max:6,chance:0.90 },{ mat:"저주 수정",min:1,max:1,chance:0.05 }],
-  e4: [{ mat:"저주 수정",min:1,max:2,chance:0.80 },{ mat:"용 비늘",min:1,max:2,chance:0.60 },{ mat:"영혼 정수",min:2,max:4,chance:0.90 },{ mat:"저주 핵",min:2,max:4,chance:0.90 },{ mat:"철 파편",min:5,max:10,chance:1.00 }],
-  e_sukuna: [{ mat:"저주 수정",min:2,max:3,chance:1.00 },{ mat:"용 비늘",min:2,max:3,chance:1.00 },{ mat:"영혼 정수",min:4,max:6,chance:1.00 }],
-  raid_heian: [{ mat:"저주 수정",min:3,max:5,chance:1.00 },{ mat:"용 비늘",min:3,max:4,chance:1.00 },{ mat:"영혼 정수",min:5,max:8,chance:1.00 }],
-  raid_mahoraga: [{ mat:"저주 수정",min:3,max:5,chance:1.00 },{ mat:"용 비늘",min:4,max:6,chance:1.00 },{ mat:"영혼 정수",min:5,max:8,chance:1.00 },{ mat:"철 파편",min:10,max:20,chance:1.00 }],
-};
-const JUJUTSU_DROPS = {
-  j1:[{ mat:"저주 실",min:1,max:2,chance:0.70 },{ mat:"철 파편",min:1,max:2,chance:0.60 }],
-  j2:[{ mat:"저주 실",min:1,max:3,chance:0.70 },{ mat:"저주 뼈",min:1,max:1,chance:0.35 },{ mat:"철 파편",min:1,max:3,chance:0.65 }],
-  j3:[{ mat:"저주 뼈",min:1,max:2,chance:0.55 },{ mat:"철 파편",min:1,max:3,chance:0.70 }],
-  j4:[{ mat:"저주 핵",min:1,max:1,chance:0.30 },{ mat:"저주 뼈",min:1,max:3,chance:0.65 },{ mat:"영혼 정수",min:1,max:1,chance:0.20 }],
-  j5:[{ mat:"저주 핵",min:1,max:2,chance:0.55 },{ mat:"영혼 정수",min:1,max:2,chance:0.40 },{ mat:"저주 수정",min:1,max:1,chance:0.08 }],
-  j6:[{ mat:"저주 수정",min:1,max:1,chance:0.50 },{ mat:"용 비늘",min:1,max:1,chance:0.30 },{ mat:"영혼 정수",min:2,max:3,chance:0.80 }],
+  e1: [
+    { mat: "저주 실", min: 1, max: 3, chance: 0.80 },
+    { mat: "철 파편", min: 1, max: 2, chance: 0.60 },
+    { mat: "저주 뼈", min: 1, max: 1, chance: 0.10 },
+  ],
+  e2: [
+    { mat: "저주 뼈", min: 1, max: 2, chance: 0.70 },
+    { mat: "철 파편", min: 2, max: 4, chance: 0.80 },
+    { mat: "저주 실", min: 2, max: 4, chance: 0.50 },
+    { mat: "저주 핵", min: 1, max: 1, chance: 0.08 },
+  ],
+  e3: [
+    { mat: "저주 핵", min: 1, max: 2, chance: 0.65 },
+    { mat: "영혼 정수", min: 1, max: 2, chance: 0.55 },
+    { mat: "저주 뼈", min: 2, max: 4, chance: 0.80 },
+    { mat: "철 파편", min: 3, max: 6, chance: 0.90 },
+    { mat: "저주 수정", min: 1, max: 1, chance: 0.05 },
+  ],
+  e4: [
+    { mat: "저주 수정", min: 1, max: 2, chance: 0.80 },
+    { mat: "용 비늘", min: 1, max: 2, chance: 0.60 },
+    { mat: "영혼 정수", min: 2, max: 4, chance: 0.90 },
+    { mat: "저주 핵", min: 2, max: 4, chance: 0.90 },
+    { mat: "철 파편", min: 5, max: 10, chance: 1.00 },
+  ],
+  e_sukuna: [
+    { mat: "저주 수정", min: 2, max: 3, chance: 1.00 },
+    { mat: "용 비늘", min: 2, max: 3, chance: 1.00 },
+    { mat: "영혼 정수", min: 4, max: 6, chance: 1.00 },
+  ],
+  raid_heian: [
+    { mat: "저주 수정", min: 3, max: 5, chance: 1.00 },
+    { mat: "용 비늘", min: 3, max: 4, chance: 1.00 },
+    { mat: "영혼 정수", min: 5, max: 8, chance: 1.00 },
+  ],
+  raid_mahoraga: [
+    { mat: "저주 수정", min: 3, max: 5, chance: 1.00 },
+    { mat: "용 비늘", min: 4, max: 6, chance: 1.00 },
+    { mat: "영혼 정수", min: 5, max: 8, chance: 1.00 },
+    { mat: "철 파편", min: 10, max: 20, chance: 1.00 },
+  ],
 };
 
-function rollDrops(enemyId, isJujutsu=false) {
+const JUJUTSU_DROPS = {
+  j1: [{ mat:"저주 실", min:1, max:2, chance:0.70 }, { mat:"철 파편", min:1, max:2, chance:0.60 }],
+  j2: [{ mat:"저주 실", min:1, max:3, chance:0.70 }, { mat:"저주 뼈", min:1, max:1, chance:0.35 }, { mat:"철 파편", min:1, max:3, chance:0.65 }],
+  j3: [{ mat:"저주 뼈", min:1, max:2, chance:0.55 }, { mat:"철 파편", min:1, max:3, chance:0.70 }],
+  j4: [{ mat:"저주 핵", min:1, max:1, chance:0.30 }, { mat:"저주 뼈", min:1, max:3, chance:0.65 }, { mat:"영혼 정수", min:1, max:1, chance:0.20 }],
+  j5: [{ mat:"저주 핵", min:1, max:2, chance:0.55 }, { mat:"영혼 정수", min:1, max:2, chance:0.40 }, { mat:"저주 수정", min:1, max:1, chance:0.08 }],
+  j6: [{ mat:"저주 수정", min:1, max:1, chance:0.50 }, { mat:"용 비늘", min:1, max:1, chance:0.30 }, { mat:"영혼 정수", min:2, max:3, chance:0.80 }],
+};
+
+function rollDrops(enemyId, isJujutsu = false) {
   const table = isJujutsu ? JUJUTSU_DROPS[enemyId] : ENEMY_DROPS[enemyId];
   if (!table) return {};
   const result = {};
@@ -171,12 +249,14 @@ function rollDrops(enemyId, isJujutsu=false) {
   }
   return result;
 }
+
 function addMaterials(player, drops) {
   if (!player.materials) player.materials = {};
   for (const [mat, qty] of Object.entries(drops)) {
     player.materials[mat] = (player.materials[mat] || 0) + qty;
   }
 }
+
 function formatDrops(drops) {
   const parts = [];
   for (const [mat, qty] of Object.entries(drops)) {
@@ -190,20 +270,20 @@ function formatDrops(drops) {
 // ── 퀘스트 시스템
 // ════════════════════════════════════════════════════════
 const DAILY_QUESTS = [
-  { id:"dq_battle3",  type:"battle_win",   target:3,  name:"오늘의 수련",   desc:"전투 3회 승리",              reward:{ crystals:80,  xp:150, materials:{"철 파편":3} } },
-  { id:"dq_culling5", type:"culling_wave",  target:5,  name:"컬링 특훈",    desc:"컬링 게임 5웨이브 달성",     reward:{ crystals:100, xp:200, materials:{"저주 실":5} } },
-  { id:"dq_jujutsu3", type:"jujutsu_point",target:3,  name:"사멸회유 임무", desc:"사멸회유 3포인트 달성",      reward:{ crystals:90,  xp:180, materials:{"저주 뼈":2} } },
-  { id:"dq_skill5",   type:"skill_use",    target:5,  name:"술식 연마",    desc:"술식 5회 사용",              reward:{ crystals:70,  xp:130, materials:{"저주 실":3,"철 파편":2} } },
-  { id:"dq_gacha1",   type:"gacha_pull",   target:1,  name:"운명의 소환",  desc:"가챠 1회 소환",              reward:{ crystals:60,  xp:100, materials:{"철 파편":5} } },
-  { id:"dq_nokill2",  type:"boss_kill",    target:2,  name:"정예 사냥",    desc:"특급 저주령 이상 2마리 처치", reward:{ crystals:150, xp:300, materials:{"저주 핵":1} } },
+  { id:"dq_battle3",  type:"battle_win",   target:3,  name:"오늘의 수련",   desc:"전투 3회 승리",              reward:{ crystals:80,  xp:150, materials:{ "철 파편":3 } } },
+  { id:"dq_culling5", type:"culling_wave",  target:5,  name:"컬링 특훈",    desc:"컬링 게임 5웨이브 달성",      reward:{ crystals:100, xp:200, materials:{ "저주 실":5 } } },
+  { id:"dq_jujutsu3", type:"jujutsu_point",target:3,  name:"사멸회유 임무", desc:"사멸회유 3포인트 달성",       reward:{ crystals:90,  xp:180, materials:{ "저주 뼈":2 } } },
+  { id:"dq_skill5",   type:"skill_use",    target:5,  name:"술식 연마",    desc:"술식 5회 사용",               reward:{ crystals:70,  xp:130, materials:{ "저주 실":3, "철 파편":2 } } },
+  { id:"dq_gacha1",   type:"gacha_pull",   target:1,  name:"운명의 소환",  desc:"가챠 1회 소환",               reward:{ crystals:60,  xp:100, materials:{ "철 파편":5 } } },
+  { id:"dq_nokill2",  type:"boss_kill",    target:2,  name:"정예 사냥",    desc:"특급 저주령 이상 2마리 처치", reward:{ crystals:150, xp:300, materials:{ "저주 핵":1 } } },
 ];
 const WEEKLY_QUESTS = [
-  { id:"wq_battle20",  type:"battle_win",   target:20, name:"주간 전사",       desc:"이번 주 전투 20회 승리",       reward:{ crystals:500,  xp:1000, materials:{"저주 핵":3,"영혼 정수":2} } },
-  { id:"wq_culling15", type:"culling_wave",  target:15, name:"컬링 마스터",    desc:"컬링 15웨이브 달성(합산)",     reward:{ crystals:600,  xp:1200, materials:{"저주 수정":1,"저주 뼈":8} } },
-  { id:"wq_jujutsu15", type:"jujutsu_point",target:15, name:"사멸회유 전문가", desc:"사멸회유 총 15포인트 달성",    reward:{ crystals:550,  xp:1100, materials:{"영혼 정수":4,"저주 핵":2} } },
-  { id:"wq_boss5",     type:"boss_kill",    target:5,  name:"보스 사냥꾼",    desc:"특급 저주령 이상 5마리 처치",  reward:{ crystals:700,  xp:1400, materials:{"용 비늘":1,"저주 수정":1} } },
-  { id:"wq_craft1",    type:"weapon_craft", target:1,  name:"주구 장인",      desc:"주구 1개 제작",                reward:{ crystals:400,  xp:800,  materials:{"영혼 정수":3,"용 비늘":1} } },
-  { id:"wq_pvpwin3",   type:"pvp_win",      target:3,  name:"결투 챔피언",    desc:"PvP 3회 승리",                 reward:{ crystals:800,  xp:1600, materials:{"저주 수정":2,"용 비늘":1} } },
+  { id:"wq_battle20",  type:"battle_win",   target:20, name:"주간 전사",       desc:"이번 주 전투 20회 승리",        reward:{ crystals:500, xp:1000, materials:{ "저주 핵":3, "영혼 정수":2 } } },
+  { id:"wq_culling15", type:"culling_wave",  target:15, name:"컬링 마스터",    desc:"컬링 15웨이브 달성(합산)",      reward:{ crystals:600, xp:1200, materials:{ "저주 수정":1, "저주 뼈":8 } } },
+  { id:"wq_jujutsu15", type:"jujutsu_point",target:15, name:"사멸회유 전문가", desc:"사멸회유 총 15포인트 달성",     reward:{ crystals:550, xp:1100, materials:{ "영혼 정수":4, "저주 핵":2 } } },
+  { id:"wq_boss5",     type:"boss_kill",    target:5,  name:"보스 사냥꾼",    desc:"특급 저주령 이상 5마리 처치",   reward:{ crystals:700, xp:1400, materials:{ "용 비늘":1, "저주 수정":1 } } },
+  { id:"wq_craft1",    type:"weapon_craft", target:1,  name:"주구 장인",      desc:"주구 1개 제작",                 reward:{ crystals:400, xp:800,  materials:{ "영혼 정수":3, "용 비늘":1 } } },
+  { id:"wq_pvpwin3",   type:"pvp_win",      target:3,  name:"결투 챔피언",    desc:"PvP 3회 승리",                  reward:{ crystals:800, xp:1600, materials:{ "저주 수정":2, "용 비늘":1 } } },
 ];
 
 function getTodayKey() { const d=new Date(); return `${d.getUTCFullYear()}-${d.getUTCMonth()+1}-${d.getUTCDate()}`; }
@@ -225,7 +305,7 @@ function initQuests(player) {
   if (!player.quests.daily)  player.quests.daily=[];
   if (!player.quests.weekly) player.quests.weekly=[];
 }
-function updateQuestProgress(player, type, amount=1) {
+function updateQuestProgress(player,type,amount=1) {
   initQuests(player);
   for (const qp of player.quests.daily) {
     if (qp.done) continue;
@@ -242,7 +322,7 @@ function updateQuestProgress(player, type, amount=1) {
     if (qp.progress>=def.target) qp.done=true;
   }
 }
-function claimQuestReward(player, questId, isWeekly=false) {
+function claimQuestReward(player,questId,isWeekly=false) {
   initQuests(player);
   const list=isWeekly?player.quests.weekly:player.quests.daily;
   const allDefs=isWeekly?WEEKLY_QUESTS:DAILY_QUESTS;
@@ -261,25 +341,24 @@ function claimQuestReward(player, questId, isWeekly=false) {
 // ── 상태이상
 // ════════════════════════════════════════════════════════
 const STATUS_EFFECTS = {
-  poison:        { id:"poison",        name:"독",      emoji:"☠️",  desc:"매 턴 최대HP의 5% 피해",       duration:3 },
-  burn:          { id:"burn",          name:"화상",    emoji:"🔥",  desc:"매 턴 최대HP의 8% 피해",       duration:2 },
-  freeze:        { id:"freeze",        name:"빙결",    emoji:"❄️",  desc:"1턴 행동 불가",                 duration:1 },
-  weaken:        { id:"weaken",        name:"약화",    emoji:"💔",  desc:"공격력 30% 감소",               duration:2 },
-  stun:          { id:"stun",          name:"기절",    emoji:"⚡",  desc:"1턴 행동 불가",                 duration:1 },
+  poison:        { id:"poison",        name:"독",      emoji:"☠️", desc:"매 턴 최대HP의 5% 피해",       duration:3 },
+  burn:          { id:"burn",          name:"화상",    emoji:"🔥", desc:"매 턴 최대HP의 8% 피해",       duration:2 },
+  freeze:        { id:"freeze",        name:"빙결",    emoji:"❄️", desc:"1턴 행동 불가",                 duration:1 },
+  weaken:        { id:"weaken",        name:"약화",    emoji:"💔", desc:"공격력 30% 감소",               duration:2 },
+  stun:          { id:"stun",          name:"기절",    emoji:"⚡", desc:"1턴 행동 불가",                 duration:1 },
   battleInstinct:{ id:"battleInstinct",name:"전투본능",emoji:"🔥💪",desc:"공격력 40% 증가, 회피율 25% 증가",duration:3 },
-  cursed_wound:  { id:"cursed_wound",  name:"저주상처",emoji:"🩸",  desc:"매 턴 최대HP의 10% 피해",      duration:2 },
-  blind:         { id:"blind",         name:"실명",    emoji:"🌑",  desc:"명중률 50% 감소",               duration:2 },
-  adaptation:    { id:"adaptation",    name:"적응",    emoji:"🔄",  desc:"특정 술식 데미지 무효",         duration:99 },
-  domain_stun:   { id:"domain_stun",   name:"영역봉쇄",emoji:"🌌",  desc:"영역전개로 인한 행동 불가",     duration:2 },
+  cursed_wound:  { id:"cursed_wound",  name:"저주상처",emoji:"🩸", desc:"매 턴 최대HP의 10% 피해",      duration:2 },
+  blind:         { id:"blind",         name:"실명",    emoji:"🌑", desc:"명중률 50% 감소",               duration:2 },
+  adaptation:    { id:"adaptation",    name:"적응",    emoji:"🔄", desc:"특정 술식 데미지 무효",         duration:99 },
 };
 
-function applyStatus(target, statusId) {
+function applyStatus(target,statusId) {
   if (!target.statusEffects) target.statusEffects=[];
   const existing=target.statusEffects.find(s=>s.id===statusId);
   if (existing) existing.turns=STATUS_EFFECTS[statusId].duration;
   else target.statusEffects.push({ id:statusId, turns:STATUS_EFFECTS[statusId].duration });
 }
-function tickStatus(target, maxHp) {
+function tickStatus(target,maxHp) {
   if (!target.statusEffects||target.statusEffects.length===0) return { dmg:0,expired:[],log:[] };
   let totalDmg=0; const expired=[],log=[];
   for (const se of target.statusEffects) {
@@ -299,7 +378,7 @@ function statusStr(se) {
   if (!se||se.length===0) return "없음";
   return se.map(s=>`${STATUS_EFFECTS[s.id]?.emoji||""}${STATUS_EFFECTS[s.id]?.name||s.id}(${s.turns}턴)`).join(" ");
 }
-function isIncapacitated(se) { return !!(se&&se.some(s=>s.id==="freeze"||s.id==="stun"||s.id==="domain_stun")); }
+function isIncapacitated(se) { return !!(se&&se.some(s=>s.id==="freeze"||s.id==="stun")); }
 function isBlind(se) { return !!(se&&se.some(s=>s.id==="blind")); }
 function getWeakenMult(se) {
   let m=1;
@@ -308,7 +387,7 @@ function getWeakenMult(se) {
   return m;
 }
 function getBattleInstinctEvade(se) { return !!(se&&se.some(s=>s.id==="battleInstinct")); }
-function rollHit(attackerSe, defenderSe) {
+function rollHit(attackerSe,defenderSe) {
   if (isBlind(attackerSe)&&Math.random()<0.50) return false;
   const baseEvade=0.05;
   const instinctBonus=getBattleInstinctEvade(defenderSe)?0.25:0;
@@ -316,50 +395,22 @@ function rollHit(attackerSe, defenderSe) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 흑섬 (고퀄 애니메이션)
+// ── 흑섬
 // ════════════════════════════════════════════════════════
 function isBlackFlash() { return Math.random()<0.10; }
-
-const BLACK_FLASH_ARTS = [
-  [
-    "```ansi",
-    "\u001b[0;30m▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓",
-    "\u001b[1;31m        ⚫  B L A C K   F L A S H  ⚫",
-    "\u001b[1;33m    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    "\u001b[1;37m       저주 에너지 순간 최대 방출 !!",
-    "\u001b[1;31m    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    "\u001b[0;30m▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓",
-    "```",
-  ].join("\n"),
-  [
-    "```ansi",
-    "\u001b[1;30m╔══════════════════════════════════════════╗",
-    "\u001b[1;33m║   ⚡  ⚫  ⚡  ⚫  ⚡  ⚫  ⚡  ⚫  ⚡  ⚫   ║",
-    "\u001b[1;31m║         《  黒 閃 — BLACK FLASH 》       ║",
-    "\u001b[1;37m║      순간 최대 저주력 폭발!! ×2.5배!!    ║",
-    "\u001b[1;33m║   ⚡  ⚫  ⚡  ⚫  ⚡  ⚫  ⚡  ⚫  ⚡  ⚫   ║",
-    "\u001b[1;30m╚══════════════════════════════════════════╝",
-    "```",
-  ].join("\n"),
-  [
-    "```ansi",
-    "\u001b[2;30m  ████████████████████████████████████████",
-    "\u001b[1;30m ██\u001b[1;31m░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░\u001b[1;30m██",
-    "\u001b[1;31m ██\u001b[1;33m   ╔══════════════════════════════╗  \u001b[1;31m██",
-    "\u001b[1;31m ██\u001b[1;37m   ║  ⚫  흑 섬 발 동 ! !  ⚫     ║  \u001b[1;31m██",
-    "\u001b[1;31m ██\u001b[1;33m   ╚══════════════════════════════╝  \u001b[1;31m██",
-    "\u001b[1;30m ██\u001b[1;31m░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░\u001b[1;30m██",
-    "\u001b[2;30m  ████████████████████████████████████████",
-    "```",
-  ].join("\n"),
-];
-
 function getBlackFlashArt() {
-  return BLACK_FLASH_ARTS[Math.floor(Math.random() * BLACK_FLASH_ARTS.length)];
+  return [
+    "```ansi",
+    "\u001b[1;30m╔══════════════════════════════════════╗",
+    "\u001b[1;31m║  ⚫  B L A C K   F L A S H  ⚫     ║",
+    "\u001b[1;33m║     저주 에너지 순간 최대 방출!!      ║",
+    "\u001b[1;30m╚══════════════════════════════════════╝",
+    "```",
+  ].join("\n");
 }
 
 // ════════════════════════════════════════════════════════
-// ── 스쿠나 손가락
+// ── 스쿠나 손가락 (1개로 해금)
 // ════════════════════════════════════════════════════════
 const SUKUNA_FINGER_MAX = 20;
 function getFingerBonus(fingers) {
@@ -400,227 +451,77 @@ function getKoganeBonus(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 스킬 이펙트
+// ── 고퀄 스킬 이펙트 (ANSI 아트 + 이모지)
 // ════════════════════════════════════════════════════════
 const SKILL_EFFECTS = {
-  "주먹질":        { art:"```ansi\n\u001b[1;31m    💥    \n\u001b[1;33m   ▓▓▓   \n\u001b[1;31m    💥    \n```", color:0xff6b35, flavorText:"💪 저주 에너지를 주먹에 집중시킨다!", emoji:"👊" },
-  "다이버전트 주먹":{ art:"```ansi\n\u001b[1;31m ⚡💥⚡\n\u001b[1;33m▓▓▓▓▓▓▓\n\u001b[1;31m ⚡💥⚡\n```", color:0xff4500, flavorText:"💥 체내에서 저주 에너지가 폭발한다!", emoji:"💥" },
-  "흑섬":          { art:"```ansi\n\u001b[1;30m🌑🌑🌑🌑🌑\n\u001b[1;31m⬛ 黑 閃 ⬛\n\u001b[1;30m🌑🌑🌑🌑🌑\n```", color:0x1a0a2e, flavorText:"⚫ 순간적으로 발산되는 최대 저주 에너지!", emoji:"⚫" },
-  "어주자":        { art:"```ansi\n\u001b[1;31m👹✨👹✨👹\n\u001b[1;33m✨ 廻 夏 ✨\n\u001b[1;31m👹✨👹✨👹\n```", color:0xb5451b, flavorText:"👹 스쿠나의 힘이 몸을 가득 채운다...", emoji:"👹" },
-  "스쿠나 발현":   { art:"```ansi\n\u001b[1;31m🔴👹🔴👹🔴\n\u001b[1;33m👹 両面宿儺 👹\n\u001b[1;31m🔴👹🔴👹🔴\n```", color:0x8b0000, flavorText:"🔴 저주의 왕이 이타도리의 몸을 장악한다!", emoji:"🔴" },
-  "아오":          { art:"```ansi\n\u001b[1;34m  🔵🔵🔵  \n\u001b[1;36m🔵  蒼  🔵\n\u001b[1;34m  🔵🔵🔵  \n```", color:0x0066ff, flavorText:"🌀 무한의 인력 — 모든 것을 끌어당긴다", emoji:"🌀" },
-  "아카":          { art:"```ansi\n\u001b[1;31m  🔴🔴🔴  \n\u001b[1;33m🔴  赫  🔴\n\u001b[1;31m  🔴🔴🔴  \n```", color:0xff0033, flavorText:"💢 무한의 척력 — 모든 것을 날려버린다!", emoji:"💢" },
-  "무라사키":      { art:"```ansi\n\u001b[1;31m🔴\u001b[1;34m⚡\u001b[1;35m🔵\u001b[1;34m⚡\u001b[1;31m🔴\n\u001b[1;35m⚡  紫  ⚡\n\u001b[1;34m🔵\u001b[1;31m⚡\u001b[1;35m🔴\u001b[1;31m⚡\u001b[1;34m🔵\n```", color:0x9900ff, flavorText:"🟣 아오와 아카의 융합 — 허공을 찢는 허수!", emoji:"🟣" },
-  "무량공처":      { art:"```ansi\n\u001b[1;36m∞∞∞∞∞∞∞∞∞\n\u001b[1;37m∞ 無量空処 ∞\n\u001b[1;36m∞∞∞∞∞∞∞∞∞\n```", color:0x00ffff, flavorText:"🌌 \"나는 최강이니까\" — 무한이 세계를 지배한다", emoji:"🌌" },
-  "자폭 무라사키": { art:"```ansi\n\u001b[1;31m💥🔴💥🔵💥\n\u001b[1;31m💥 自爆 紫 💥\n\u001b[1;34m💥🔵💥🔴💥\n```", color:0xff0000, flavorText:"💀 모든 힘을 쏟아붓는 자폭 공격! HP 1", emoji:"💀" },
-  "해":            { art:"```ansi\n\u001b[1;31m  ✂️✂️✂️  \n\u001b[1;31m✂️  解  ✂️\n\u001b[1;31m  ✂️✂️✂️  \n```", color:0xcc0000, flavorText:"✂️ 만물을 베어내는 저주의 왕의 손톱!", emoji:"✂️" },
-  "팔":            { art:"```ansi\n\u001b[1;35m🌌✂️🌌✂️🌌\n\u001b[1;31m✂️  捌  ✂️\n\u001b[1;35m🌌✂️🌌✂️🌌\n```", color:0x8b0000, flavorText:"🌌 공간 자체를 베어내는 절대술식!", emoji:"🌌" },
-  "푸가":          { art:"```ansi\n\u001b[1;31m💀🔥💀🔥💀\n\u001b[1;33m🔥 不 雅 🔥\n\u001b[1;31m💀🔥💀🔥💀\n```", color:0x4a0000, flavorText:"🔥 닿는 모든 것을 분해한다!", emoji:"🔥" },
-  "복마어주자":    { art:"```ansi\n\u001b[1;31m👑🌑👑🌑👑\n\u001b[1;33m🌑伏魔御廚子🌑\n\u001b[1;31m👑🌑👑🌑👑\n```", color:0x2a0000, flavorText:"👑 천지개벽 — 저주의 왕의 궁극 영역전개!", emoji:"👑" },
-  "세계참":        { art:"```ansi\n\u001b[1;35m🌍✂️🌍✂️🌍\n\u001b[1;31m✂️ 世界斬 ✂️\n\u001b[1;35m🌍✂️🌍✂️🌍\n```", color:0x4a0000, flavorText:"🌍 세계조차 베어버린다!", emoji:"🌍" },
-  "부기우기":      { art:"```ansi\n\u001b[1;34m🎵💪🎵💪🎵\n\u001b[1;32m💪 Boogie 💪\n\u001b[1;34m🎵💪🎵💪🎵\n```", color:0x1e90ff, flavorText:"🎵 \"댄스홀 가수!\" — 위치 전환! 빙결!", emoji:"🎵" },
-  "전투본능":      { art:"```ansi\n\u001b[1;31m⚔️🔥⚔️🔥⚔️\n\u001b[1;33m🔥戦闘本能🔥\n\u001b[1;31m⚔️🔥⚔️🔥⚔️\n```", color:0xff8c00, flavorText:"⚔️ 전사의 본능이 각성한다! 공격력·회피 극대화!", emoji:"⚔️" },
-  "험한 도박":     { art:"```ansi\n\u001b[1;33m🎰🎰🎰🎰🎰\n\u001b[1;31m  険 賭 博  \n\u001b[1;33m🎰🎰🎰🎰🎰\n```", color:0xffaa00, flavorText:"🎲 운에 맡긴 도박 공격!", emoji:"🎲" },
-  "질풍열차":      { art:"```ansi\n\u001b[1;34m🚂💨🚂💨🚂\n\u001b[1;36m  疾 風 列  \n\u001b[1;34m🚂💨🚂💨🚂\n```", color:0x44aaff, flavorText:"🚂 강력한 열차처럼 돌진!", emoji:"🚂" },
-  "유한 소설":     { art:"```ansi\n\u001b[1;32m📖✨📖✨📖\n\u001b[1;33m✨ 有限小説 ✨\n\u001b[1;32m📖✨📖✨📖\n```", color:0x88ff88, flavorText:"📖 불멸의 몸으로 싸운다!", emoji:"📖" },
-  "질풍강운":      { art:"```ansi\n\u001b[1;33m🎰🌪️🎰🌪️🎰\n\u001b[1;31m🌪️ 質風強運 🌪️\n\u001b[1;33m🎰🌪️🎰🌪️🎰\n```", color:0xffcc00, flavorText:"🎰 영역전개 — 운이 터진다!", emoji:"🎰" },
-  "_default":      { art:"```ansi\n\u001b[1;35m  ✨✨✨  \n\u001b[1;35m✨ 術 式 ✨\n\u001b[1;35m  ✨✨✨  \n```", color:0x7c5cfc, flavorText:"🌀 저주 에너지가 폭발한다!", emoji:"🌀" },
+  "주먹질": { 
+    art: "```ansi\n\u001b[1;31m    💥    \n\u001b[1;33m   ▓▓▓   \n\u001b[1;31m    💥    \n```", 
+    color: 0xff6b35, flavorText: "💪 저주 에너지를 주먹에 집중시킨다!", emoji: "👊" },
+  "다이버전트 주먹": { 
+    art: "```ansi\n\u001b[1;31m ⚡💥⚡\n\u001b[1;33m▓▓▓▓▓▓▓\n\u001b[1;31m ⚡💥⚡\n```", 
+    color: 0xff4500, flavorText: "💥 체내에서 저주 에너지가 폭발한다!", emoji: "💥" },
+  "흑섬": { 
+    art: "```ansi\n\u001b[1;30m🌑🌑🌑🌑🌑\n\u001b[1;31m⬛ 黑 閃 ⬛\n\u001b[1;30m🌑🌑🌑🌑🌑\n```", 
+    color: 0x1a0a2e, flavorText: "⚫ 순간적으로 발산되는 최대 저주 에너지!", emoji: "⚫" },
+  "어주자": { 
+    art: "```ansi\n\u001b[1;31m👹✨👹✨👹\n\u001b[1;33m✨ 廻 夏 ✨\n\u001b[1;31m👹✨👹✨👹\n```", 
+    color: 0xb5451b, flavorText: "👹 스쿠나의 힘이 몸을 가득 채운다...", emoji: "👹" },
+  "스쿠나 발현": { 
+    art: "```ansi\n\u001b[1;31m🔴👹🔴👹🔴\n\u001b[1;33m👹 両面宿儺 👹\n\u001b[1;31m🔴👹🔴👹🔴\n```", 
+    color: 0x8b0000, flavorText: "🔴 저주의 왕이 이타도리의 몸을 장악한다!", emoji: "🔴" },
+  "아오": { 
+    art: "```ansi\n\u001b[1;34m  🔵🔵🔵  \n\u001b[1;36m🔵  蒼  🔵\n\u001b[1;34m  🔵🔵🔵  \n```", 
+    color: 0x0066ff, flavorText: "🌀 무한의 인력 — 모든 것을 끌어당긴다", emoji: "🌀" },
+  "아카": { 
+    art: "```ansi\n\u001b[1;31m  🔴🔴🔴  \n\u001b[1;33m🔴  赫  🔴\n\u001b[1;31m  🔴🔴🔴  \n```", 
+    color: 0xff0033, flavorText: "💢 무한의 척력 — 모든 것을 날려버린다!", emoji: "💢" },
+  "무라사키": { 
+    art: "```ansi\n\u001b[1;31m🔴\u001b[1;34m⚡\u001b[1;35m🔵\u001b[1;34m⚡\u001b[1;31m🔴\n\u001b[1;35m⚡  紫  ⚡\n\u001b[1;34m🔵\u001b[1;31m⚡\u001b[1;35m🔴\u001b[1;31m⚡\u001b[1;34m🔵\n```", 
+    color: 0x9900ff, flavorText: "🟣 아오와 아카의 융합 — 허공을 찢는 허수!", emoji: "🟣" },
+  "무량공처": { 
+    art: "```ansi\n\u001b[1;36m∞∞∞∞∞∞∞∞∞\n\u001b[1;37m∞ 無量空処 ∞\n\u001b[1;36m∞∞∞∞∞∞∞∞∞\n```", 
+    color: 0x00ffff, flavorText: "🌌 \"나는 최강이니까\" — 무한이 세계를 지배한다", emoji: "🌌" },
+  "자폭 무라사키": { 
+    art: "```ansi\n\u001b[1;31m💥🔴💥🔵💥\n\u001b[1;31m💥 自爆 紫 💥\n\u001b[1;34m💥🔵💥🔴💥\n```", 
+    color: 0xff0000, flavorText: "💀 모든 힘을 쏟아붓는 자폭 공격! HP 1", emoji: "💀" },
+  "해": { 
+    art: "```ansi\n\u001b[1;31m  ✂️✂️✂️  \n\u001b[1;31m✂️  解  ✂️\n\u001b[1;31m  ✂️✂️✂️  \n```", 
+    color: 0xcc0000, flavorText: "✂️ 만물을 베어내는 저주의 왕의 손톱!", emoji: "✂️" },
+  "팔": { 
+    art: "```ansi\n\u001b[1;35m🌌✂️🌌✂️🌌\n\u001b[1;31m✂️  捌  ✂️\n\u001b[1;35m🌌✂️🌌✂️🌌\n```", 
+    color: 0x8b0000, flavorText: "🌌 공간 자체를 베어내는 절대술식!", emoji: "🌌" },
+  "푸가": { 
+    art: "```ansi\n\u001b[1;31m💀🔥💀🔥💀\n\u001b[1;33m🔥 不 雅 🔥\n\u001b[1;31m💀🔥💀🔥💀\n```", 
+    color: 0x4a0000, flavorText: "🔥 닿는 모든 것을 분해한다!", emoji: "🔥" },
+  "복마어주자": { 
+    art: "```ansi\n\u001b[1;31m👑🌑👑🌑👑\n\u001b[1;33m🌑伏魔御廚子🌑\n\u001b[1;31m👑🌑👑🌑👑\n```", 
+    color: 0x2a0000, flavorText: "👑 천지개벽 — 저주의 왕의 궁극 영역전개!", emoji: "👑" },
+  "세계참": { 
+    art: "```ansi\n\u001b[1;35m🌍✂️🌍✂️🌍\n\u001b[1;31m✂️ 世界斬 ✂️\n\u001b[1;35m🌍✂️🌍✂️🌍\n```", 
+    color: 0x4a0000, flavorText: "🌍 세계조차 베어버린다!", emoji: "🌍" },
+  "부기우기": { 
+    art: "```ansi\n\u001b[1;34m🎵💪🎵💪🎵\n\u001b[1;32m💪 Boogie 💪\n\u001b[1;34m🎵💪🎵💪🎵\n```", 
+    color: 0x1e90ff, flavorText: "🎵 \"댄스홀 가수!\" — 위치 전환! 빙결!", emoji: "🎵" },
+  "전투본능": { 
+    art: "```ansi\n\u001b[1;31m⚔️🔥⚔️🔥⚔️\n\u001b[1;33m🔥戦闘本能🔥\n\u001b[1;31m⚔️🔥⚔️🔥⚔️\n```", 
+    color: 0xff8c00, flavorText: "⚔️ 전사의 본능이 각성한다! 공격력·회피 극대화!", emoji: "⚔️" },
+  "험한 도박": { 
+    art: "```ansi\n\u001b[1;33m🎰🎰🎰🎰🎰\n\u001b[1;31m  険 賭 博  \n\u001b[1;33m🎰🎰🎰🎰🎰\n```", 
+    color: 0xffaa00, flavorText: "🎲 운에 맡긴 도박 공격!", emoji: "🎲" },
+  "질풍열차": { 
+    art: "```ansi\n\u001b[1;34m🚂💨🚂💨🚂\n\u001b[1;36m  疾 風 列  \n\u001b[1;34m🚂💨🚂💨🚂\n```", 
+    color: 0x44aaff, flavorText: "🚂 강력한 열차처럼 돌진!", emoji: "🚂" },
+  "유한 소설": { 
+    art: "```ansi\n\u001b[1;32m📖✨📖✨📖\n\u001b[1;33m✨ 有限小説 ✨\n\u001b[1;32m📖✨📖✨📖\n```", 
+    color: 0x88ff88, flavorText: "📖 불멸의 몸으로 싸운다!", emoji: "📖" },
+  "질풍강운": { 
+    art: "```ansi\n\u001b[1;33m🎰🌪️🎰🌪️🎰\n\u001b[1;31m🌪️ 質風強運 🌪️\n\u001b[1;33m🎰🌪️🎰🌪️🎰\n```", 
+    color: 0xffcc00, flavorText: "🎰 영역전개 — 운이 터진다!", emoji: "🎰" },
+  "_default": { 
+    art: "```ansi\n\u001b[1;35m  ✨✨✨  \n\u001b[1;35m✨ 術 式 ✨\n\u001b[1;35m  ✨✨✨  \n```", 
+    color: 0x7c5cfc, flavorText: "🌀 저주 에너지가 폭발한다!", emoji: "🌀" },
 };
 function getSkillEffect(n) { return SKILL_EFFECTS[n]||SKILL_EFFECTS["_default"]; }
-
-// ════════════════════════════════════════════════════════
-// ── 영역전개 특수 효과 (각자 고유 능력)
-// ════════════════════════════════════════════════════════
-const DOMAIN_EFFECTS = {
-  "무량공처": {
-    name:"무량공처", emoji:"🌌",
-    art: [
-      "```ansi",
-      "\u001b[1;36m╔══════════════════════════════════════════╗",
-      "\u001b[1;37m║  ∞    無 量 空 処    ∞    無 量 空 処  ∞  ║",
-      "\u001b[1;36m║     무한이 적을 완전히 지배한다...      ║",
-      "\u001b[1;37m║  \"나는 최강이니까\" — 고조 사토루     ║",
-      "\u001b[1;36m╚══════════════════════════════════════════╝",
-      "```",
-    ].join("\n"),
-    desc:"적에게 3턴 간 domain_stun 부여 + 강력한 즉시 피해",
-    effect: (attacker, defender, atkStats) => {
-      const dmg = Math.floor(atkStats.atk * 3.5);
-      applyStatus(defender, "domain_stun");
-      defender.statusEffects.find(s=>s.id==="domain_stun").turns = 3;
-      return { dmg, log:[`> 🌌 무한이 적의 모든 술식을 봉쇄! **${dmg}** 피해 + **3턴 행동봉쇄**!`] };
-    },
-  },
-  "복마어주자": {
-    name:"복마어주자", emoji:"👹",
-    art: [
-      "```ansi",
-      "\u001b[1;31m╔══════════════════════════════════════════╗",
-      "\u001b[1;33m║  👑  伏 魔 御 廚 子  👑  伏 魔 御 廚 子  ║",
-      "\u001b[1;31m║      천지개벽 — 저주의 왕의 궁극기!    ║",
-      "\u001b[1;33m║  \"약한 놈이 강한 놈을 거스르는 건 죄악\" ║",
-      "\u001b[1;31m╚══════════════════════════════════════════╝",
-      "```",
-    ].join("\n"),
-    desc:"즉시 초강력 피해 + 적에게 poison + burn 동시 부여",
-    effect: (attacker, defender, atkStats) => {
-      const dmg = Math.floor(atkStats.atk * 4.0);
-      applyStatus(defender, "poison");
-      applyStatus(defender, "burn");
-      return { dmg, log:[`> 👹 복마어주자 발동! **${dmg}** 피해 + ☠️**독** + 🔥**화상** 동시 부여!`] };
-    },
-  },
-  "진안상애": {
-    name:"진안상애", emoji:"💗",
-    art: [
-      "```ansi",
-      "\u001b[1;35m╔══════════════════════════════════════════╗",
-      "\u001b[1;37m║  💗  真 愛 相 愛  💗  진 안 상 애  💗   ║",
-      "\u001b[1;35m║    리카의 순애가 세계를 덮는다...       ║",
-      "\u001b[1;37m║  \"리카, 나는 아직 살아야 해\" — 오코츠  ║",
-      "\u001b[1;35m╚══════════════════════════════════════════╝",
-      "```",
-    ].join("\n"),
-    desc:"막대한 피해 + 자신 HP 50% 회복 + 적에게 weaken",
-    effect: (attacker, defender, atkStats, atkMaxHp) => {
-      const dmg = Math.floor(atkStats.atk * 3.2);
-      const heal = Math.floor(atkMaxHp * 0.5);
-      applyStatus(defender, "weaken");
-      return { dmg, heal, log:[`> 💗 진안상애! **${dmg}** 피해 + 자신 **+${heal}** HP 회복 + 💔**약화** 부여!`] };
-    },
-  },
-  "강압암예정": {
-    name:"강압암예정", emoji:"⚫",
-    art: [
-      "```ansi",
-      "\u001b[1;30m╔══════════════════════════════════════════╗",
-      "\u001b[1;35m║  ⚫  強 壓 闇 豫 定  ⚫  강압암예정  ⚫  ║",
-      "\u001b[1;30m║    모든 식신이 일제히 강림한다!         ║",
-      "\u001b[1;35m║  \"선한 사람을 구하기 위해\" — 후시구로  ║",
-      "\u001b[1;30m╚══════════════════════════════════════════╝",
-      "```",
-    ].join("\n"),
-    desc:"피해 + 적에게 2턴 stun + 자신 battleInstinct 부여",
-    effect: (attacker, defender, atkStats) => {
-      const dmg = Math.floor(atkStats.atk * 2.8);
-      applyStatus(defender, "stun");
-      defender.statusEffects.find(s=>s.id==="stun").turns = 2;
-      applyStatus(attacker, "battleInstinct");
-      return { dmg, log:[`> ⚫ 강압암예정! **${dmg}** 피해 + ⚡**2턴 기절** + 자신 🔥💪**전투본능** 발동!`] };
-    },
-  },
-  "자폐원돈과": {
-    name:"자폐원돈과", emoji:"🩸",
-    art: [
-      "```ansi",
-      "\u001b[1;31m╔══════════════════════════════════════════╗",
-      "\u001b[1;35m║  🩸  自 閉 圓 頓 裹  🩸  자폐원돈과  🩸  ║",
-      "\u001b[1;31m║    영혼과 육체의 경계가 무너진다!       ║",
-      "\u001b[1;35m║  \"영혼이 육체를 만드는 거야\" — 마히토  ║",
-      "\u001b[1;31m╚══════════════════════════════════════════╝",
-      "```",
-    ].join("\n"),
-    desc:"초고피해 + 적에게 cursed_wound + 자신도 독 피해",
-    effect: (attacker, defender, atkStats, atkMaxHp) => {
-      const dmg = Math.floor(atkStats.atk * 3.8);
-      const selfDmg = Math.floor(atkMaxHp * 0.15);
-      applyStatus(defender, "cursed_wound");
-      return { dmg, selfDmg, log:[`> 🩸 자폐원돈과! **${dmg}** 피해 + 🩸**저주상처** 부여! (자신도 **${selfDmg}** 반동)`] };
-    },
-  },
-  "개관철위산": {
-    name:"개관철위산", emoji:"🌋",
-    art: [
-      "```ansi",
-      "\u001b[1;31m╔══════════════════════════════════════════╗",
-      "\u001b[1;33m║  🌋  蓋 棺 鐡 圍 山  🌋  개관철위산  🌋  ║",
-      "\u001b[1;31m║    화산이 폭발하며 세계를 태운다!!      ║",
-      "\u001b[1;33m║  \"인간이야말로 진정한 저주다\" — 죠고   ║",
-      "\u001b[1;31m╚══════════════════════════════════════════╝",
-      "```",
-    ].join("\n"),
-    desc:"초고피해 + 적에게 3턴 burn + blind 동시 부여",
-    effect: (attacker, defender, atkStats) => {
-      const dmg = Math.floor(atkStats.atk * 3.6);
-      applyStatus(defender, "burn");
-      defender.statusEffects.find(s=>s.id==="burn").turns = 3;
-      applyStatus(defender, "blind");
-      return { dmg, log:[`> 🌋 개관철위산! **${dmg}** 피해 + 🔥**3턴 화상** + 🌑**실명** 동시 부여!`] };
-    },
-  },
-  "탕온평선": {
-    name:"탕온평선", emoji:"🌊",
-    art: [
-      "```ansi",
-      "\u001b[1;34m╔══════════════════════════════════════════╗",
-      "\u001b[1;36m║  🌊  蕩 溫 平 線  🌊  탕 온 평 선  🌊   ║",
-      "\u001b[1;34m║    물고기 떼가 세계를 집어삼킨다!       ║",
-      "\u001b[1;36m║  \"물은 모든 것을 삼킨다\" — 다곤        ║",
-      "\u001b[1;34m╚══════════════════════════════════════════╝",
-      "```",
-    ].join("\n"),
-    desc:"피해 + 적에게 poison + freeze 동시 부여",
-    effect: (attacker, defender, atkStats) => {
-      const dmg = Math.floor(atkStats.atk * 3.0);
-      applyStatus(defender, "poison");
-      applyStatus(defender, "freeze");
-      return { dmg, log:[`> 🌊 탕온평선! **${dmg}** 피해 + ☠️**독** + ❄️**빙결** 동시 부여!`] };
-    },
-  },
-  "주복사사": {
-    name:"주복사사", emoji:"⚖️",
-    art: [
-      "```ansi",
-      "\u001b[1;33m╔══════════════════════════════════════════╗",
-      "\u001b[1;37m║  ⚖️  呪 腹 死 死  ⚖️  주 복 사 사  ⚖️   ║",
-      "\u001b[1;33m║    이 법정에서는 — 내가 판사다!         ║",
-      "\u001b[1;37m║  \"사형을 선고한다\" — 히구루마 히로미   ║",
-      "\u001b[1;33m╚══════════════════════════════════════════╝",
-      "```",
-    ].join("\n"),
-    desc:"피해 + 적의 ATK를 50% 삭감 (weaken 3턴) + stun 1턴",
-    effect: (attacker, defender, atkStats) => {
-      const dmg = Math.floor(atkStats.atk * 3.0);
-      applyStatus(defender, "weaken");
-      defender.statusEffects.find(s=>s.id==="weaken").turns = 3;
-      applyStatus(defender, "stun");
-      return { dmg, log:[`> ⚖️ 주복사사 — 사형 선고! **${dmg}** 피해 + 💔**3턴 약화** + ⚡**기절**!`] };
-    },
-  },
-  "질풍강운": {
-    name:"질풍강운", emoji:"🎰",
-    art: [
-      "```ansi",
-      "\u001b[1;33m╔══════════════════════════════════════════╗",
-      "\u001b[1;31m║  🎰  疾 風 強 運  🎰  질 풍 강 운  🎰   ║",
-      "\u001b[1;33m║    운명의 룰렛이 돌아간다...!!          ║",
-      "\u001b[1;31m║  \"운도 실력이다!\" — 하카리 키리토      ║",
-      "\u001b[1;33m╚══════════════════════════════════════════╝",
-      "```",
-    ].join("\n"),
-    desc:"랜덤 극대화 피해 (ATK × 2~6배) — 운에 맡긴다!",
-    effect: (attacker, defender, atkStats) => {
-      const mult = 2 + Math.random() * 4;
-      const dmg = Math.floor(atkStats.atk * mult);
-      return { dmg, log:[`> 🎰 질풍강운! 운명의 배율 **×${mult.toFixed(1)}** — **${dmg}** 피해!`] };
-    },
-  },
-  "진안상애_pvp": { // 이름이 같은 경우
-    name:"진안상애", emoji:"💗",
-    art: "```ansi\n\u001b[1;35m💗  진안상애  💗\n```",
-    desc:"PvP용",
-    effect: (attacker, defender, atkStats, atkMaxHp) => {
-      const dmg = Math.floor(atkStats.atk * 3.2);
-      applyStatus(defender, "weaken");
-      return { dmg, log:[`> 💗 진안상애! **${dmg}** 피해 + 💔약화!`] };
-    },
-  },
-};
-
-// 영역 이름으로 이펙트 가져오기
-function getDomainEffect(domainName) {
-  return DOMAIN_EFFECTS[domainName] || null;
-}
 
 // ════════════════════════════════════════════════════════
 // ── 캐릭터 데이터
@@ -786,31 +687,31 @@ const ENEMIES = [
 ];
 
 // ════════════════════════════════════════════════════════
-// ── 레이드 보스
+// ── 레이드 보스 데이터
 // ════════════════════════════════════════════════════════
 const RAID_BOSSES = {
   heian_sukuna: {
-    id:"heian_sukuna", name:"平安時代 스쿠나 〖헤이안 최강〗", emoji:"👹🔴",
-    hp:11000, atk:440, def:260, xp:3000, crystals:600, masteryXp:40, fingers:3,
-    desc:"헤이안 시대의 스쿠나. 현대 스쿠나의 2배 강함.",
-    lore:"\"나는 그 어느 시대에도 최강이었다.\"",
-    color:0x8b0000, statusAttack:{ statusId:"burn",chance:0.7 },
-    specialAttack:{ name:"복마어주자",dmg:600,statusId:"freeze",chance:0.9 },
-    dropKey:"raid_heian", phaseHp:0.5, enragedAtk:600,
+    id: "heian_sukuna", name: "平安時代 스쿠나 〖헤이안 최강〗", emoji: "👹🔴",
+    hp: 11000, atk: 440, def: 260, xp: 3000, crystals: 600, masteryXp: 40, fingers: 3,
+    desc: "헤이안 시대의 스쿠나. 현대 스쿠나의 2배 강함.",
+    lore: "\"나는 그 어느 시대에도 최강이었다.\"",
+    color: 0x8b0000, statusAttack: { statusId:"burn", chance:0.7 },
+    specialAttack: { name:"복마어주자", dmg:600, statusId:"freeze", chance:0.9 },
+    dropKey: "raid_heian", phaseHp: 0.5, enragedAtk: 600,
   },
   mahoraga: {
-    id:"mahoraga", name:"八握剣 異戒神将 마허라가라", emoji:"⚙️🐉",
-    hp:6000, atk:280, def:180, xp:2500, crystals:500, masteryXp:35, fingers:2,
-    desc:"식신 중 최강. 모든 술식에 적응하는 능력.",
-    lore:"\"마허라가라는 천지의 이치를 먹는다.\"",
-    color:0x2a2a2a, statusAttack:{ statusId:"weaken",chance:0.6 },
-    specialAttack:{ name:"팔상천마",dmg:400,statusId:"stun",chance:0.8 },
-    dropKey:"raid_mahoraga", adaptationSkill:true, phaseHp:0.4, enragedAtk:380,
+    id: "mahoraga", name: "八握剣 異戒神将 마허라가라", emoji: "⚙️🐉",
+    hp: 6000, atk: 280, def: 180, xp: 2500, crystals: 500, masteryXp: 35, fingers: 2,
+    desc: "식신 중 최강. 모든 술식에 적응하는 능력.",
+    lore: "\"마허라가라는 천지의 이치를 먹는다.\"",
+    color: 0x2a2a2a, statusAttack: { statusId:"weaken", chance:0.6 },
+    specialAttack: { name:"팔상천마", dmg:400, statusId:"stun", chance:0.8 },
+    dropKey: "raid_mahoraga", adaptationSkill: true, phaseHp: 0.4, enragedAtk: 380,
   },
 };
 
 // ════════════════════════════════════════════════════════
-// ── 사멸회유 적
+// ── 사멸회유 적 데이터
 // ════════════════════════════════════════════════════════
 const JUJUTSU_ENEMIES = [
   { id:"j1",name:"약화된 저주령",   emoji:"💧",hp:300, atk:25,def:8,  xp:55, crystals:12,masteryXp:1,points:1,fingers:0,statusAttack:null,                              desc:"⚡ 빠르지만 약함 (1포인트)" },
@@ -888,7 +789,6 @@ function getPlayer(userId, username="플레이어") {
       mainSkillUnlocked:{ gojo:false,sukuna:false },
       materials:{}, equippedWeapon:null, craftedWeapons:[],
       quests:{}, raidClears:{},
-      domainCooldown:0,
     };
     savePlayer(userId);
   }
@@ -901,7 +801,6 @@ function getPlayer(userId, username="플레이어") {
     dailyStreak:0,sukunaFingers:0,kogane:null,koganeGachaCount:0,
     mainSkillUnlocked:{ gojo:false,sukuna:false },
     materials:{},equippedWeapon:null,craftedWeapons:[],quests:{},raidClears:{},
-    domainCooldown:0,
   };
   for (const [k,v] of Object.entries(defaults)) {
     if (p[k]===undefined) { p[k]=typeof v==="object"&&v!==null?JSON.parse(JSON.stringify(v)):v; changed=true; }
@@ -911,8 +810,8 @@ function getPlayer(userId, username="플레이어") {
   return p;
 }
 
-function getMastery(player, charId) { return player.mastery?.[charId]||0; }
-function getAvailableSkills(player, charId) {
+function getMastery(player,charId) { return player.mastery?.[charId]||0; }
+function getAvailableSkills(player,charId) {
   const m=getMastery(player,charId);
   return CHARACTERS[charId].skills.filter(s=>{
     if (m<s.minMastery) return false;
@@ -920,17 +819,11 @@ function getAvailableSkills(player, charId) {
     return true;
   });
 }
-// selectedSkillIndex로 스킬 선택 지원
-function getSelectedSkill(player, charId) {
-  const available = getAvailableSkills(player, charId);
-  if (!available.length) return CHARACTERS[charId].skills[0];
-  const idx = player.selectedSkillIndex ?? (available.length - 1);
-  return available[Math.min(idx, available.length-1)];
+function getCurrentSkill(player,charId) {
+  const skills=getAvailableSkills(player,charId);
+  return skills[skills.length-1]||CHARACTERS[charId].skills[0];
 }
-function getCurrentSkill(player, charId) {
-  return getSelectedSkill(player, charId);
-}
-function getNextSkill(player, charId) {
+function getNextSkill(player,charId) {
   const m=getMastery(player,charId);
   return CHARACTERS[charId].skills.find(s=>s.minMastery>m)||null;
 }
@@ -951,7 +844,7 @@ function getPlayerStats(player) {
   };
 }
 
-function masteryBar(mastery, charId) {
+function masteryBar(mastery,charId) {
   const tiers=CHARACTERS[charId].skills.map(s=>s.minMastery);
   const max=tiers[tiers.length-1];
   if (mastery>=max) return "`[MAX]` 모든 스킬 해금!";
@@ -961,7 +854,7 @@ function masteryBar(mastery, charId) {
   return "`"+"█".repeat(Math.max(0,fill))+"░".repeat(Math.max(0,10-fill))+"`"+` ${mastery}/${next}`;
 }
 function getLevel(xp) { return Math.floor(xp/200)+1; }
-function hpBar(cur, max, len=10) {
+function hpBar(cur,max,len=10) {
   const pct=Math.max(0,Math.min(1,cur/max));
   const fill=Math.round(pct*len);
   const color=pct>0.5?"🟩":pct>0.25?"🟨":"🟥";
@@ -972,11 +865,11 @@ function isMakiAwakened(player) {
   const stats=getPlayerStats(player);
   return player.hp<=Math.floor(stats.maxHp*CHARACTERS["maki"].awakening.threshold);
 }
-function calcDmg(atk, def, mult=1) {
+function calcDmg(atk,def,mult=1) {
   const variance=0.70+Math.random()*0.60;
   return Math.max(1,Math.floor((atk*variance-def*0.22)*mult));
 }
-function calcDmgForPlayer(player, enemyDef, baseMult=1) {
+function calcDmgForPlayer(player,enemyDef,baseMult=1) {
   const stats=getPlayerStats(player);
   let mult=baseMult*getWeakenMult(player.statusEffects);
   if (isMakiAwakened(player)) mult*=CHARACTERS["maki"].awakening.dmgMult;
@@ -986,7 +879,7 @@ function calcDmgForPlayer(player, enemyDef, baseMult=1) {
   }
   return calcDmg(stats.atk,enemyDef,mult);
 }
-function calcSkillDmgForPlayer(player, baseSkillDmg) {
+function calcSkillDmgForPlayer(player,baseSkillDmg) {
   let dmg=baseSkillDmg+Math.floor(Math.random()*60);
   dmg=Math.floor(dmg*getWeakenMult(player.statusEffects));
   if (isMakiAwakened(player)) dmg=Math.floor(dmg*CHARACTERS["maki"].awakening.dmgMult);
@@ -1000,7 +893,7 @@ function calcSkillDmgForPlayer(player, baseSkillDmg) {
   dmg+=Math.floor(ws.atk*0.5);
   return dmg;
 }
-function applySkillStatus(skill, defenderObj, attackerObj=null) {
+function applySkillStatus(skill,defenderObj,attackerObj=null) {
   if (!skill.statusApply) return [];
   const { target,statusId,chance }=skill.statusApply;
   if (Math.random()>chance) return [];
@@ -1018,7 +911,6 @@ function applySkillStatus(skill, defenderObj, attackerObj=null) {
 function tickCooldowns(player) {
   if (player.reverseCooldown>0) player.reverseCooldown--;
   if (player.skillCooldown>0) player.skillCooldown--;
-  if (player.domainCooldown>0) player.domainCooldown--;
 }
 
 // ════════════════════════════════════════════════════════
@@ -1027,13 +919,13 @@ function tickCooldowns(player) {
 function getPartyId(userId) { return Object.keys(parties).find(pid=>parties[pid]?.members?.includes(userId))||null; }
 function getParty(userId) { const pid=getPartyId(userId); return pid?parties[pid]:null; }
 function getPvpSessionByUser(userId) { return Object.values(pvpSessions).find(s=>s.p1Id===userId||s.p2Id===userId)||null; }
-function pvpOpponent(session, userId) {
-  if (session.p1Id===userId) return { id:session.p2Id,hpKey:"hp2",statusKey:"status2",skillCdKey:"skillCd2",reverseCdKey:"reverseCd2",domainCdKey:"domainCd2" };
-  return { id:session.p1Id,hpKey:"hp1",statusKey:"status1",skillCdKey:"skillCd1",reverseCdKey:"reverseCd1",domainCdKey:"domainCd1" };
+function pvpOpponent(session,userId) {
+  if (session.p1Id===userId) return { id:session.p2Id,hpKey:"hp2",statusKey:"status2",skillCdKey:"skillCd2",reverseCdKey:"reverseCd2" };
+  return { id:session.p1Id,hpKey:"hp1",statusKey:"status1",skillCdKey:"skillCd1",reverseCdKey:"reverseCd1" };
 }
-function pvpSelf(session, userId) {
-  if (session.p1Id===userId) return { id:session.p1Id,hpKey:"hp1",statusKey:"status1",skillCdKey:"skillCd1",reverseCdKey:"reverseCd1",domainCdKey:"domainCd1" };
-  return { id:session.p2Id,hpKey:"hp2",statusKey:"status2",skillCdKey:"skillCd2",reverseCdKey:"reverseCd2",domainCdKey:"domainCd2" };
+function pvpSelf(session,userId) {
+  if (session.p1Id===userId) return { id:session.p1Id,hpKey:"hp1",statusKey:"status1",skillCdKey:"skillCd1",reverseCdKey:"reverseCd1" };
+  return { id:session.p2Id,hpKey:"hp2",statusKey:"status2",skillCdKey:"skillCd2",reverseCdKey:"reverseCd2" };
 }
 function getRaidByUser(userId) { return Object.values(raidSessions).find(r=>r.members.includes(userId))||null; }
 
@@ -1066,7 +958,7 @@ function generateJujutsuChoices(wave) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 전투 승리 공통 처리
+// ── 전투 승리 공통 처리 (회복약 드롭 포함)
 // ════════════════════════════════════════════════════════
 async function processBattleWin(player, enemy) {
   const kb=getKoganeBonus(player);
@@ -1077,6 +969,7 @@ async function processBattleWin(player, enemy) {
   player.mastery[player.active]=(player.mastery[player.active]||0)+masteryGain;
   player.wins++;
 
+  // 회복약 드롭 (35~100% 확률)
   const potionChances = { e1:0.35, e2:0.45, e3:0.60, e4:0.80, e_sukuna:1.00 };
   const potionChance = potionChances[enemy.id] || 0.25;
   let potionMsg = "";
@@ -1086,6 +979,7 @@ async function processBattleWin(player, enemy) {
     potionMsg = `\n> 🧪 **회복약 +${gain}개** 드롭! (보유: **${player.potion}개**)`;
   }
 
+  // 스쿠나 손가락 처리
   let fingerMsg = "";
   if (enemy.isSukuna) {
     const gained=enemy.fingers||1;
@@ -1094,7 +988,7 @@ async function processBattleWin(player, enemy) {
     if (before===0&&player.sukunaFingers>=1&&!player.owned.includes("sukuna")) {
       player.owned.push("sukuna");
       if (!player.mastery["sukuna"]) player.mastery["sukuna"]=0;
-      fingerMsg="\n\n🔴 **스쿠나 캐릭터 해금!** (`!활성` 으로 변경)\n> 손가락이 많아질수록 스탯이 강해집니다!";
+      fingerMsg="\n\n🔴 **스쿠나 캐릭터 해금!** (`!활성 sukuna`)\n> 손가락이 많아질수록 스탯이 강해집니다!";
     } else if (player.sukunaFingers>=1&&before<player.sukunaFingers) {
       fingerMsg=`\n\n👹 **스쿠나 손가락 +${gained}개!** (${player.sukunaFingers}/${SUKUNA_FINGER_MAX})\n> ${getFingerBonus(player.sukunaFingers).label}`;
     }
@@ -1103,14 +997,16 @@ async function processBattleWin(player, enemy) {
     if (player.sukunaFingers>=1&&!player.owned.includes("sukuna")) {
       player.owned.push("sukuna");
       if (!player.mastery["sukuna"]) player.mastery["sukuna"]=0;
-      fingerMsg="\n\n🔴 **스쿠나 캐릭터 해금!** (`!활성` 으로 변경)";
+      fingerMsg="\n\n🔴 **스쿠나 캐릭터 해금!** (`!활성 sukuna`)";
     }
   }
 
+  // 재료 드롭
   const dropKey=enemy.isSukuna?"e_sukuna":(enemy.id||"e1");
   const drops=rollDrops(dropKey);
   addMaterials(player,drops);
 
+  // 주력 스킬 언락
   let unlockMsg="";
   if (player.active==="gojo"&&!player.mainSkillUnlocked?.gojo&&player.wins>=20) {
     if (!player.mainSkillUnlocked) player.mainSkillUnlocked={};
@@ -1158,7 +1054,7 @@ function getNewlyCompletedQuestMsg(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 프로필 임베드
+// ── 고퀄 프로필 카드 임베드
 // ════════════════════════════════════════════════════════
 function profileEmbed(player) {
   const ch=CHARACTERS[player.active];
@@ -1177,23 +1073,27 @@ function profileEmbed(player) {
   const weapon=player.equippedWeapon?getWeaponByName(player.equippedWeapon):null;
   const ws=getWeaponStats(player);
 
+  // HP 바
   const HP_LEN=20, hpFill=Math.round(hpPct*HP_LEN);
   const hpEmoji=hpPct>0.6?"🟢":hpPct>0.3?"🟡":"🔴";
   const hpBarStr=`${hpEmoji} \`${"█".repeat(Math.max(0,hpFill))}${"░".repeat(Math.max(0,HP_LEN-hpFill))}\`  **${Math.max(0,player.hp)}** / **${stats.maxHp}**`;
   const XP_LEN=20, xpFill=Math.round((xpNow/200)*XP_LEN);
   const xpBarStr=`⭐ \`${"▰".repeat(Math.max(0,xpFill))}${"▱".repeat(Math.max(0,XP_LEN-xpFill))}\`  **${xpNow}**/200`;
 
+  // 재료 요약
   const matSummary=Object.entries(player.materials||{}).filter(([,qty])=>qty>0).map(([id,qty])=>`${MATERIALS[id]?.emoji||""}${qty}`).join("  ")||"없음";
 
+  // 퀘스트
   initQuests(player);
   const dailyDone=(player.quests.daily||[]).filter(q=>q.done&&!q.claimed).length;
   const weeklyDone=(player.quests.weekly||[]).filter(q=>q.done&&!q.claimed).length;
 
-  const available=getAvailableSkills(player,player.active);
-  const currentSkill=getSelectedSkill(player,player.active);
+  // 스킬 정보
+  const currentSkill=getCurrentSkill(player,player.active);
   const nextSkill=getNextSkill(player,player.active);
   const mainSkill=getMainSkill(player,player.active);
 
+  // 레이드 클리어
   const raidClears=player.raidClears||{};
   const raidStr=Object.keys(RAID_BOSSES).map(id=>{
     const boss=RAID_BOSSES[id];
@@ -1222,18 +1122,17 @@ function profileEmbed(player) {
         `> 🗡️ ATK **${stats.atk}**  ·  🛡️ DEF **${stats.def}**  ·  💚 MaxHP **${stats.maxHp}**`,
         weapon?`> ${weapon.emoji} **[장착]** ${weapon.name} (\`ATK+${ws.atk} DEF+${ws.def} HP+${ws.hp}\`)`:`> ⚔️ 장착 주구: **없음**`,
         `> 🩸 상태이상: **${statusStr(player.statusEffects)}**`,
-        `> ⚡ 술식 CD: ${player.skillCooldown>0?`**${player.skillCooldown}턴**`:"✅ 가능"}   ♻ 반전 CD: ${player.reverseCooldown>0?`**${player.reverseCooldown}턴**`:"✅ 가능"}   🌌 영역 CD: ${player.domainCooldown>0?`**${player.domainCooldown}턴**`:"✅ 가능"}`,
+        `> ⚡ 술식 CD: ${player.skillCooldown>0?`**${player.skillCooldown}턴**`:"✅ 가능"}   ♻ 반전 CD: ${player.reverseCooldown>0?`**${player.reverseCooldown}턴**`:"✅ 가능"}`,
         kg?`> 🐾 코가네 [${kogane.grade}] ${kg.emoji}: ${kg.passiveDesc}`:`> 🐾 코가네: **없음** (\`!코가네가챠\` 200💎)`,
       ].filter(Boolean).join("\n"), inline:false
     })
     .addFields({
       name:"╔══ 🌀 술식 트리 ══════════════════════════╗",
       value:[
-        `> **선택 스킬:** ${currentSkill.name} (피해: \`${currentSkill.dmg}\`)  [스킬 ${available.indexOf(currentSkill)+1}/${available.length}]`,
+        `> **현재 스킬:** ${currentSkill.name} (피해: \`${currentSkill.dmg}\`)`,
         nextSkill?`> **다음 스킬:** ${nextSkill.name} (숙련 \`${nextSkill.minMastery}\` 필요)`:`> ✨ 모든 스킬 해금!`,
         mainSkill?`> ⭐ **주력 스킬:** ${mainSkill.name} (\`해금됨\`)`:"",
         player.active==="itadori"?`> 👹 스쿠나 손가락: **${fingers}/${SUKUNA_FINGER_MAX}**  —  ${fingerBonus.label}`:"",
-        ch.domain?`> 🌌 영역전개: **${ch.domain}** (15턴마다 사용 가능)`:"",
       ].filter(Boolean).join("\n"), inline:false
     })
     .addFields({
@@ -1269,43 +1168,25 @@ function profileEmbed(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 도감 임베드
-// ════════════════════════════════════════════════════════
-function dexEmbed(player, page=0) {
-  const allChars = Object.entries(CHARACTERS);
-  const PAGE_SIZE = 8;
-  const totalPages = Math.ceil(allChars.length / PAGE_SIZE);
-  const pageChars = allChars.slice(page * PAGE_SIZE, (page+1) * PAGE_SIZE);
-
-  const lines = pageChars.map(([id, ch]) => {
-    const owned = player.owned.includes(id);
-    const isActive = player.active === id;
-    const ri = GACHA_RARITY[ch.grade] || GACHA_RARITY["3급"];
-    const mastery = owned ? getMastery(player, id) : null;
-    const finger = id==="sukuna" && owned ? ` | 👹${player.sukunaFingers||0}개` : "";
-    return [
-      `${owned ? (isActive?"▶️":"✅") : "🔒"} ${ch.emoji} **${ch.name}** \`[${ch.grade}]\` ${ri.stars}`,
-      owned
-        ? `> 숙련 **${mastery}** | 🌌 ${ch.domain||"영역없음"}${finger}`
-        : `> 🔒 미보유 — 가챠로 획득`,
-    ].join("\n");
-  });
-
-  return new EmbedBuilder()
-    .setTitle(`📖 주술사 도감 (${player.owned.length}/${allChars.length}명 보유)`)
-    .setColor(0x7C5CFC)
-    .setDescription(lines.join("\n\n"))
-    .setFooter({ text:`페이지 ${page+1}/${totalPages} | !도감 [페이지번호]` });
-}
-
-// ════════════════════════════════════════════════════════
-// ── 가챠 컷씬
+// ── 고퀄 가챠 컷씬 (3단계 연출)
 // ════════════════════════════════════════════════════════
 function gachaLoadingEmbed(stage=1) {
   const frames=[
-    { title:"🔮 주술 소환 의식 — 저주 에너지 수렴", color:0x0a0a1e, desc:"```ansi\n\u001b[2;34m╔══════════════════════════════════════╗\n║  ？    ？    ？    ？    ？         ║\n║      저주 에너지가 수렴하기 시작한다...║\n╚══════════════════════════════════════╝\n```\n> *어둠 속에서 무언가가 움직이기 시작한다...*" },
-    { title:"⚡ 저주 에너지 임계점 돌파!", color:0x1a0533, desc:"```ansi\n\u001b[1;35m╔══════════════════════════════════════╗\n║  ⚡  ✦  ？？？  ⚡  ✦  ？？？      ║\n║      주술 에너지가 임계점에 도달한다!  ║\n╚══════════════════════════════════════╝\n```\n> *주변 공간이 강렬한 에너지로 일렁인다...*" },
-    { title:"🌟 소환 개시! 저주력 최대 방출!", color:0x2a0a5a, desc:"```ansi\n\u001b[1;36m╔══════════════════════════════════════╗\n║  🌟  S U M M O N   S T A R T  🌟   ║\n║      저주력이 최대로 폭발한다!!        ║\n╚══════════════════════════════════════╝\n```\n> *눈부신 섬광과 함께 새로운 주술사가 모습을 드러낸다...*" },
+    { 
+      title: "🔮 주술 소환 의식 — 저주 에너지 수렴", 
+      color: 0x0a0a1e,
+      desc: "```ansi\n\u001b[2;30m╔══════════════════════════════════════╗\n║  ？    ？    ？    ？    ？       ║\n║      저주 에너지가 수렴하기 시작한다...   ║\n╚══════════════════════════════════════╝\n```\n> *어둠 속에서 무언가가 움직이기 시작한다...*"
+    },
+    { 
+      title: "⚡ 저주 에너지 임계점 돌파!", 
+      color: 0x1a0533,
+      desc: "```ansi\n\u001b[1;35m╔══════════════════════════════════════╗\n║  ⚡  ✦  ？？？  ⚡  ✦  ？？？      ║\n║      주술 에너지가 임계점에 도달한다!     ║\n╚══════════════════════════════════════╝\n```\n> *주변 공간이 강렬한 에너지로 일렁인다...*"
+    },
+    { 
+      title: "🌟 소환 개시! 저주력 최대 방출!", 
+      color: 0x2a0a5a,
+      desc: "```ansi\n\u001b[1;36m╔══════════════════════════════════════╗\n║  🌟  S U M M O N   S T A R T  🌟   ║\n║      저주력이 최대로 폭발한다!!       ║\n╚══════════════════════════════════════╝\n```\n> *눈부신 섬광과 함께 새로운 주술사가 모습을 드러낸다...*"
+    },
   ];
   const f=frames[stage-1]||frames[0];
   return new EmbedBuilder().setTitle(f.title).setColor(f.color).setDescription(f.desc);
@@ -1349,7 +1230,7 @@ function gacha10ResultEmbed(results, newOnes, dupCrystals, player) {
     return `${ch.emoji} ${info.stars} **${ch.name}** \`[${ch.grade}]\`${isN?" **✨NEW!**":""}`;
   });
   const legendaries=results.filter(id=>CHARACTERS[id].grade==="특급");
-  const header = legendaries.length>0
+  const header = legendaries.length>0 
     ? "```ansi\n\u001b[1;33m╔══════════════════════════════════════╗\n║  🔱  특급 등급 획득!!  🔱             ║\n║    10연차에서 전설이 탄생했다!         ║\n╚══════════════════════════════════════╝\n```"
     : "```ansi\n\u001b[1;34m╔══════════════════════════════════════╗\n║  🎲 🎰 🎲  10연차 소환 결과  🎲 🎰 🎲  ║\n╚══════════════════════════════════════╝\n```";
   return new EmbedBuilder()
@@ -1364,13 +1245,25 @@ function gacha10ResultEmbed(results, newOnes, dupCrystals, player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 코가네 가챠 컷씬
+// ── 코가네 가챠 고퀄 컷씬 (3단계 연출)
 // ════════════════════════════════════════════════════════
 function koganeLoadingEmbed(stage=1) {
   const frames = [
-    { title:"🐾 코가네 소환 의식 — 황금빛 기운 감지", color:0x2a1500, desc:"```ansi\n\u001b[2;33m╔══════════════════════════════════════╗\n║  🐾  황금 개의 기운이 느껴진다...     ║\n║      어둠 속에서 황금빛이 반짝인다...   ║\n╚══════════════════════════════════════╝\n```\n> *희미한 황금빛이 공간을 채우기 시작한다...*" },
-    { title:"✨ 황금빛 기운 폭발! 신성한 빛이 내려온다!", color:0xF5A800, desc:"```ansi\n\u001b[1;33m╔══════════════════════════════════════╗\n║  ✨  황금빛이 폭발한다!!  ✨           ║\n║  🐾  황금빛 기운이 최대치에 도달!  🐾  ║\n╚══════════════════════════════════════╝\n```\n> *강렬한 황금빛과 함께 신비로운 존재가 모습을 드러낸다...*" },
-    { title:"🌟 코가네 소환 완료!", color:0xFFD700, desc:"```ansi\n\u001b[1;33m╔══════════════════════════════════════╗\n║  🌟  K O G A N E   S U M M O N E D  🌟║\n║      ✨ 황금 개 코가네 출현! ✨        ║\n╚══════════════════════════════════════╝\n```" },
+    {
+      title: "🐾 코가네 소환 의식 — 황금빛 기운 감지",
+      color: 0x2a1500,
+      desc: "```ansi\n\u001b[2;33m╔══════════════════════════════════════╗\n║  🐾  황금 개의 기운이 느껴진다...     ║\n║      어둠 속에서 황금빛이 반짝인다...   ║\n╚══════════════════════════════════════╝\n```\n> *희미한 황금빛이 공간을 채우기 시작한다...*"
+    },
+    {
+      title: "✨ 황금빛 기운 폭발! 신성한 빛이 내려온다!",
+      color: 0xF5A800,
+      desc: "```ansi\n\u001b[1;33m╔══════════════════════════════════════╗\n║  ✨  황금빛이 폭발한다!!  ✨         ║\n║  🐾  황금빛 기운이 최대치에 도달!  🐾  ║\n╚══════════════════════════════════════╝\n```\n> *강렬한 황금빛과 함께 신비로운 존재가 모습을 드러낸다...*"
+    },
+    {
+      title: "🌟 코가네 소환 완료!",
+      color: 0xFFD700,
+      desc: "```ansi\n\u001b[1;33m╔══════════════════════════════════════╗\n║  🌟  K O G A N E   S U M M O N E D  🌟  ║\n║      ✨ 황금 개 코가네 출현! ✨        ║\n╚══════════════════════════════════════╝\n```"
+    },
   ];
   return new EmbedBuilder().setTitle(frames[stage-1].title).setColor(frames[stage-1].color).setDescription(frames[stage-1].desc);
 }
@@ -1382,13 +1275,13 @@ function koganeRevealEmbed(grade, isUpgrade, player) {
     .setColor(kg.color)
     .setTitle(
       isUpgrade
-        ? `${kg.emoji} 코가네 등급 상승!! ${prevGrade?`[${prevGrade} → ${grade}]`:`[${grade}]`}`
+        ? `${kg.emoji} 코가네 등급 상승!! ${prevGrade ? `[${prevGrade} → ${grade}]` : `[${grade}]`}`
         : `${kg.emoji} 코가네 소환! [${grade}] ${kg.stars}`
     )
     .setDescription([
       isUpgrade
         ? "```ansi\n\u001b[1;33m╔══════════════════════════════════════╗\n║  🆙  GRADE  UP!!  코가네 각성!  🆙  ║\n╚══════════════════════════════════════╝\n```"
-        : "```ansi\n\u001b[1;33m╔══════════════════════════════════════╗\n║  🐾  KOGANE  SUMMONED!  🐾          ║\n║      황금 개 코가네가 나타났다!       ║\n╚══════════════════════════════════════╝\n```",
+        : "```ansi\n\u001b[1;33m╔══════════════════════════════════════╗\n║  🐾  KOGANE  SUMMONED!  🐾         ║\n║      황금 개 코가네가 나타났다!       ║\n╚══════════════════════════════════════╝\n```",
       `> 🌟 **${grade} 등급** ${kg.stars}`,
       `> 📖 **패시브 효과:** ${kg.passiveDesc}`,
       `> ⚔️ **스킬:** **${kg.skill}** — ${kg.skillDesc}`,
@@ -1403,36 +1296,45 @@ function koganeRevealEmbed(grade, isUpgrade, player) {
     .setFooter({ text:`!코가네 명령어로 펫 정보 확인 | 소환 횟수: ${player.koganeGachaCount}회` });
 }
 
-function kogane10ResultEmbed(results, player) {
-  const gradeOrder=["3급","2급","1급","특급","전설"];
-  const sorted=[...results].sort((a,b)=>gradeOrder.indexOf(b)-gradeOrder.indexOf(a));
-  const best=sorted[0];
-  const kg=KOGANE_GRADES[best];
-  const lines=sorted.map(grade=>{
-    const g=KOGANE_GRADES[grade];
-    return `${g.emoji} **[${grade}]** ${g.stars}`;
-  });
-  const prevGrade=player.kogane?.grade;
-  const isUpgrade=!prevGrade||gradeOrder.indexOf(best)>gradeOrder.indexOf(prevGrade);
+function koganeProfileEmbed(player) {
+  const kogane=player.kogane;
+  if (!kogane) return new EmbedBuilder()
+    .setTitle("🐾 코가네 — 황금 개 펫")
+    .setColor(0x4a5568)
+    .setDescription([
+      "> **코가네**가 없습니다!",
+      "> \`!코가네가챠\` 로 소환하세요! (200💎)",
+      "",
+      "```ansi",
+      "\u001b[2;33m╔══════════════════════════════════════╗",
+      "\u001b[2;33m║  🐾  황금빛 기운을 따라...         ║",
+      "\u001b[2;33m║      코가네를 소환하세요!          ║",
+      "\u001b[2;33m╚══════════════════════════════════════╝",
+      "```",
+    ].join("\n"))
+    .setFooter({ text:"!코가네가챠 (200💎)" });
+  const kg=KOGANE_GRADES[kogane.grade];
   return new EmbedBuilder()
-    .setTitle(`🐾 코가네 10연차 결과! 최고 등급: [${best}]`)
+    .setTitle(`${kg.emoji} 코가네 [${kogane.grade}] ${kg.stars}`)
     .setColor(kg.color)
     .setDescription([
       "```ansi",
       `\u001b[1;33m╔══════════════════════════════════════╗`,
-      `\u001b[1;33m║  🐾  10연차 코가네 소환!  🐾          ║`,
+      `\u001b[1;33m║  🐾  ${kogane.grade} 코가네  ${kg.stars}  🐾  ║`,
       `\u001b[1;33m╚══════════════════════════════════════╝`,
       "```",
-      lines.join("\n"),
-      "",
-      isUpgrade?`> ✨ 코가네 등급 **${prevGrade||"없음"} → ${best}** 로 상승!`:`> 🔄 현재 [${prevGrade}] 유지 (최고 등급 없으면 자동 적용)`,
-      `> 💎 남은 크리스탈: **${player.crystals}**`,
+      `> **패시브:** ${kg.passiveDesc}`,
+      `> **스킬:** ${kg.skill} — ${kg.skillDesc}`,
     ].join("\n"))
-    .setFooter({ text:`총 소환 횟수: ${player.koganeGachaCount}회` });
+    .addFields(
+      { name:"📊 스탯 보너스", value:`🗡️ ATK +${Math.round(kg.atkBonus*100)}%\n🛡️ DEF +${Math.round(kg.defBonus*100)}%\n💚 HP +${Math.round(kg.hpBonus*100)}%`, inline:true },
+      { name:"📈 보상 보너스", value:`⭐ XP +${Math.round(kg.xpBonus*100)}%\n💎 크리스탈 +${Math.round(kg.crystalBonus*100)}%`, inline:true },
+    )
+    .setFooter({ text:`총 소환 횟수: ${player.koganeGachaCount||0}회 | !코가네가챠` });
 }
 
 // ════════════════════════════════════════════════════════
-// ── 기타 임베드
+// ── 기타 임베드 함수들
 // ════════════════════════════════════════════════════════
 function questEmbed(player) {
   initQuests(player);
@@ -1477,10 +1379,7 @@ function weaponListEmbed(player) {
   return new EmbedBuilder().setTitle("⚔️ 주구 (무기) 목록").setColor(0xF5C842).setDescription(lines.join("\n\n")).setFooter({ text:"!주구제작 [무기이름] | !장착 [무기이름] | !해제" });
 }
 
-// ════════════════════════════════════════════════════════
-// ── 전투 임베드들
-// ════════════════════════════════════════════════════════
-function cullingEmbed(player, session, log=[]) {
+function cullingEmbed(player,session,log=[]) {
   const ch=CHARACTERS[player.active];
   const stats=getPlayerStats(player);
   const enemy=session.currentEnemy;
@@ -1501,10 +1400,10 @@ function cullingEmbed(player, session, log=[]) {
       { name:`${enemy.emoji} ${enemy.name}`, value:`${makeBar(hpPctE)} \`${Math.max(0,session.enemyHp)}/${enemy.hp}\`\n🩸 상태: ${statusStr(enemy.statusEffects||[])}\n🗡️ ATK **${enemy.atk}** · 🛡️ DEF **${enemy.def}**`, inline:true },
       { name:"📊 현황", value:`🌊 WAVE **${session.wave}** | 처치 **${session.kills}** | 🎯 **${session.totalXp}** XP / **${session.totalCrystals}**💎\n🏆 최고: **WAVE ${player.cullingBest}**`, inline:false },
     )
-    .setFooter({ text:`🌀 선택 스킬: ${getCurrentSkill(player,player.active).name} | ⚫ 흑섬 10%` });
+    .setFooter({ text:`🔥 현재 스킬: ${getCurrentSkill(player,player.active).name} — 흑섬 10%` });
 }
 
-function jujutsuEmbed(player, session, log=[], choices=null) {
+function jujutsuEmbed(player,session,log=[],choices=null) {
   const ch=CHARACTERS[player.active];
   const stats=getPlayerStats(player);
   const awakened=isMakiAwakened(player);
@@ -1518,27 +1417,43 @@ function jujutsuEmbed(player, session, log=[], choices=null) {
     .setTitle(`🎯 사멸회유 — WAVE ${session.wave} | 포인트 **${session.points}**/15`)
     .setColor(session.points>=10?0xF5C842:session.points>=5?0xff8c00:0x7C5CFC)
     .setDescription(log.length?log.join("\n"):"🎯 사멸회유 진행 중!")
-    .addFields({ name:`${ch.emoji} 내 HP${awakened?" 🔥[각성]":""}`, value:`${makeBar(hpPctP)} \`${Math.max(0,player.hp)}/${stats.maxHp}\`\n🩸 상태: ${statusStr(player.statusEffects)}\n⚡ 술식: \`${player.skillCooldown>0?player.skillCooldown+"턴":"✅"}\``, inline:false });
-  embed.addFields({ name:"🎯 포인트 진행도", value:`${"🟦".repeat(Math.min(session.points,15))}${"⬜".repeat(Math.max(0,15-session.points))} **${session.points}/15**\n📊 누적 XP: **${session.totalXp}** / 누적 💎: **${session.totalCrystals}**`, inline:false });
+    .addFields({
+      name:`${ch.emoji} 내 HP${awakened?" 🔥[각성]":""}`,
+      value:`${makeBar(hpPctP)} \`${Math.max(0,player.hp)}/${stats.maxHp}\`\n🩸 상태: ${statusStr(player.statusEffects)}\n⚡ 술식: \`${player.skillCooldown>0?player.skillCooldown+"턴":"✅"}\``,
+      inline:false,
+    });
+  embed.addFields({
+    name:"🎯 포인트 진행도",
+    value:`${"🟦".repeat(Math.min(session.points,15))}${"⬜".repeat(Math.max(0,15-session.points))} **${session.points}/15**\n📊 누적 XP: **${session.totalXp}** / 누적 💎: **${session.totalCrystals}**`,
+    inline:false,
+  });
   if (session.currentEnemy) {
     const enemy=session.currentEnemy;
     const hpPctE=Math.max(0,session.enemyHp)/enemy.hp;
-    embed.addFields({ name:`${enemy.emoji} 현재 적: ${enemy.name}`, value:`${makeBar(hpPctE)} \`${Math.max(0,session.enemyHp)}/${enemy.hp}\`\n🩸 상태: ${statusStr(enemy.statusEffects||[])}\n🎯 처치 시 +${enemy.points}점`, inline:false });
+    embed.addFields({
+      name:`${enemy.emoji} 현재 적: ${enemy.name}`,
+      value:`${makeBar(hpPctE)} \`${Math.max(0,session.enemyHp)}/${enemy.hp}\`\n🩸 상태: ${statusStr(enemy.statusEffects||[])}\n🎯 처치 시 +${enemy.points}점`,
+      inline:false,
+    });
   }
-  if (choices) embed.addFields({ name:"⚔️ 다음 적 선택", value:choices.map((c,i)=>`**[${i+1}]** ${c.emoji} ${c.name} — HP:\`${c.hp}\` ATK:\`${c.atk}\` | +${c.points}점\n└ ${c.desc}`).join("\n"), inline:false });
+  if (choices) embed.addFields({
+    name:"⚔️ 다음 적 선택",
+    value:choices.map((c,i)=>`**[${i+1}]** ${c.emoji} ${c.name} — HP:\`${c.hp}\` ATK:\`${c.atk}\` | +${c.points}점\n└ ${c.desc}`).join("\n"),
+    inline:false,
+  });
   embed.setFooter({ text:`🏆 최고 기록: ${player.jujutsuBest}pt | 15pt 달성 시 +300💎 +500XP 보너스!` });
   return embed;
 }
 
-function pvpEmbed(session, log=[]) {
+function pvpEmbed(session,log=[]) {
   const p1=players[session.p1Id],p2=players[session.p2Id];
   if (!p1||!p2) return new EmbedBuilder().setTitle("PvP 오류").setColor(0xe63946).setDescription("플레이어 정보 없음");
   const ch1=CHARACTERS[p1.active],ch2=CHARACTERS[p2.active];
   const s1=getPlayerStats(p1),s2=getPlayerStats(p2);
   const makeBar = (hp, maxHp, len=10) => {
-    const pct=Math.max(0,hp)/maxHp;
-    const fill=Math.round(pct*len);
-    const icon=pct>0.5?"🟩":pct>0.25?"🟨":"🟥";
+    const pct = Math.max(0,hp)/maxHp;
+    const fill = Math.round(pct*len);
+    const icon = pct>0.5?"🟩":pct>0.25?"🟨":"🟥";
     return icon.repeat(Math.max(0,fill))+"⬛".repeat(Math.max(0,len-fill));
   };
   return new EmbedBuilder()
@@ -1546,14 +1461,14 @@ function pvpEmbed(session, log=[]) {
     .setColor(0xF5C842)
     .setDescription(log.length?log.join("\n"):"⚔️ 결투 시작!")
     .addFields(
-      { name:`${ch1.emoji} ${p1.name} [${ch1.grade}]${session.turn===session.p1Id?" ◀ **[내 턴]**":""}`, value:`${makeBar(session.hp1,session.maxHp1)} \`${Math.max(0,session.hp1)}/${session.maxHp1}\`\n🩸 ${statusStr(session.status1)}\n⚡술식: ${session.skillCd1>0?`\`${session.skillCd1}턴\``:"✅"}  ♻반전: ${session.reverseCd1>0?`\`${session.reverseCd1}턴\``:"✅"}  🌌영역: ${session.domainCd1>0?`\`${session.domainCd1}턴\``:"✅"}`, inline:true },
-      { name:`${ch2.emoji} ${p2.name} [${ch2.grade}]${session.turn===session.p2Id?" ◀ **[내 턴]**":""}`, value:`${makeBar(session.hp2,session.maxHp2)} \`${Math.max(0,session.hp2)}/${session.maxHp2}\`\n🩸 ${statusStr(session.status2)}\n⚡술식: ${session.skillCd2>0?`\`${session.skillCd2}턴\``:"✅"}  ♻반전: ${session.reverseCd2>0?`\`${session.reverseCd2}턴\``:"✅"}  🌌영역: ${session.domainCd2>0?`\`${session.domainCd2}턴\``:"✅"}`, inline:true },
+      { name:`${ch1.emoji} ${p1.name} [${ch1.grade}]${session.turn===session.p1Id?" ◀ **[내 턴]**":""}`, value:`${makeBar(session.hp1,session.maxHp1)} \`${Math.max(0,session.hp1)}/${session.maxHp1}\`\n🩸 ${statusStr(session.status1)}\n⚡술식: ${session.skillCd1>0?`\`${session.skillCd1}턴\``:"✅"}  ♻반전: ${session.reverseCd1>0?`\`${session.reverseCd1}턴\``:"✅"}\n🌌 영역: ${session.domainUsed1?"✖사용완료":"✅사용가능"}`, inline:true },
+      { name:`${ch2.emoji} ${p2.name} [${ch2.grade}]${session.turn===session.p2Id?" ◀ **[내 턴]**":""}`, value:`${makeBar(session.hp2,session.maxHp2)} \`${Math.max(0,session.hp2)}/${session.maxHp2}\`\n🩸 ${statusStr(session.status2)}\n⚡술식: ${session.skillCd2>0?`\`${session.skillCd2}턴\``:"✅"}  ♻반전: ${session.reverseCd2>0?`\`${session.reverseCd2}턴\``:"✅"}\n🌌 영역: ${session.domainUsed2?"✖사용완료":"✅사용가능"}`, inline:true },
       { name:"🎯 턴 정보", value:`> **${session.turn===session.p1Id?p1.name:p2.name}** 의 차례! (Round ${session.round})`, inline:false },
     )
-    .setFooter({ text:"술식 5턴쿨 | 반전 3턴쿨 (고조/유타) | 영역전개 15턴쿨 | 기본 회피율 5%" });
+    .setFooter({ text:"술식 5턴쿨 | 반전 3턴쿨 (고조/유타) | 영역전개 1회 한정 | 기본 회피율 5%" });
 }
 
-function raidEmbed(raidSession, log=[]) {
+function raidEmbed(raidSession,log=[]) {
   const boss=RAID_BOSSES[raidSession.bossId];
   const makeBar=(hp,maxHp,len=16)=>{
     const pct=Math.max(0,hp)/maxHp, fill=Math.round(pct*len);
@@ -1569,7 +1484,9 @@ function raidEmbed(raidSession, log=[]) {
     const icon=pct>0.6?"🟢":pct>0.3?"🟡":"🔴";
     return `> ${ch.emoji} **${p.name}** ${icon} \`${Math.max(0,p.hp)}/${stats.maxHp}\`${aw?" 🔥[각성]":""}`;
   }).join("\n");
-  const adaptedStr=raidSession.adaptedSkills?.length?`\n> 🔄 적응된 술식: ${raidSession.adaptedSkills.join(", ")}`:"";
+  const adaptedStr=raidSession.adaptedSkills?.length
+    ?`\n> 🔄 적응된 술식: ${raidSession.adaptedSkills.join(", ")}`
+    :"";
   return new EmbedBuilder()
     .setTitle(`${boss.emoji} 레이드: ${boss.name}`)
     .setColor(enraged?0xff0000:boss.color)
@@ -1584,7 +1501,7 @@ function raidEmbed(raidSession, log=[]) {
     .setFooter({ text:"레이드 — 파티원 누구나 행동 가능 | 분노 페이즈 돌입 시 공격력 증가!" });
 }
 
-function partyCullingEmbed(party, session, log=[]) {
+function partyCullingEmbed(party,session,log=[]) {
   const enemy=session.currentEnemy;
   const makeBar=(hp,maxHp,len=8)=>{
     const pct=Math.max(0,hp)/maxHp, fill=Math.round(pct*len);
@@ -1617,36 +1534,31 @@ function buildSkillEmbed(player) {
   const awakened=isMakiAwakened(player);
   const fingers=player.sukunaFingers||0;
   const mainSkill=getMainSkill(player,id);
-  const available=getAvailableSkills(player,id);
-  const selectedIdx=player.selectedSkillIndex??(available.length-1);
   return new EmbedBuilder()
     .setTitle(`${ch.emoji} ≪ 술식 트리 ≫ ${ch.name}${awakened?" 🔥[각성]":""}`)
     .setColor(awakened?0xFF2200:JJK_GRADE_COLOR[ch.grade]||0x7c5cfc)
     .setDescription([
       `> ${ch.lore||ch.desc}`,
       `> 📈 **숙련도** ${masteryBar(mastery,id)}`,
-      `> 🌌 **영역전개** \`${ch.domain||"없음"}\` ${ch.domain?"(15턴 쿨다운)":""}`,
+      `> 🌌 **영역전개** \`${ch.domain||"없음"}\``,
       id==="itadori"?`> 👹 **스쿠나 손가락** \`${fingers}/${SUKUNA_FINGER_MAX}\` — ${getFingerBonus(fingers).label}`:"",
       id==="sukuna"?`> 👹 **손가락 보너스**: ATK+${getFingerBonus(fingers).atkBonus} DEF+${getFingerBonus(fingers).defBonus} HP+${getFingerBonus(fingers).hpBonus} DMG×${getFingerBonus(fingers).dmgMult.toFixed(2)}`:"",
       awakened?`> 🔥 **천여주박 각성 중** — 모든 데미지 **2배**!`:"",
       mainSkill?`> ⭐ **주력 스킬:** ${mainSkill.name} (해금됨!)`:id==="gojo"?`> ⭐ **주력 스킬:** 자폭 무라사키 (20승 필요)`:id==="sukuna"?`> ⭐ **주력 스킬:** 세계참 (손가락 10개 필요)`:"",
-      available.length>0?`\n**🌀 현재 선택된 스킬: ${available[Math.min(selectedIdx,available.length-1)]?.name}** (전투에서 사용됨)\n\`!스킬선택 [번호]\` 로 변경`:"",
     ].filter(Boolean).join("\n"))
     .addFields(ch.skills.map((s,idx)=>{
       const unlocked=mastery>=s.minMastery;
       const fingerLock=s.name==="스쿠나 발현"&&fingers<10;
-      const available2=unlocked&&!fingerLock;
-      const availIdx=available.findIndex(a=>a.name===s.name);
-      const isSelected=availIdx>=0&&availIdx===Math.min(selectedIdx,available.length-1);
+      const available=unlocked&&!fingerLock;
       const fx=getSkillEffect(s.name);
       const statusNote=s.statusApply?` \`${STATUS_EFFECTS[s.statusApply.statusId]?.emoji}${STATUS_EFFECTS[s.statusApply.statusId]?.name} ${Math.round(s.statusApply.chance*100)}%\``:"";
       return {
-        name:`${isSelected?"🔷 ":""}${available2?"✅":"🔒"} [${idx+1}] ${s.name}  —  피해 **${s.dmg}**${statusNote}  (숙련 ${s.minMastery})${isSelected?" **← 현재 선택**":""}`,
-        value:[`> ${s.desc}`, available2?`> ${fx.art}`:"> 🔒 잠김", available2?`> *${fx.flavorText}*`:""].filter(Boolean).join("\n"),
+        name:`${available?"✅":"🔒"} [${idx+1}] ${s.name}  —  피해 **${s.dmg}**${statusNote}  (숙련 ${s.minMastery})`,
+        value:[`> ${s.desc}`, available?`> ${fx.art}`:"> 🔒 잠김", available?`> *${fx.flavorText}*`:""].filter(Boolean).join("\n"),
         inline:false,
       };
     }))
-    .setFooter({ text:"⚫ 흑섬: 10% 확률로 2.5배 피해 + 50💎 | !스킬선택 [번호] 로 스킬 변경" });
+    .setFooter({ text:"⚫ 흑섬: 10% 확률로 2.5배 피해 + 50💎 | 전투 승리 시 숙련도 +1" });
 }
 
 // ════════════════════════════════════════════════════════
@@ -1654,96 +1566,62 @@ function buildSkillEmbed(player) {
 // ════════════════════════════════════════════════════════
 function mkBattleButtons(player) {
   const canSkill=!player||player.skillCooldown<=0;
-  const canReverse=!player||(player.reverseCooldown<=0&&REVERSE_CHARS.has(player.active));
-  const hasDomain=!player||!!CHARACTERS[player.active]?.domain;
-  const canDomain=!player||player.domainCooldown<=0;
+  const canReverse=!player||player.reverseCooldown<=0;
+  const hasReverse=!player||REVERSE_CHARS.has(player.active);
   const mainSkill=player?getMainSkill(player,player.active):null;
   const currentSkillName=player?getCurrentSkill(player,player.active).name:"술식";
-  
-  const row1=new ActionRowBuilder().addComponents(
+  const buttons=[
     new ButtonBuilder().setCustomId("b_attack").setLabel("⚔️ 공격").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("b_skill").setLabel(`🌀 ${currentSkillName}`).setStyle(ButtonStyle.Primary).setDisabled(!canSkill),
-    new ButtonBuilder().setCustomId("b_reverse").setLabel("♻️ 반전술식").setStyle(ButtonStyle.Secondary).setDisabled(!canReverse),
-    new ButtonBuilder().setCustomId("b_domain").setLabel(`🌌 영역전개`).setStyle(ButtonStyle.Success).setDisabled(!hasDomain||!canDomain),
+  ];
+  if (mainSkill) buttons.push(new ButtonBuilder().setCustomId("b_main").setLabel(`⭐ ${mainSkill.name}`).setStyle(ButtonStyle.Success));
+  buttons.push(
+    new ButtonBuilder().setCustomId("b_reverse").setLabel("♻️ 반전").setStyle(ButtonStyle.Secondary).setDisabled(!canReverse||!hasReverse),
     new ButtonBuilder().setCustomId("b_run").setLabel("🏃 도주").setStyle(ButtonStyle.Secondary),
   );
-  const rows=[row1];
-  if (mainSkill) {
-    const row2=new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("b_main").setLabel(`⭐ ${mainSkill.name}`).setStyle(ButtonStyle.Success),
-    );
-    rows.push(row2);
-  }
-  return rows;
+  return new ActionRowBuilder().addComponents(buttons);
 }
-
-function mkSkillSelectMenu(player, prefix="battle") {
-  const available=getAvailableSkills(player,player.active);
-  if (available.length<=1) return null;
-  const options=available.map((s,i)=>{
-    const selectedIdx=player.selectedSkillIndex??(available.length-1);
-    const fx=getSkillEffect(s.name);
-    return {
-      label:`[${i+1}] ${s.name}`,
-      description:`피해: ${s.dmg} | ${s.desc.slice(0,40)}`,
-      value:`${prefix}_skill_${i}`,
-      default:i===Math.min(selectedIdx,available.length-1),
-    };
-  });
-  return new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`${prefix}_skill_select`)
-      .setPlaceholder("🌀 사용할 술식을 선택하세요...")
-      .addOptions(options)
-  );
-}
-
 function mkCullingButtons(player) {
   const canSkill=!player||player.skillCooldown<=0;
-  const canReverse=!player||(player.reverseCooldown<=0&&REVERSE_CHARS.has(player.active));
+  const canReverse=!player||player.reverseCooldown<=0;
+  const hasReverse=!player||REVERSE_CHARS.has(player.active);
   const skillName=player?getCurrentSkill(player,player.active).name:"술식";
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("c_attack").setLabel("⚔️ 공격").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("c_skill").setLabel(`🌀 ${skillName}`).setStyle(ButtonStyle.Primary).setDisabled(!canSkill),
-    new ButtonBuilder().setCustomId("c_reverse").setLabel("♻️ 반전").setStyle(ButtonStyle.Secondary).setDisabled(!canReverse),
+    new ButtonBuilder().setCustomId("c_reverse").setLabel("♻️ 반전").setStyle(ButtonStyle.Secondary).setDisabled(!canReverse||!hasReverse),
     new ButtonBuilder().setCustomId("c_escape").setLabel("🏳️ 철수").setStyle(ButtonStyle.Secondary),
   );
 }
-function mkJujutsuButtons(player, choices) {
+function mkJujutsuButtons(player,choices) {
   const canSkill=!player||player.skillCooldown<=0;
-  const canReverse=!player||(player.reverseCooldown<=0&&REVERSE_CHARS.has(player.active));
+  const canReverse=!player||player.reverseCooldown<=0;
+  const hasReverse=!player||REVERSE_CHARS.has(player.active);
   const skillName=player?getCurrentSkill(player,player.active).name:"술식";
-  const rows=[];
-  if (choices&&choices.length) {
-    const choiceRow=new ActionRowBuilder();
-    for (let i=0;i<Math.min(choices.length,3);i++) {
-      choiceRow.addComponents(new ButtonBuilder().setCustomId(`j_choice_${i}`).setLabel(`⚔️ ${choices[i].name}`).setStyle(ButtonStyle.Primary));
-    }
-    rows.push(choiceRow);
+  const choiceRow=new ActionRowBuilder();
+  for (let i=0;i<Math.min((choices||[]).length,3);i++) {
+    choiceRow.addComponents(new ButtonBuilder().setCustomId(`j_choice_${i}`).setLabel(`⚔️ ${choices[i].name}`).setStyle(ButtonStyle.Primary));
   }
   const actionRow=new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("j_attack").setLabel("⚔️ 공격").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("j_skill").setLabel(`🌀 ${skillName}`).setStyle(ButtonStyle.Primary).setDisabled(!canSkill),
-    new ButtonBuilder().setCustomId("j_reverse").setLabel("♻️ 반전").setStyle(ButtonStyle.Secondary).setDisabled(!canReverse),
+    new ButtonBuilder().setCustomId("j_reverse").setLabel("♻️ 반전").setStyle(ButtonStyle.Secondary).setDisabled(!canReverse||!hasReverse),
     new ButtonBuilder().setCustomId("j_escape").setLabel("🏳️ 철수").setStyle(ButtonStyle.Secondary),
   );
-  rows.push(actionRow);
-  return rows;
+  return choices&&choices.length?[choiceRow,actionRow]:[actionRow];
 }
-function mkPvpButtons(session, userId) {
+function mkPvpButtons(session,userId) {
   const self=pvpSelf(session,userId);
   const canSkill=session[self.skillCdKey]<=0;
   const canReverse=session[self.reverseCdKey]<=0;
-  const canDomain=session[self.domainCdKey]<=0;
   const player=players[userId];
   const hasReverse=REVERSE_CHARS.has(player?.active);
-  const hasDomain=!!CHARACTERS[player?.active]?.domain;
   const skillName=player?getCurrentSkill(player,player.active).name:"술식";
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("pvp_atk").setLabel("⚔️ 공격").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("pvp_skill").setLabel(`🌀 ${skillName}`).setStyle(ButtonStyle.Primary).setDisabled(!canSkill),
-    new ButtonBuilder().setCustomId("pvp_domain").setLabel("🌌 영역전개").setStyle(ButtonStyle.Success).setDisabled(!hasDomain||!canDomain),
-    new ButtonBuilder().setCustomId("pvp_reverse").setLabel(`♻️ 반전`).setStyle(ButtonStyle.Secondary).setDisabled(!canReverse||!hasReverse),
+    new ButtonBuilder().setCustomId("pvp_domain").setLabel("🌌 영역전개").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("pvp_reverse").setLabel(`♻️ 반전${canReverse?"":"(✖)"}`).setStyle(ButtonStyle.Secondary).setDisabled(!canReverse||!hasReverse),
     new ButtonBuilder().setCustomId("pvp_surrender").setLabel("🏳️ 항복").setStyle(ButtonStyle.Secondary),
   );
 }
@@ -1758,7 +1636,7 @@ function mkRaidButtons(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 캐릭터 선택 셀렉트 메뉴 (이름으로 표시)
+// ── 캐릭터 선택 셀렉트 메뉴 (이름으로 선택)
 // ════════════════════════════════════════════════════════
 function mkCharSelectMenu(player, customId="char_select") {
   const options=player.owned.map(id=>{
@@ -1771,23 +1649,24 @@ function mkCharSelectMenu(player, customId="char_select") {
     const stats=getPlayerStats(tempPlayer);
     return {
       label:`${ch.name} [${ch.grade}]${fingerNote}`,
-      description:`${ri.stars} | ATK ${stats.atk} | HP ${stats.maxHp} | 숙련 ${mastery}${ch.domain?` | 영역: ${ch.domain}`:""}`,
+      description:`⭐ LV.${getLevel(player.xp)} | ${ri.stars} | ATK ${stats.atk} | HP ${stats.maxHp} | 숙련 ${mastery}`,
       value:id,
+      emoji:ch.emoji.length===2?{ name:ch.emoji }:undefined,
       default:isActive,
     };
   });
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(customId)
-      .setPlaceholder("🎭 캐릭터를 선택하세요 (이름으로 표시)")
+      .setPlaceholder("🎭 캐릭터를 선택하세요...")
       .addOptions(options)
   );
 }
 
 // ════════════════════════════════════════════════════════
-// ── 적 반격
+// ── 적 반격 (공통)
 // ════════════════════════════════════════════════════════
-async function doEnemyAttack(player, enemy, log) {
+async function doEnemyAttack(player,enemy,log) {
   const stats=getPlayerStats(player);
   const tick=tickStatus(player,stats.maxHp);
   if (tick.log.length) log.push(...tick.log);
@@ -1803,7 +1682,10 @@ async function doEnemyAttack(player, enemy, log) {
   }
 }
 
-async function doRaidBossAttack(player, raidSession, boss, log) {
+// ════════════════════════════════════════════════════════
+// ── 레이드 보스 반격
+// ════════════════════════════════════════════════════════
+async function doRaidBossAttack(player,raidSession,boss,log) {
   const stats=getPlayerStats(player);
   const bossAtk=raidSession.enraged?boss.enragedAtk:boss.atk;
   const eDmg=calcDmg(bossAtk,stats.def);
@@ -1823,9 +1705,9 @@ async function doRaidBossAttack(player, raidSession, boss, log) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 일반 전투 핸들러
+// ── 일반 전투 핸들러 (상태이상 버그 수정)
 // ════════════════════════════════════════════════════════
-async function handleBattleAction(interaction, player, battle, action) {
+async function handleBattleAction(interaction,player,battle,action) {
   const enemy=battle.enemy;
   const stats=getPlayerStats(player);
   const log=[];
@@ -1834,87 +1716,56 @@ async function handleBattleAction(interaction, player, battle, action) {
     delete battles[interaction.user.id];
     return interaction.update({ content:"🏃 전투에서 도주했습니다!", embeds:[], components:[] });
   }
-
   if (action==="b_reverse") {
     if (!REVERSE_CHARS.has(player.active)) return interaction.reply({ content:"❌ 이 캐릭터는 반전술식 불가!", ephemeral:true });
-    if (player.reverseCooldown>0) return interaction.reply({ content:`❌ 반전술식 쿨다운: **${player.reverseCooldown}턴** 남음! (3턴마다 사용 가능)`, ephemeral:true });
+    if (player.reverseCooldown>0) return interaction.reply({ content:`❌ 반전술식 쿨다운: ${player.reverseCooldown}턴 남음!`, ephemeral:true });
     const healAmount=Math.floor(stats.maxHp*0.4);
     player.hp=Math.min(stats.maxHp,player.hp+healAmount);
     player.reverseCooldown=3;
     player.statusEffects=player.statusEffects.filter(s=>s.id==="battleInstinct");
-    log.push(`> ♻️ **반전술식!** 💚 **${healAmount}** HP 회복!`);
-    log.push(`> 🧹 상태이상 해제! (반전 CD: 3턴)`);
-    await doEnemyAttack(player,enemy,log);
     tickCooldowns(player); savePlayer(interaction.user.id);
     const embed=new EmbedBuilder().setTitle("♻️ 반전술식!").setColor(0x00ff88)
-      .setDescription(log.join("\n"))
-      .addFields(
-        { name:`${CHARACTERS[player.active].emoji} 내 HP`,value:`${hpBar(player.hp,stats.maxHp)} \`${Math.max(0,player.hp)}/${stats.maxHp}\``,inline:true },
-        { name:`${enemy.emoji} ${enemy.name}`,value:`${hpBar(enemy.currentHp,enemy.hp)} \`${Math.max(0,enemy.currentHp)}/${enemy.hp}\``,inline:true },
-      );
-    if (player.hp<=0) {
-      player.losses++; delete battles[interaction.user.id]; savePlayer(interaction.user.id);
-      return interaction.update({ embeds:[embed,new EmbedBuilder().setTitle("💀 패배...").setColor(0xe63946).setDescription("> `!회복` 으로 HP를 회복하세요.")], components:[] });
-    }
-    return interaction.update({ embeds:[embed], components:mkBattleButtons(player) });
+      .setDescription(`> 💚 **${healAmount}** HP 회복!\n> 🧹 상태이상 해제!`)
+      .addFields({ name:"내 HP",value:`${hpBar(player.hp,stats.maxHp)} \`${player.hp}/${stats.maxHp}\``,inline:true });
+    return interaction.update({ embeds:[embed], components:[mkBattleButtons(player)] });
   }
 
-  if (action==="b_domain") {
-    const ch=CHARACTERS[player.active];
-    if (!ch.domain) return interaction.reply({ content:"❌ 이 캐릭터는 영역전개가 없습니다!", ephemeral:true });
-    if (player.domainCooldown>0) return interaction.reply({ content:`❌ 영역전개 쿨다운: **${player.domainCooldown}턴** 남음! (15턴마다 사용 가능)`, ephemeral:true });
-    const domainFx=getDomainEffect(ch.domain);
-    if (domainFx) {
-      const result=domainFx.effect(player, enemy, stats, stats.maxHp);
-      enemy.currentHp=Math.max(0,enemy.currentHp-(result.dmg||0));
-      if (result.heal) player.hp=Math.min(stats.maxHp,player.hp+(result.heal||0));
-      if (result.selfDmg) player.hp=Math.max(0,player.hp-(result.selfDmg||0));
-      log.push(domainFx.art);
-      log.push(...(result.log||[]));
-    } else {
-      const dmg=Math.floor(stats.atk*3.0);
-      enemy.currentHp=Math.max(0,enemy.currentHp-dmg);
-      log.push(`> 🌌 **${ch.domain}** — **${dmg}** 피해!`);
-    }
-    player.domainCooldown=15;
-    if (enemy.currentHp<=0) {
-      delete battles[interaction.user.id];
-      const winEmbed=await processBattleWin(player,enemy);
-      savePlayer(interaction.user.id);
-      const domainEmbed=new EmbedBuilder().setTitle(`🌌 영역전개: ${ch.domain}`).setColor(JJK_GRADE_COLOR[ch.grade]||0x7c5cfc).setDescription(log.join("\n"));
-      return interaction.update({ embeds:[domainEmbed,winEmbed], components:[] });
-    }
-    await doEnemyAttack(player,enemy,log);
-    tickCooldowns(player); savePlayer(interaction.user.id);
-    if (player.hp<=0) {
-      player.losses++; delete battles[interaction.user.id]; savePlayer(interaction.user.id);
-      return interaction.update({ embeds:[new EmbedBuilder().setTitle(`🌌 ${ch.domain}`).setColor(0x7c5cfc).setDescription(log.join("\n")),new EmbedBuilder().setTitle("💀 패배...").setColor(0xe63946).setDescription("> `!회복` 으로 HP를 회복하세요.")], components:[] });
-    }
-    const domainEmbed=new EmbedBuilder().setTitle(`🌌 영역전개: ${ch.domain}`).setColor(JJK_GRADE_COLOR[ch.grade]||0x7c5cfc).setDescription(log.join("\n"))
-      .addFields(
-        { name:`${CHARACTERS[player.active].emoji} 내 HP`,value:`${hpBar(player.hp,stats.maxHp)} \`${Math.max(0,player.hp)}/${stats.maxHp}\`\n상태: ${statusStr(player.statusEffects)}`,inline:true },
-        { name:`${enemy.emoji} ${enemy.name}`,value:`${hpBar(enemy.currentHp,enemy.hp)} \`${Math.max(0,enemy.currentHp)}/${enemy.hp}\`\n상태: ${statusStr(enemy.statusEffects||[])}`,inline:true },
-      );
-    return interaction.update({ embeds:[domainEmbed], components:mkBattleButtons(player) });
-  }
-
-  // 행동 불가 체크 (freeze/stun)
-  const cannotAct=player.statusEffects&&player.statusEffects.some(s=>s.id==="freeze"||s.id==="stun"||s.id==="domain_stun");
+  // ========== 빙결(freeze)이나 기절(stun)일 때만 행동 불가 ==========
+  const cannotAct = player.statusEffects && player.statusEffects.some(s => s.id === "freeze" || s.id === "stun");
+  
   if (cannotAct) {
     for (const se of player.statusEffects) {
-      if (se.id==="freeze"||se.id==="stun"||se.id==="domain_stun") se.turns=Math.max(0,se.turns-1);
+      if (se.id === "freeze" || se.id === "stun") {
+        se.turns = Math.max(0, se.turns - 1);
+      }
     }
-    player.statusEffects=player.statusEffects.filter(s=>s.turns>0);
-    log.push(`> ❄️ **${player.name}** 상태이상으로 행동 불가!`);
+    player.statusEffects = player.statusEffects.filter(s => s.turns > 0);
+    log.push(`> ❄️ **${player.name}** 상태이상으로 행동 불가! (빙결/기절)`);
+    
     const tick=tickStatus(player,stats.maxHp);
     if (tick.log.length) log.push(...tick.log);
+    
     await doEnemyAttack(player,enemy,log);
+    
     if (player.hp<=0) {
-      player.losses++; delete battles[interaction.user.id]; savePlayer(interaction.user.id);
-      return interaction.update({ embeds:[new EmbedBuilder().setTitle("⚠️ 행동 불가!").setColor(0x888888).setDescription(log.join("\n")),new EmbedBuilder().setTitle("💀 패배...").setColor(0xe63946).setDescription("> `!회복` 으로 HP를 회복하세요.")], components:[] });
+      player.losses++; delete battles[interaction.user.id];
+      const defeatEmbed=new EmbedBuilder().setTitle("💀 패배...").setColor(0xe63946)
+        .setDescription("```ansi\n\u001b[1;31m╔═══════════════════════╗\n║  💀  D E F E A T  💀  ║\n╚═══════════════════════╝\n```\n> `!회복` 으로 HP를 회복하세요.");
+      savePlayer(interaction.user.id);
+      return interaction.update({ embeds:[new EmbedBuilder().setTitle("⚠️ 행동 불가!"), defeatEmbed], components:[] });
     }
-    tickCooldowns(player); savePlayer(interaction.user.id);
-    return interaction.update({ embeds:[new EmbedBuilder().setTitle("⚠️ 행동 불가!").setColor(0x888888).setDescription(log.join("\n")).addFields({ name:`내 HP`,value:`${hpBar(player.hp,stats.maxHp)} \`${player.hp}/${stats.maxHp}\`\n상태: ${statusStr(player.statusEffects)}`,inline:true },{ name:`${enemy.emoji} ${enemy.name}`,value:`${hpBar(enemy.currentHp,enemy.hp)} \`${enemy.currentHp}/${enemy.hp}\``,inline:true })], components:mkBattleButtons(player) });
+    
+    tickCooldowns(player);
+    savePlayer(interaction.user.id);
+    const embed = new EmbedBuilder()
+      .setTitle("⚠️ 행동 불가!")
+      .setColor(0x888888)
+      .setDescription(log.join("\n"))
+      .addFields(
+        { name: `${CHARACTERS[player.active].emoji} 내 HP`, value: `${hpBar(player.hp, stats.maxHp)} \`${player.hp}/${stats.maxHp}\`\n상태: ${statusStr(player.statusEffects)}`, inline: true },
+        { name: `${enemy.emoji} ${enemy.name}`, value: `${hpBar(enemy.currentHp, enemy.hp)} \`${enemy.currentHp}/${enemy.hp}\``, inline: true }
+      );
+    return interaction.update({ embeds: [embed], components: [mkBattleButtons(player)] });
   }
 
   let dmg=0, isBlack=false, skillName="";
@@ -1930,7 +1781,7 @@ async function handleBattleAction(interaction, player, battle, action) {
       enemy.currentHp=Math.max(0,enemy.currentHp-dmg);
     }
   } else if (action==="b_skill") {
-    if (player.skillCooldown>0) return interaction.reply({ content:`❌ 술식 쿨다운: **${player.skillCooldown}턴** 남음!`, ephemeral:true });
+    if (player.skillCooldown>0) return interaction.reply({ content:`❌ 술식 쿨다운: ${player.skillCooldown}턴 남음!`, ephemeral:true });
     const skill=getCurrentSkill(player,player.active);
     skillName=skill.name;
     const hit=rollHit(player.statusEffects,enemy.statusEffects);
@@ -1944,7 +1795,7 @@ async function handleBattleAction(interaction, player, battle, action) {
       const fx=getSkillEffect(skill.name);
       log.push(fx.art);
       log.push(`> *"${fx.flavorText}"*`);
-      if (isBlack) log.push(`\n${getBlackFlashArt()}\n⚫ **흑섬!!** **${dmg}** 피해! (×2.5) +50💎`);
+      if (isBlack) log.push(`⚫ **흑섬!!** **${dmg}** 피해! (×2.5) +50💎`);
       else log.push(`> 💥 **${skill.name}** — **${dmg}** 피해!`);
       log.push(...statusLog);
       updateQuestProgress(player,"skill_use",1);
@@ -1963,7 +1814,7 @@ async function handleBattleAction(interaction, player, battle, action) {
       const fx=getSkillEffect(mainSkill.name);
       log.push(fx.art);
       log.push(`> *"${fx.flavorText}"*`);
-      if (isBlack) log.push(`${getBlackFlashArt()}\n⚫ **흑섬!!** **${dmg}** 피해! (×2.5)`);
+      if (isBlack) log.push(`⚫ **흑섬!!** **${dmg}** 피해! (×2.5)`);
       else log.push(`> ⭐ **${mainSkill.name}** — **${dmg}** 피해!`);
       if (mainSkill.name==="자폭 무라사키") { player.hp=1; log.push("> 💥 **자폭 효과!** 자신의 HP가 1이 되었다!"); }
     }
@@ -1974,7 +1825,7 @@ async function handleBattleAction(interaction, player, battle, action) {
   if (tick.log.length) log.push(...tick.log);
 
   const embed=new EmbedBuilder()
-    .setTitle(isBlack?"⚫ 흑 섬 발 동 ⚫":action==="b_attack"?"⚔️ 공격!":action==="b_main"?"⭐ 주력 술식!":"🌀 술식!")
+    .setTitle(isBlack?"⚫ 흑 섬 ⚫":action==="b_attack"?"⚔️ 공격!":action==="b_main"?"⭐ 주력 술식!":"🌀 술식!")
     .setColor(isBlack?0x0a0a0a:action==="b_attack"?0xff6b35:getSkillEffect(skillName).color)
     .setDescription(log.join("\n"))
     .addFields(
@@ -1999,17 +1850,19 @@ async function handleBattleAction(interaction, player, battle, action) {
 
   if (player.hp<=0) {
     player.losses++; delete battles[interaction.user.id];
+    const defeatEmbed=new EmbedBuilder().setTitle("💀 패배...").setColor(0xe63946)
+      .setDescription("```ansi\n\u001b[1;31m╔═══════════════════════╗\n║  💀  D E F E A T  💀  ║\n╚═══════════════════════╝\n```\n> `!회복` 으로 HP를 회복하세요.");
     savePlayer(interaction.user.id);
-    return interaction.update({ embeds:[embed,new EmbedBuilder().setTitle("💀 패배...").setColor(0xe63946).setDescription("```ansi\n\u001b[1;31m╔═══════════════════════╗\n║  💀  D E F E A T  💀  ║\n╚═══════════════════════╝\n```\n> `!회복` 으로 HP를 회복하세요.")], components:[] });
+    return interaction.update({ embeds:[embed,defeatEmbed], components:[] });
   }
   savePlayer(interaction.user.id);
-  return interaction.update({ embeds:[embed], components:mkBattleButtons(player) });
+  return interaction.update({ embeds:[embed], components:[mkBattleButtons(player)] });
 }
 
 // ════════════════════════════════════════════════════════
 // ── 컬링 핸들러
 // ════════════════════════════════════════════════════════
-async function handleCullingAction(interaction, player, culling, action) {
+async function handleCullingAction(interaction,player,culling,action) {
   const enemy=culling.currentEnemy;
   const stats=getPlayerStats(player);
   const log=[];
@@ -2022,7 +1875,6 @@ async function handleCullingAction(interaction, player, culling, action) {
   }
   if (action==="c_reverse") {
     if (!REVERSE_CHARS.has(player.active)) return interaction.reply({ content:"❌ 반전술식 불가!", ephemeral:true });
-    if (player.reverseCooldown>0) return interaction.reply({ content:`❌ 반전술식 쿨다운: **${player.reverseCooldown}턴** (3턴마다 사용 가능)`, ephemeral:true });
     const heal=Math.floor(stats.maxHp*0.4);
     player.hp=Math.min(stats.maxHp,player.hp+heal);
     player.reverseCooldown=3;
@@ -2034,11 +1886,11 @@ async function handleCullingAction(interaction, player, culling, action) {
     let dmg=0;
     if (!hit) { log.push("⚡ 공격이 **빗나갔다!**"); }
     else if (action==="c_skill") {
-      if (player.skillCooldown>0) return interaction.reply({ content:`❌ 술식 쿨다운: **${player.skillCooldown}턴**`, ephemeral:true });
+      if (player.skillCooldown>0) return interaction.reply({ content:`❌ 술식 쿨다운: ${player.skillCooldown}턴`, ephemeral:true });
       const skill=getCurrentSkill(player,player.active);
       dmg=calcSkillDmgForPlayer(player,skill.dmg);
       const isBlack=isBlackFlash();
-      if (isBlack) { dmg=Math.floor(dmg*2.5); player.crystals+=50; log.push(getBlackFlashArt()); }
+      if (isBlack) { dmg=Math.floor(dmg*2.5); player.crystals+=50; }
       const statusLog=applySkillStatus(skill,enemy,player);
       const fx=getSkillEffect(skill.name);
       log.push(fx.art);
@@ -2050,7 +1902,7 @@ async function handleCullingAction(interaction, player, culling, action) {
     } else {
       dmg=calcDmgForPlayer(player,enemy.def);
       const isBlack=isBlackFlash();
-      if (isBlack) { dmg=Math.floor(dmg*2.5); player.crystals+=50; log.push(getBlackFlashArt()); log.push(`⚫ **흑섬!** **${dmg}** 피해!`); }
+      if (isBlack) { dmg=Math.floor(dmg*2.5); player.crystals+=50; log.push(`⚫ **흑섬!** **${dmg}** 피해!`); }
       else log.push(`> ⚔️ 공격! **${dmg}** 피해!`);
     }
     culling.enemyHp=Math.max(0,culling.enemyHp-dmg);
@@ -2080,18 +1932,21 @@ async function handleCullingAction(interaction, player, culling, action) {
         if (culling.wave>(player.cullingBest||0)) player.cullingBest=culling.wave;
         delete cullings[interaction.user.id];
         savePlayer(interaction.user.id);
-        return interaction.update({ embeds:[new EmbedBuilder().setTitle("💀 컬링 종료!").setColor(0xe63946).setDescription(`> WAVE **${culling.wave}** 에서 쓰러졌습니다!\n> 총 XP: **${culling.totalXp}** | 총 💎: **${culling.totalCrystals}**\n> 최고기록: WAVE **${player.cullingBest}**`)], components:[] });
+        const over=new EmbedBuilder().setTitle("💀 컬링 종료!").setColor(0xe63946)
+          .setDescription(`> WAVE **${culling.wave}** 에서 쓰러졌습니다!\n> 총 XP: **${culling.totalXp}** | 총 💎: **${culling.totalCrystals}**\n> 최고기록: WAVE **${player.cullingBest}**`);
+        return interaction.update({ embeds:[over], components:[] });
       }
     }
   }
   tickCooldowns(player); savePlayer(interaction.user.id);
-  return interaction.update({ embeds:[cullingEmbed(player,culling,log)], components:[mkCullingButtons(player)] });
+  const embed=cullingEmbed(player,culling,log);
+  return interaction.update({ embeds:[embed], components:[mkCullingButtons(player)] });
 }
 
 // ════════════════════════════════════════════════════════
 // ── 사멸회유 핸들러
 // ════════════════════════════════════════════════════════
-async function handleJujutsuAction(interaction, player, jujutsu, action) {
+async function handleJujutsuAction(interaction,player,jujutsu,action) {
   const stats=getPlayerStats(player);
   const log=[];
 
@@ -2107,7 +1962,6 @@ async function handleJujutsuAction(interaction, player, jujutsu, action) {
 
   if (action==="j_reverse") {
     if (!REVERSE_CHARS.has(player.active)) return interaction.reply({ content:"❌ 반전술식 불가!", ephemeral:true });
-    if (player.reverseCooldown>0) return interaction.reply({ content:`❌ 반전술식 쿨다운: **${player.reverseCooldown}턴** (3턴마다 사용 가능)`, ephemeral:true });
     const heal=Math.floor(stats.maxHp*0.4);
     player.hp=Math.min(stats.maxHp,player.hp+heal);
     player.reverseCooldown=3;
@@ -2119,11 +1973,11 @@ async function handleJujutsuAction(interaction, player, jujutsu, action) {
     let dmg=0;
     if (!hit) { log.push("⚡ 공격이 **빗나갔다!**"); }
     else if (action==="j_skill") {
-      if (player.skillCooldown>0) return interaction.reply({ content:`❌ 술식 쿨다운: **${player.skillCooldown}턴**`, ephemeral:true });
+      if (player.skillCooldown>0) return interaction.reply({ content:`❌ 술식 쿨다운: ${player.skillCooldown}턴`, ephemeral:true });
       const skill=getCurrentSkill(player,player.active);
       dmg=calcSkillDmgForPlayer(player,skill.dmg);
       const isBlack=isBlackFlash();
-      if (isBlack) { dmg=Math.floor(dmg*2.5); player.crystals+=50; log.push(getBlackFlashArt()); }
+      if (isBlack) { dmg=Math.floor(dmg*2.5); player.crystals+=50; }
       const statusLog=applySkillStatus(skill,enemy,player);
       const fx=getSkillEffect(skill.name);
       log.push(fx.art);
@@ -2135,7 +1989,7 @@ async function handleJujutsuAction(interaction, player, jujutsu, action) {
     } else {
       dmg=calcDmgForPlayer(player,enemy.def);
       const isBlack=isBlackFlash();
-      if (isBlack) { dmg=Math.floor(dmg*2.5); player.crystals+=50; log.push(getBlackFlashArt()); log.push(`⚫ **흑섬!** **${dmg}** 피해!`); }
+      if (isBlack) { dmg=Math.floor(dmg*2.5); player.crystals+=50; log.push(`⚫ **흑섬!** **${dmg}** 피해!`); }
       else log.push(`> ⚔️ 공격! **${dmg}** 피해!`);
     }
     jujutsu.enemyHp=Math.max(0,jujutsu.enemyHp-dmg);
@@ -2159,8 +2013,10 @@ async function handleJujutsuAction(interaction, player, jujutsu, action) {
         player.crystals+=300; player.xp+=500;
         if (jujutsu.points>(player.jujutsuBest||0)) player.jujutsuBest=jujutsu.points;
         delete jujutsus[interaction.user.id];
+        const over=new EmbedBuilder().setTitle("🏆 사멸회유 클리어!").setColor(0xF5C842)
+          .setDescription(`> 15포인트 달성! **+300💎 +500XP** 보너스!\n> 총 XP: **${jujutsu.totalXp}** | 총 💎: **${jujutsu.totalCrystals}**\n${getNewlyCompletedQuestMsg(player)}`);
         savePlayer(interaction.user.id);
-        return interaction.update({ embeds:[new EmbedBuilder().setTitle("🏆 사멸회유 클리어!").setColor(0xF5C842).setDescription(`> 15포인트 달성! **+300💎 +500XP** 보너스!\n> 총 XP: **${jujutsu.totalXp}** | 총 💎: **${jujutsu.totalCrystals}**\n${getNewlyCompletedQuestMsg(player)}`)], components:[] });
+        return interaction.update({ embeds:[over], components:[] });
       }
       jujutsu.wave++; jujutsu.currentEnemy=null; jujutsu.enemyHp=0;
       const choices=generateJujutsuChoices(jujutsu.wave);
@@ -2184,7 +2040,7 @@ async function handleJujutsuAction(interaction, player, jujutsu, action) {
 // ════════════════════════════════════════════════════════
 // ── PvP 핸들러
 // ════════════════════════════════════════════════════════
-async function handlePvpAction(interaction, player, session, action) {
+async function handlePvpAction(interaction,player,session,action) {
   const selfKeys=pvpSelf(session,player.id);
   const oppKeys=pvpOpponent(session,player.id);
   const opp=players[oppKeys.id];
@@ -2199,7 +2055,9 @@ async function handlePvpAction(interaction, player, session, action) {
     const sid=Object.keys(pvpSessions).find(k=>pvpSessions[k]===session);
     if (sid) delete pvpSessions[sid];
     savePlayer(player.id); savePlayer(opp.id);
-    return interaction.update({ embeds:[new EmbedBuilder().setTitle(`🏳️ ${player.name} 항복!`).setColor(0xe63946).setDescription(`> **${opp.name}** 의 승리!\n> PvP: **${opp.pvpWins}승 ${opp.pvpLosses}패**`)], components:[] });
+    const endEmbed=new EmbedBuilder().setTitle(`🏳️ ${player.name} 항복!`).setColor(0xe63946)
+      .setDescription(`> **${opp.name}** 의 승리!\n> PvP: **${opp.pvpWins}승 ${opp.pvpLosses}패`);
+    return interaction.update({ embeds:[endEmbed], components:[] });
   }
 
   if (action==="pvp_atk") {
@@ -2209,12 +2067,12 @@ async function handlePvpAction(interaction, player, session, action) {
       const mult=getWeakenMult(session[selfKeys.statusKey]);
       let dmg=calcDmg(selfStats.atk*mult,oppStats.def);
       const isBlack=isBlackFlash();
-      if (isBlack) { dmg=Math.floor(dmg*2.5); log.push(getBlackFlashArt()); log.push(`⚫ **흑섬!** **${dmg}** 피해! (×2.5)`); }
+      if (isBlack) { dmg=Math.floor(dmg*2.5); log.push(`⚫ **흑섬!** **${dmg}** 피해! (×2.5)`); }
       else { log.push(`> ⚔️ **${player.name}** 의 공격! **${dmg}** 피해!`); }
       session[oppKeys.hpKey]=Math.max(0,session[oppKeys.hpKey]-dmg);
     }
   } else if (action==="pvp_skill") {
-    if (session[selfKeys.skillCdKey]>0) return interaction.reply({ content:`❌ 술식 쿨다운 **${session[selfKeys.skillCdKey]}턴** 남음!`, ephemeral:true });
+    if (session[selfKeys.skillCdKey]>0) return interaction.reply({ content:`❌ 술식 쿨다운 ${session[selfKeys.skillCdKey]}턴 남음!`, ephemeral:true });
     if (isIncapacitated(session[selfKeys.statusKey])) return interaction.reply({ content:"❌ 상태이상으로 행동 불가!", ephemeral:true });
     const skill=getCurrentSkill(player,player.active);
     const hit=rollHit(session[selfKeys.statusKey],session[oppKeys.statusKey]);
@@ -2222,7 +2080,7 @@ async function handlePvpAction(interaction, player, session, action) {
     else {
       let dmg=calcSkillDmgForPlayer(player,skill.dmg);
       const isBlack=isBlackFlash();
-      if (isBlack) { dmg=Math.floor(dmg*2.5); log.push(getBlackFlashArt()); log.push(`⚫ **흑섬!** **${dmg}** 피해!`); }
+      if (isBlack) { dmg=Math.floor(dmg*2.5); log.push(`⚫ **흑섬!** **${dmg}** 피해!`); }
       else { log.push(`> 🌀 **${skill.name}** — **${dmg}** 피해!`); }
       if (skill.statusApply&&Math.random()<skill.statusApply.chance&&skill.statusApply.target==="enemy") {
         if (!session[oppKeys.statusKey]) session[oppKeys.statusKey]=[];
@@ -2236,36 +2094,20 @@ async function handlePvpAction(interaction, player, session, action) {
   } else if (action==="pvp_domain") {
     const ch=CHARACTERS[player.active];
     if (!ch.domain) return interaction.reply({ content:"❌ 이 캐릭터는 영역전개가 없습니다!", ephemeral:true });
-    if (session[selfKeys.domainCdKey]>0) return interaction.reply({ content:`❌ 영역전개 쿨다운: **${session[selfKeys.domainCdKey]}턴** 남음! (15턴마다 사용 가능)`, ephemeral:true });
-    const domainFx=getDomainEffect(ch.domain);
-    const oppFakeObj={ statusEffects:session[oppKeys.statusKey]||[], hp:session[oppKeys.hpKey] };
-    const selfFakeMaxHp=selfStats.maxHp;
-    if (domainFx) {
-      const result=domainFx.effect(player, oppFakeObj, selfStats, selfFakeMaxHp);
-      session[oppKeys.hpKey]=Math.max(0,session[oppKeys.hpKey]-(result.dmg||0));
-      if (result.heal) session[selfKeys.hpKey]=Math.min(selfFakeMaxHp,session[selfKeys.hpKey]+(result.heal||0));
-      if (result.selfDmg) session[selfKeys.hpKey]=Math.max(0,session[selfKeys.hpKey]-(result.selfDmg||0));
-      log.push(domainFx.art);
-      log.push(...(result.log||[]));
-      session[oppKeys.statusKey]=oppFakeObj.statusEffects;
-    } else {
-      const dmg=Math.floor(selfStats.atk*3.0);
-      session[oppKeys.hpKey]=Math.max(0,session[oppKeys.hpKey]-dmg);
-      log.push(`🌌 **${ch.domain}** — **${dmg}** 피해!`);
-    }
-    session[selfKeys.domainCdKey]=15;
+    const dmg=Math.floor(selfStats.atk*2.8);
+    session[oppKeys.hpKey]=Math.max(0,session[oppKeys.hpKey]-dmg);
+    log.push(`🌌 **${ch.domain}** — **${dmg}** 피해!`);
   } else if (action==="pvp_reverse") {
     if (!REVERSE_CHARS.has(player.active)) return interaction.reply({ content:"❌ 반전술식 불가!", ephemeral:true });
-    if (session[selfKeys.reverseCdKey]>0) return interaction.reply({ content:`❌ 반전술식 쿨다운 **${session[selfKeys.reverseCdKey]}턴** 남음! (3턴마다 사용 가능)`, ephemeral:true });
+    if (session[selfKeys.reverseCdKey]>0) return interaction.reply({ content:`❌ 반전술식 쿨다운 ${session[selfKeys.reverseCdKey]}턴 남음!`, ephemeral:true });
     const heal=Math.floor(selfStats.maxHp*0.4);
     session[selfKeys.hpKey]=Math.min(selfStats.maxHp,session[selfKeys.hpKey]+heal);
     session[selfKeys.reverseCdKey]=3;
     if (!session[selfKeys.statusKey]) session[selfKeys.statusKey]=[];
     session[selfKeys.statusKey]=session[selfKeys.statusKey].filter(s=>s.id==="battleInstinct");
-    log.push(`> ♻️ **${heal}** HP 회복! 상태이상 해제! (쿨다운 3턴)`);
+    log.push(`> ♻️ **${heal}** HP 회복! 상태이상 해제!`);
   }
 
-  // 상태이상 틱
   const selfMaxHp=selfStats.maxHp;
   if (session[selfKeys.statusKey]&&session[selfKeys.statusKey].length>0) {
     let tickDmg=0;
@@ -2286,7 +2128,9 @@ async function handlePvpAction(interaction, player, session, action) {
     const sid=Object.keys(pvpSessions).find(k=>pvpSessions[k]===session);
     if (sid) delete pvpSessions[sid];
     savePlayer(player.id); savePlayer(opp.id);
-    return interaction.update({ embeds:[pvpEmbed(session,log),new EmbedBuilder().setTitle(`🏆 ${player.name} 승리!`).setColor(0xF5C842).setDescription(`> **${player.name}** 이 **${opp.name}** 을 격파!\n> PvP 전적: **${player.pvpWins}승 ${player.pvpLosses}패**`)], components:[] });
+    const winEmbed=new EmbedBuilder().setTitle(`🏆 ${player.name} 승리!`).setColor(0xF5C842)
+      .setDescription(`> **${player.name}** 이 **${opp.name}** 을 격파!\n> PvP 전적: **${player.pvpWins}승 ${player.pvpLosses}패`);
+    return interaction.update({ embeds:[pvpEmbed(session,log),winEmbed], components:[] });
   }
   if (session[selfKeys.hpKey]<=0) {
     player.pvpLosses++; opp.pvpWins++;
@@ -2294,22 +2138,24 @@ async function handlePvpAction(interaction, player, session, action) {
     const sid=Object.keys(pvpSessions).find(k=>pvpSessions[k]===session);
     if (sid) delete pvpSessions[sid];
     savePlayer(player.id); savePlayer(opp.id);
-    return interaction.update({ embeds:[pvpEmbed(session,log),new EmbedBuilder().setTitle(`💀 ${player.name} 패배!`).setColor(0xe63946).setDescription(`> **${opp.name}** 의 승리!`)], components:[] });
+    const loseEmbed=new EmbedBuilder().setTitle(`💀 ${player.name} 패배!`).setColor(0xe63946)
+      .setDescription(`> **${opp.name}** 의 승리!\n> 상태이상 피해로 쓰러졌습니다.`);
+    return interaction.update({ embeds:[pvpEmbed(session,log),loseEmbed], components:[] });
   }
 
   session.round++;
   session.turn=oppKeys.id;
   if (session[selfKeys.skillCdKey]>0) session[selfKeys.skillCdKey]--;
   if (session[selfKeys.reverseCdKey]>0) session[selfKeys.reverseCdKey]--;
-  if (session[selfKeys.domainCdKey]>0) session[selfKeys.domainCdKey]--;
 
-  return interaction.update({ embeds:[pvpEmbed(session,log)], components:[mkPvpButtons(session,oppKeys.id)] });
+  const embed=pvpEmbed(session,log);
+  return interaction.update({ embeds:[embed], components:[mkPvpButtons(session,oppKeys.id)] });
 }
 
 // ════════════════════════════════════════════════════════
-// ── 레이드 핸들러
+// ── 레이드 핸들러 (완전 수정)
 // ════════════════════════════════════════════════════════
-async function handleRaidAction(interaction, player, raidSession, action) {
+async function handleRaidAction(interaction,player,raidSession,action) {
   const boss=RAID_BOSSES[raidSession.bossId];
   const stats=getPlayerStats(player);
   const log=[];
@@ -2324,49 +2170,65 @@ async function handleRaidAction(interaction, player, raidSession, action) {
     return interaction.update({ content:"🏳️ 레이드에서 철수했습니다.", embeds:[], components:[] });
   }
 
-  const cannotAct=player.statusEffects&&player.statusEffects.some(s=>s.id==="freeze"||s.id==="stun"||s.id==="domain_stun");
+  const cannotAct = player.statusEffects && player.statusEffects.some(s => s.id === "freeze" || s.id === "stun");
+  
   if (cannotAct) {
     for (const se of player.statusEffects) {
-      if (se.id==="freeze"||se.id==="stun"||se.id==="domain_stun") se.turns=Math.max(0,se.turns-1);
+      if (se.id === "freeze" || se.id === "stun") {
+        se.turns = Math.max(0, se.turns - 1);
+      }
     }
-    player.statusEffects=player.statusEffects.filter(s=>s.turns>0);
-    log.push(`> ❄️ **${player.name}** 상태이상으로 행동 불가!`);
+    player.statusEffects = player.statusEffects.filter(s => s.turns > 0);
+    log.push(`> ❄️ **${player.name}** 상태이상으로 행동 불가! (빙결/기절)`);
+    
     await doRaidBossAttack(player,raidSession,boss,log);
+    
     if (player.hp<=0) {
       raidSession.members=raidSession.members.filter(id=>id!==player.id);
       log.push(`> 💀 **${player.name}** 전투 불능! 레이드 이탈.`);
       if (raidSession.members.length===0) {
         const sid=Object.keys(raidSessions).find(k=>raidSessions[k]===raidSession);
         if (sid) delete raidSessions[sid];
+        const failEmbed=new EmbedBuilder().setTitle("💀 레이드 실패").setColor(0xe63946).setDescription("> 파티원 전원 전투 불능...");
         savePlayer(player.id);
-        return interaction.update({ embeds:[new EmbedBuilder().setTitle("💀 레이드 실패").setColor(0xe63946).setDescription("> 파티원 전원 전투 불능...")], components:[] });
+        return interaction.update({ embeds:[failEmbed], components:[] });
       }
     }
-    tickCooldowns(player); savePlayer(player.id);
+    tickCooldowns(player);
+    savePlayer(player.id);
     return interaction.update({ embeds:[raidEmbed(raidSession,log)], components:[mkRaidButtons(player)] });
   }
 
   let dmg=0;
-
+  
   if (action==="r_attack") {
     const hit=rollHit(player.statusEffects,[]);
     if (!hit) { log.push(`> ⚡ **${player.name}**의 공격이 빗나갔다!`); }
     else {
       dmg=calcDmgForPlayer(player,boss.def);
       const isBlack=isBlackFlash();
-      if (isBlack) { dmg=Math.floor(dmg*2.5); player.crystals+=50; log.push(getBlackFlashArt()); log.push(`> 💥 **${player.name} 흑섬!** **${dmg}** 피해! (×2.5) +50💎`); }
-      else { log.push(`> ⚔️ **${player.name}** 공격! **${dmg}** 피해!`); }
+      if (isBlack) {
+        dmg=Math.floor(dmg*2.5);
+        player.crystals+=50;
+        log.push(getBlackFlashArt());
+        log.push(`> 💥 **${player.name} 흑섬!** **${dmg}** 피해! (×2.5) +50💎`);
+      } else {
+        log.push(`> ⚔️ **${player.name}** 공격! **${dmg}** 피해!`);
+      }
     }
   } else if (action==="r_skill") {
-    if (player.skillCooldown>0) return interaction.reply({ content:`❌ 술식 쿨다운 **${player.skillCooldown}턴** 남음!`, ephemeral:true });
+    if (player.skillCooldown>0) return interaction.reply({ content:`❌ 술식 쿨다운 ${player.skillCooldown}턴 남음!`, ephemeral:true });
     const skill=getCurrentSkill(player,player.active);
-    if (boss.adaptationSkill&&raidSession.adaptedSkills?.includes(skill.name)) {
+    
+    if (boss.adaptationSkill && raidSession.adaptedSkills?.includes(skill.name)) {
       log.push(`> 🔄 **마허라가라**가 **${skill.name}**에 적응! 피해 **무효**!`);
       player.skillCooldown=5;
-      tickCooldowns(player); savePlayer(player.id);
+      tickCooldowns(player);
+      savePlayer(player.id);
       await doRaidBossAttack(player,raidSession,boss,log);
       return interaction.update({ embeds:[raidEmbed(raidSession,log)], components:[mkRaidButtons(player)] });
     }
+    
     const hit=rollHit(player.statusEffects,[]);
     if (!hit) { log.push(`> ⚡ **${skill.name}**이 빗나갔다!`); }
     else {
@@ -2375,8 +2237,14 @@ async function handleRaidAction(interaction, player, raidSession, action) {
       const fx=getSkillEffect(skill.name);
       log.push(fx.art);
       log.push(`> *"${fx.flavorText}"*`);
-      if (isBlack) { dmg=Math.floor(dmg*2.5); player.crystals+=50; log.push(getBlackFlashArt()); log.push(`> ⚫ **${player.name} 흑섬!** **${dmg}** 피해! (×2.5) +50💎`); }
-      else { log.push(`> 🌀 **${player.name}**: **${skill.name}** — **${dmg}** 피해!`); }
+      if (isBlack) {
+        dmg=Math.floor(dmg*2.5);
+        player.crystals+=50;
+        log.push(`> ⚫ **${player.name} 흑섬!** **${dmg}** 피해! (×2.5) +50💎`);
+      } else {
+        log.push(`> 🌀 **${player.name}**: **${skill.name}** — **${dmg}** 피해!`);
+      }
+      
       if (boss.adaptationSkill) {
         if (!raidSession.adaptedSkills) raidSession.adaptedSkills=[];
         if (!raidSession.adaptedSkills.includes(skill.name)) {
@@ -2391,9 +2259,9 @@ async function handleRaidAction(interaction, player, raidSession, action) {
 
   raidSession.hp=Math.max(0,raidSession.hp-dmg);
 
-  if (!raidSession.enraged&&raidSession.hp<boss.hp*boss.phaseHp) {
+  if (!raidSession.enraged && raidSession.hp < boss.hp * boss.phaseHp) {
     raidSession.enraged=true;
-    log.push("```ansi\n\u001b[1;31m⚠  분노 페이즈 돌입!!  ATK 급증!  ⚠\n```");
+    log.push(`\`\`\`ansi\n\u001b[1;31m⚠  분노 페이즈 돌입!!  ATK ${boss.enragedAtk} 으로 상승!  ⚠\n\`\`\``);
   }
 
   if (raidSession.hp<=0) {
@@ -2414,18 +2282,28 @@ async function handleRaidAction(interaction, player, raidSession, action) {
     }
     const sid=Object.keys(raidSessions).find(k=>raidSessions[k]===raidSession);
     if (sid) delete raidSessions[sid];
-    return interaction.update({ embeds:[new EmbedBuilder().setTitle("🏆 레이드 클리어!").setColor(0xF5C842).setDescription(["```ansi",`\u001b[1;33m╔══════════════════════════════╗\n║  🏆  RAID CLEAR!!  🏆         ║\n╚══════════════════════════════╝`,"```",`> **${boss.name}** 격파!`,`> 보상: +${boss.xp}XP +${boss.crystals}💎 +${boss.masteryXp}숙련 +3🧪`,boss.fingers?`> 👹 스쿠나 손가락 +${boss.fingers}개!`:"",`> 📦 재료: ${formatDrops(drops)}`].filter(Boolean).join("\n"))], components:[] });
+    const clearEmbed=new EmbedBuilder().setTitle("🏆 레이드 클리어!").setColor(0xF5C842)
+      .setDescription([
+        "```ansi",`\u001b[1;33m╔══════════════════════════════╗\n║  🏆  RAID CLEAR!!  🏆         ║\n╚══════════════════════════════╝`,"```",
+        `> **${boss.name}** 격파!`,
+        `> 보상: +${boss.xp}XP +${boss.crystals}💎 +${boss.masteryXp}숙련 +3🧪`,
+        boss.fingers?`> 👹 스쿠나 손가락 +${boss.fingers}개!`:"",
+        `> 📦 재료: ${formatDrops(drops)}`,
+      ].filter(Boolean).join("\n"));
+    return interaction.update({ embeds:[clearEmbed], components:[] });
   }
 
   await doRaidBossAttack(player,raidSession,boss,log);
+
   if (player.hp<=0) {
     raidSession.members=raidSession.members.filter(id=>id!==player.id);
     log.push(`> 💀 **${player.name}** 전투 불능! 레이드 이탈.`);
     if (raidSession.members.length===0) {
       const sid=Object.keys(raidSessions).find(k=>raidSessions[k]===raidSession);
       if (sid) delete raidSessions[sid];
+      const failEmbed=new EmbedBuilder().setTitle("💀 레이드 실패").setColor(0xe63946).setDescription("> 파티원 전원 전투 불능...");
       savePlayer(player.id);
-      return interaction.update({ embeds:[new EmbedBuilder().setTitle("💀 레이드 실패").setColor(0xe63946).setDescription("> 파티원 전원 전투 불능...")], components:[] });
+      return interaction.update({ embeds:[failEmbed], components:[] });
     }
   }
   tickCooldowns(player); savePlayer(player.id);
@@ -2435,7 +2313,7 @@ async function handleRaidAction(interaction, player, raidSession, action) {
 // ════════════════════════════════════════════════════════
 // ── 파티 컬링 핸들러
 // ════════════════════════════════════════════════════════
-async function handlePartyCullingAction(interaction, player, session, action) {
+async function handlePartyCullingAction(interaction,player,session,action) {
   const party=getParty(player.id);
   if (!party) return;
   const enemy=session.currentEnemy;
@@ -2454,13 +2332,13 @@ async function handlePartyCullingAction(interaction, player, session, action) {
     const skill=getCurrentSkill(player,player.active);
     dmg=calcSkillDmgForPlayer(player,skill.dmg);
     const isBlack=isBlackFlash();
-    if (isBlack) { dmg=Math.floor(dmg*2.5); log.push(getBlackFlashArt()); log.push(`⚫ **${player.name}** 흑섬! **${dmg}** 피해!`); }
+    if (isBlack) { dmg=Math.floor(dmg*2.5); log.push(`⚫ **${player.name}** 흑섬! **${dmg}** 피해!`); }
     else { log.push(`> 🌀 **${player.name}**: ${skill.name} — **${dmg}** 피해!`); }
     player.skillCooldown=5;
   } else {
     dmg=calcDmgForPlayer(player,enemy.def);
     const isBlack=isBlackFlash();
-    if (isBlack) { dmg=Math.floor(dmg*2.5); log.push(getBlackFlashArt()); log.push(`⚫ **${player.name}** 흑섬! **${dmg}** 피해!`); }
+    if (isBlack) { dmg=Math.floor(dmg*2.5); log.push(`⚫ **${player.name}** 흑섬! **${dmg}** 피해!`); }
     else { log.push(`> ⚔️ **${player.name}** 공격! **${dmg}** 피해!`); }
   }
   session.enemyHp=Math.max(0,session.enemyHp-dmg);
@@ -2497,99 +2375,7 @@ async function handlePartyCullingAction(interaction, player, session, action) {
     }
   }
   tickCooldowns(player); savePlayer(player.id);
- return interaction.update({ embeds:[partyCullingEmbed(party, session, log)], components:[mkCullingButtons(player)] });
-  // ════════════════════════════════════════════════════════
-// ── 파티 컬링 핸들러 (완성)
-// ════════════════════════════════════════════════════════
-async function handlePartyCullingAction(interaction, player, session, action) {
-  const party = getParty(player.id);
-  if (!party) return;
-  const enemy = session.currentEnemy;
-  const log = [];
-
-  if (action === "pc_escape") {
-    delete cullings[party.id];
-    return interaction.update({ content: "🏳️ 파티 컬링 종료!", embeds: [], components: [] });
-  }
-  if (isIncapacitated(player.statusEffects)) return interaction.reply({ content: "❌ 상태이상!", ephemeral: true });
-  
-  const hit = rollHit(player.statusEffects, enemy.statusEffects);
-  let dmg = 0;
-  if (!hit) { 
-    log.push(`⚡ **${player.name}**의 공격이 빗나갔다!`); 
-  } else if (action === "pc_skill") {
-    if (player.skillCooldown > 0) return interaction.reply({ content: "❌ 술식 쿨다운!", ephemeral: true });
-    const skill = getCurrentSkill(player, player.active);
-    dmg = calcSkillDmgForPlayer(player, skill.dmg);
-    const isBlack = isBlackFlash();
-    if (isBlack) { 
-      dmg = Math.floor(dmg * 2.5); 
-      player.crystals += 50;
-      log.push(getBlackFlashArt()); 
-      log.push(`⚫ **${player.name}** 흑섬! **${dmg}** 피해! +50💎`); 
-    } else { 
-      log.push(`> 🌀 **${player.name}**: ${skill.name} — **${dmg}** 피해!`); 
-    }
-    player.skillCooldown = 5;
-    updateQuestProgress(player, "skill_use", 1);
-  } else {
-    dmg = calcDmgForPlayer(player, enemy.def);
-    const isBlack = isBlackFlash();
-    if (isBlack) { 
-      dmg = Math.floor(dmg * 2.5); 
-      player.crystals += 50;
-      log.push(getBlackFlashArt()); 
-      log.push(`⚫ **${player.name}** 흑섬! **${dmg}** 피해! +50💎`); 
-    } else { 
-      log.push(`> ⚔️ **${player.name}** 공격! **${dmg}** 피해!`); 
-    }
-  }
-  session.enemyHp = Math.max(0, session.enemyHp - dmg);
-
-  if (session.enemyHp <= 0) {
-    session.totalXp += enemy.xp; 
-    session.totalCrystals += enemy.crystals; 
-    session.kills++;
-    for (const uid of party.members) {
-      const p = players[uid]; 
-      if (!p) continue;
-      p.xp += Math.floor(enemy.xp / party.members.length);
-      p.crystals += Math.floor(enemy.crystals / party.members.length);
-      const drops = rollDrops(enemy.id);
-      addMaterials(p, drops);
-      updateQuestProgress(p, "battle_win", 1);
-      if (enemy.id === "e3" || enemy.id === "e4") updateQuestProgress(p, "boss_kill", 1);
-      savePlayer(uid);
-    }
-    session.wave++;
-    updateQuestProgress(player, "culling_wave", 1);
-    if (session.wave > (player.cullingBest || 0)) player.cullingBest = session.wave;
-    const next = pickCullingEnemy(session.wave);
-    session.currentEnemy = next; 
-    session.enemyHp = next.hp;
-    log.push(`> ✅ 처치! WAVE **${session.wave}** — **${next.name}** 등장!`);
-  } else {
-    const tgt = party.members[Math.floor(Math.random() * party.members.length)];
-    const p2 = players[tgt];
-    if (p2) {
-      const eDmg = calcDmg(enemy.atk, getPlayerStats(p2).def);
-      p2.hp = Math.max(0, p2.hp - eDmg);
-      log.push(`> 💢 **${enemy.name}** → **${p2.name}** **${eDmg}** 피해!`);
-      if (p2.hp <= 0) log.push(`> 💀 **${p2.name}** 전투 불능!`);
-    }
-    if (party.members.every(uid => (players[uid]?.hp || 0) <= 0)) {
-      delete cullings[party.id];
-      savePlayer(player.id);
-      return interaction.update({ content: "💀 파티 전원 쓰러짐! 컬링 종료!", embeds: [], components: [] });
-    }
-  }
-  tickCooldowns(player); 
-  savePlayer(player.id);
-  
-  return interaction.update({ 
-    embeds: [partyCullingEmbed(party, session, log)], 
-    components: [mkCullingButtons(player)] 
-  });
+  return interaction.update({ embeds:[partyCullingEmbed(party,session,log)], components:[mkCullingButtons(player)] });
 }
 
 // ════════════════════════════════════════════════════════
@@ -2598,38 +2384,36 @@ async function handlePartyCullingAction(interaction, player, session, action) {
 client.once("ready", async () => {
   console.log(`✅ 로그인: ${client.user.tag}`);
   await dbInit();
-  players = await dbLoad();
+  players=await dbLoad();
   console.log("🚀 주술회전 RPG 봇 활성화");
 
-  const commands = [
-    { name: "프로필", description: "내 프로필 카드 확인" },
-    { name: "전투", description: "일반 전투 시작" },
-    { name: "술식", description: "현재 캐릭터 술식 확인" },
-    { name: "스킬선택", description: "사용할 술식 번호 선택", options: [{ name: "번호", type: 4, description: "사용할 스킬 번호 (1~최대)", required: true }] },
-    { name: "가챠", description: "캐릭터 뽑기", options: [{ name: "횟수", type: 4, description: "1 또는 10", required: true }] },
-    { name: "활성", description: "캐릭터 선택 메뉴로 활성 변경" },
-    { name: "도감", description: "캐릭터 목록 확인 (등급별 정렬)" },
-    { name: "출석", description: "매일 출석 체크" },
-    { name: "회복", description: "회복약 사용" },
-    { name: "코가네가챠", description: "코가네 펫 뽑기 (200💎)" },
-    { name: "코가네", description: "코가네 펫 정보" },
-    { name: "손가락", description: "스쿠나 손가락 현황" },
-    { name: "컬링", description: "컬링 게임 시작" },
-    { name: "사멸회유", description: "사멸회유 게임 시작" },
-    { name: "결투", description: "PvP 결투 신청", options: [{ name: "대상", type: 6, description: "결투할 대상", required: true }] },
-    { name: "파티생성", description: "파티 생성" },
-    { name: "파티초대", description: "파티 초대", options: [{ name: "대상", type: 6, description: "초대할 대상", required: true }] },
-    { name: "파티나가기", description: "파티 탈퇴" },
-    { name: "파티컬링", description: "파티 컬링 시작" },
-    { name: "레이드", description: "레이드 시작", options: [{ name: "보스", type: 3, description: "heian_sukuna 또는 mahoraga", required: true }] },
-    { name: "코드", description: "쿠폰 코드 사용", options: [{ name: "코드", type: 3, description: "쿠폰 코드", required: true }] },
-    { name: "퀘스트", description: "퀘스트 현황 확인" },
-    { name: "재료", description: "재료 인벤토리 확인" },
-    { name: "주구목록", description: "주구(무기) 목록 및 제작 현황" },
-    { name: "주구제작", description: "주구 제작", options: [{ name: "이름", type: 3, description: "무기 이름", required: true }] },
-    { name: "장착", description: "주구 장착", options: [{ name: "이름", type: 3, description: "무기 이름", required: true }] },
-    { name: "해제", description: "주구 해제" },
-    { name: "도움말", description: "명령어 목록" },
+  const commands=[
+    { name:"프로필",      description:"내 프로필 카드 확인" },
+    { name:"전투",        description:"일반 전투 시작" },
+    { name:"술식",        description:"현재 캐릭터 술식 확인" },
+    { name:"가챠",        description:"캐릭터 뽑기", options:[{ name:"횟수",type:4,description:"1 또는 10",required:true }] },
+    { name:"활성",        description:"캐릭터 선택 메뉴로 활성 변경" },
+    { name:"출석",        description:"매일 출석 체크" },
+    { name:"회복",        description:"회복약 사용" },
+    { name:"코가네가챠",  description:"코가네 펫 뽑기 (200💎)" },
+    { name:"코가네",      description:"코가네 펫 정보" },
+    { name:"손가락",      description:"스쿠나 손가락 현황" },
+    { name:"컬링",        description:"컬링 게임 시작" },
+    { name:"사멸회유",    description:"사멸회유 게임 시작" },
+    { name:"결투",        description:"PvP 결투 신청", options:[{ name:"대상",type:6,description:"결투할 대상",required:true }] },
+    { name:"파티생성",    description:"파티 생성" },
+    { name:"파티초대",    description:"파티 초대", options:[{ name:"대상",type:6,description:"초대할 대상",required:true }] },
+    { name:"파티나가기",  description:"파티 탈퇴" },
+    { name:"파티컬링",    description:"파티 컬링 시작" },
+    { name:"레이드",      description:"레이드 시작", options:[{ name:"보스",type:3,description:"heian_sukuna 또는 mahoraga",required:true }] },
+    { name:"코드",        description:"쿠폰 코드 사용", options:[{ name:"코드",type:3,description:"쿠폰 코드",required:true }] },
+    { name:"퀘스트",      description:"퀘스트 현황 확인" },
+    { name:"재료",        description:"재료 인벤토리 확인" },
+    { name:"주구목록",    description:"주구(무기) 목록 및 제작 현황" },
+    { name:"주구제작",    description:"주구 제작", options:[{ name:"이름",type:3,description:"무기 이름",required:true }] },
+    { name:"장착",        description:"주구 장착", options:[{ name:"이름",type:3,description:"무기 이름",required:true }] },
+    { name:"해제",        description:"주구 해제" },
+    { name:"도움말",      description:"명령어 목록" },
   ];
   await client.application.commands.set(commands);
   console.log("✅ 슬래시 커맨드 등록 완료");
@@ -2639,146 +2423,124 @@ client.once("ready", async () => {
 // ── 인터랙션 핸들러
 // ════════════════════════════════════════════════════════
 client.on("interactionCreate", async (interaction) => {
-  // 셀렉트 메뉴 (캐릭터 선택)
+  // ── 셀렉트 메뉴 (캐릭터 선택)
   if (interaction.isStringSelectMenu() && interaction.customId === "char_select") {
-    const userId = interaction.user.id;
-    const player = getPlayer(userId, interaction.user.username);
-    const charId = interaction.values[0];
-
+    const userId=interaction.user.id;
+    const player=getPlayer(userId,interaction.user.username);
+    const charId=interaction.values[0];
+    
     if (!player.owned.includes(charId)) {
-      return interaction.reply({ content: "❌ 미보유 캐릭터!", ephemeral: true });
+      return interaction.reply({ content:"❌ 미보유 캐릭터!", ephemeral:true });
     }
-
-    player.active = charId;
-    const stats = getPlayerStats(player);
-    player.hp = stats.maxHp;
+    
+    player.active=charId;
+    const stats=getPlayerStats(player);
+    player.hp=stats.maxHp;
     savePlayer(userId);
-
-    const ch = CHARACTERS[charId];
-    const ri = GACHA_RARITY[ch.grade] || GACHA_RARITY["3급"];
+    
+    const ch=CHARACTERS[charId];
+    const ri=GACHA_RARITY[ch.grade]||GACHA_RARITY["3급"];
     return interaction.update({
-      embeds: [new EmbedBuilder()
+      content: null,
+      embeds:[new EmbedBuilder()
         .setColor(ri.color)
         .setTitle(`${ch.emoji} ${ch.name} [${ch.grade}] 활성화!`)
         .setDescription([
-          `> *"${ch.lore || ch.desc}"*`,
+          `> ${ri.stars} ${ri.effect}`,
+          `> *"${ch.lore||ch.desc}"*`,
           `> 💚 HP 완전 회복: **${stats.maxHp}**`,
-          `> 🌀 현재 스킬: **${getCurrentSkill(player, charId).name}**`,
-          `> 🌌 영역전개: **${ch.domain || "없음"}** ${ch.domain ? "(15턴 쿨다운)" : ""}`,
+          `> 🌀 현재 스킬: **${getCurrentSkill(player,charId).name}**`,
+          `> 🌌 영역전개: \`${ch.domain||"없음"}\``,
         ].join("\n"))],
-      components: [],
+      components:[],
     });
   }
 
-  // 스킬 선택 드롭다운
-  if (interaction.isStringSelectMenu() && interaction.customId === "battle_skill_select") {
-    const userId = interaction.user.id;
-    const player = getPlayer(userId, interaction.user.username);
-    const battle = battles[userId];
-    if (!battle) return interaction.reply({ content: "❌ 전투 중 아님!", ephemeral: true });
-    
-    const selectedIdx = parseInt(interaction.values[0].split("_")[2]);
-    player.selectedSkillIndex = selectedIdx;
-    savePlayer(userId);
-    
-    const skill = getCurrentSkill(player, player.active);
-    const embed = new EmbedBuilder()
-      .setTitle("🌀 술식 변경 완료!")
-      .setColor(0x7C5CFC)
-      .setDescription(`> **${skill.name}** (피해: ${skill.dmg}) 으로 변경되었습니다!\n> 전투에서 \`🌀 술식\` 버튼을 눌러 사용하세요.`);
-    
-    return interaction.update({ embeds: [embed], components: mkBattleButtons(player) });
-  }
-
-  // 버튼 처리
+  // ── 버튼
   if (interaction.isButton()) {
-    const { customId, user } = interaction;
-    const userId = user.id;
-    const player = getPlayer(userId, user.username);
+    const { customId, user }=interaction;
+    const userId=user.id;
+    const player=getPlayer(userId,user.username);
 
     if (customId.startsWith("b_")) {
-      const battle = battles[userId];
-      if (!battle) return interaction.reply({ content: "❌ 진행 중인 전투 없음", ephemeral: true });
-      return handleBattleAction(interaction, player, battle, customId);
+      const battle=battles[userId];
+      if (!battle) return interaction.reply({ content:"❌ 진행 중인 전투 없음", ephemeral:true });
+      return handleBattleAction(interaction,player,battle,customId);
     }
     if (customId.startsWith("c_")) {
-      const culling = cullings[userId];
-      if (!culling) return interaction.reply({ content: "❌ 진행 중인 컬링 없음", ephemeral: true });
-      return handleCullingAction(interaction, player, culling, customId);
+      const culling=cullings[userId];
+      if (!culling) return interaction.reply({ content:"❌ 진행 중인 컬링 없음", ephemeral:true });
+      return handleCullingAction(interaction,player,culling,customId);
     }
     if (customId.startsWith("j_")) {
-      const jujutsu = jujutsus[userId];
-      if (!jujutsu) return interaction.reply({ content: "❌ 진행 중인 사멸회유 없음", ephemeral: true });
-      if (customId === "j_escape") {
-        delete jujutsus[userId];
-        return interaction.update({ content: "🏳 사멸회유 종료", embeds: [], components: [] });
-      }
+      const jujutsu=jujutsus[userId];
+      if (!jujutsu) return interaction.reply({ content:"❌ 진행 중인 사멸회유 없음", ephemeral:true });
+      if (customId==="j_escape") { delete jujutsus[userId]; return interaction.update({ content:"🏳 사멸회유 종료", embeds:[], components:[] }); }
       if (customId.startsWith("j_choice_")) {
-        const idx = parseInt(customId.split("_")[2]);
+        const idx=parseInt(customId.split("_")[2]);
         if (jujutsu.choices?.[idx]) {
-          jujutsu.currentEnemy = JSON.parse(JSON.stringify(jujutsu.choices[idx]));
-          jujutsu.enemyHp = jujutsu.currentEnemy.hp;
-          jujutsu.choices = null;
-          return interaction.update({ embeds: [jujutsuEmbed(player, jujutsu)], components: mkJujutsuButtons(player, []) });
+          jujutsu.currentEnemy=JSON.parse(JSON.stringify(jujutsu.choices[idx]));
+          jujutsu.enemyHp=jujutsu.currentEnemy.hp;
+          jujutsu.choices=null;
+          return interaction.update({ embeds:[jujutsuEmbed(player,jujutsu)], components:[mkJujutsuButtons(player,[])[0]] });
         }
-        return interaction.reply({ content: "❌ 잘못된 선택", ephemeral: true });
+        return interaction.reply({ content:"❌ 잘못된 선택", ephemeral:true });
       }
-      return handleJujutsuAction(interaction, player, jujutsu, customId);
+      return handleJujutsuAction(interaction,player,jujutsu,customId);
     }
     if (customId.startsWith("pvp_")) {
-      const session = getPvpSessionByUser(userId);
-      if (!session) return interaction.reply({ content: "❌ 진행 중인 PvP 없음", ephemeral: true });
-      if (session.turn !== userId) return interaction.reply({ content: "⏳ 당신의 턴이 아닙니다!", ephemeral: true });
-      return handlePvpAction(interaction, player, session, customId);
+      const session=getPvpSessionByUser(userId);
+      if (!session) return interaction.reply({ content:"❌ 진행 중인 PvP 없음", ephemeral:true });
+      if (session.turn!==userId) return interaction.reply({ content:"⏳ 당신의 턴이 아닙니다!", ephemeral:true });
+      return handlePvpAction(interaction,player,session,customId);
     }
     if (customId.startsWith("r_")) {
-      const raidSession = getRaidByUser(userId);
-      if (!raidSession) return interaction.reply({ content: "❌ 진행 중인 레이드 없음", ephemeral: true });
-      if (player.hp <= 0) return interaction.reply({ content: "💀 전투 불능 상태! `/회복` 으로 회복하세요.", ephemeral: true });
-      return handleRaidAction(interaction, player, raidSession, customId);
+      const raidSession=getRaidByUser(userId);
+      if (!raidSession) return interaction.reply({ content:"❌ 진행 중인 레이드 없음", ephemeral:true });
+      if (player.hp<=0) return interaction.reply({ content:"💀 전투 불능 상태! `/회복` 으로 회복하세요.", ephemeral:true });
+      return handleRaidAction(interaction,player,raidSession,customId);
     }
     if (customId.startsWith("pc_")) {
-      const party = getParty(userId);
-      if (!party) return interaction.reply({ content: "❌ 파티 없음", ephemeral: true });
-      const session = cullings[party.id];
-      if (!session) return interaction.reply({ content: "❌ 진행 중인 파티 컬링 없음", ephemeral: true });
-      if (player.hp <= 0) return interaction.reply({ content: "💀 전투 불능 상태!", ephemeral: true });
-      return handlePartyCullingAction(interaction, player, session, customId);
+      const party=getParty(userId);
+      if (!party) return interaction.reply({ content:"❌ 파티 없음", ephemeral:true });
+      const session=cullings[party.id];
+      if (!session) return interaction.reply({ content:"❌ 진행 중인 파티 컬링 없음", ephemeral:true });
+      if (player.hp<=0) return interaction.reply({ content:"💀 전투 불능 상태!", ephemeral:true });
+      return handlePartyCullingAction(interaction,player,session,customId);
     }
     if (customId.startsWith("party_invite_")) {
-      const parts = customId.split("_");
-      const partyId = parts[3], targetId = parts[4];
-      if (user.id !== targetId) return interaction.reply({ content: "❌ 당신을 위한 초대가 아닙니다.", ephemeral: true });
-      const invite = partyInvites[targetId];
-      if (!invite || invite.partyId !== partyId) return interaction.reply({ content: "❌ 만료된 초대", ephemeral: true });
+      const parts=customId.split("_");
+      const partyId=parts[3], targetId=parts[4];
+      if (user.id!==targetId) return interaction.reply({ content:"❌ 당신을 위한 초대가 아닙니다.", ephemeral:true });
+      const invite=partyInvites[targetId];
+      if (!invite||invite.partyId!==partyId) return interaction.reply({ content:"❌ 만료된 초대", ephemeral:true });
       if (customId.includes("accept")) {
-        const party = parties[partyId];
-        if (!party) return interaction.reply({ content: "❌ 파티가 해체됨", ephemeral: true });
-        if (party.members.length >= 4) return interaction.reply({ content: "❌ 파티 가득참", ephemeral: true });
-        if (getPartyId(targetId)) return interaction.reply({ content: "❌ 이미 파티에 소속됨", ephemeral: true });
-        party.members.push(targetId);
-        delete partyInvites[targetId];
-        return interaction.update({ content: `✅ 파티 참가! (${party.members.length}/4명)`, embeds: [], components: [] });
+        const party=parties[partyId];
+        if (!party) return interaction.reply({ content:"❌ 파티가 해체됨", ephemeral:true });
+        if (party.members.length>=4) return interaction.reply({ content:"❌ 파티 가득참", ephemeral:true });
+        if (getPartyId(targetId)) return interaction.reply({ content:"❌ 이미 파티에 소속됨", ephemeral:true });
+        party.members.push(targetId); delete partyInvites[targetId];
+        return interaction.update({ content:`✅ 파티 참가! (${party.members.length}/4명)`, embeds:[], components:[] });
       } else {
         delete partyInvites[targetId];
-        return interaction.update({ content: "❌ 초대 거절", embeds: [], components: [] });
+        return interaction.update({ content:"❌ 초대 거절", embeds:[], components:[] });
       }
     }
     if (customId.startsWith("pvp_challenge_")) {
-      const parts = customId.split("_");
-      const act = parts[3], challengerId = parts[4];
-      if (act === "accept") {
-        const challenge = pvpChallenges[challengerId];
-        if (!challenge || challenge.target !== user.id) return interaction.reply({ content: "❌ 유효하지 않은 도전", ephemeral: true });
-        if (getPvpSessionByUser(user.id) || getPvpSessionByUser(challengerId)) return interaction.reply({ content: "❌ 이미 PvP 중", ephemeral: true });
-        const p1 = players[challengerId], p2 = players[user.id];
-        if (!p1 || !p2) return interaction.reply({ content: "❌ 플레이어 정보 없음", ephemeral: true });
-
-        const session = createPvpSession(challengerId, user.id);
-        pvpSessions[session.id] = session;
+      const parts=customId.split("_");
+      const act=parts[3], challengerId=parts[4];
+      if (act==="accept") {
+        const challenge=pvpChallenges[challengerId];
+        if (!challenge||challenge.target!==user.id) return interaction.reply({ content:"❌ 유효하지 않은 도전", ephemeral:true });
+        if (getPvpSessionByUser(user.id)||getPvpSessionByUser(challengerId)) return interaction.reply({ content:"❌ 이미 PvP 중", ephemeral:true });
+        const p1=players[challengerId], p2=players[user.id];
+        if (!p1||!p2) return interaction.reply({ content:"❌ 플레이어 정보 없음", ephemeral:true });
+        
+        const session=createPvpSession(challengerId,user.id);
+        pvpSessions[session.id]=session;
         delete pvpChallenges[challengerId];
-        const ch1 = CHARACTERS[p1.active], ch2 = CHARACTERS[p2.active];
-        const startEmbed = new EmbedBuilder().setColor(0xF5C842).setTitle("⚔️ PvP 결투 시작!")
+        const ch1=CHARACTERS[p1.active], ch2=CHARACTERS[p2.active];
+        const startEmbed=new EmbedBuilder().setColor(0xF5C842).setTitle("⚔️ PvP 결투 시작!")
           .setDescription([
             "```ansi\n\u001b[1;33m╔══════════════════════════════════╗\n║  ⚔️  PvP BATTLE START!  ⚔️        ║\n╚══════════════════════════════════╝\n```",
             `> ${ch1.emoji} **${ch1.name}** \`[${ch1.grade}]\` HP **${session.maxHp1}** ATK **${getPlayerStats(p1).atk}**`,
@@ -2787,22 +2549,22 @@ client.on("interactionCreate", async (interaction) => {
             `> \n> 먼저 행동: **${p1.name}**`,
           ].join("\n"));
         return interaction.update({
-          embeds: [startEmbed, pvpEmbed(session)],
-          components: [mkPvpButtons(session, challengerId)],
+          embeds:[startEmbed, pvpEmbed(session)],
+          components:[mkPvpButtons(session, challengerId)],
         });
       } else {
         delete pvpChallenges[challengerId];
-        return interaction.update({ content: "❌ 결투 거절됨.", embeds: [], components: [] });
+        return interaction.update({ content:"❌ 결투 거절됨.", embeds:[], components:[] });
       }
     }
   }
 
-  // 슬래시 커맨드
+  // ── 슬래시 커맨드
   if (interaction.isChatInputCommand()) {
-    const { commandName, user } = interaction;
-    const userId = user.id;
-    const player = getPlayer(userId, user.username);
-    await handleSlashCommand(interaction, commandName, player, userId, user);
+    const { commandName, user }=interaction;
+    const userId=user.id;
+    const player=getPlayer(userId,user.username);
+    await handleSlashCommand(interaction,commandName,player,userId,user);
   }
 });
 
@@ -2810,8 +2572,8 @@ client.on("interactionCreate", async (interaction) => {
 // ── 슬래시 커맨드 처리 함수
 // ════════════════════════════════════════════════════════
 function createPvpSession(p1Id, p2Id) {
-  const s1 = getPlayerStats(players[p1Id]);
-  const s2 = getPlayerStats(players[p2Id]);
+  const s1=getPlayerStats(players[p1Id]);
+  const s2=getPlayerStats(players[p2Id]);
   return {
     id: `pvp_${Date.now()}`,
     p1Id, p2Id,
@@ -2820,405 +2582,322 @@ function createPvpSession(p1Id, p2Id) {
     status1: [], status2: [],
     skillCd1: 0, skillCd2: 0,
     reverseCd1: 0, reverseCd2: 0,
-    domainCd1: 0, domainCd2: 0,
-    turn: p1Id, round: 1,
+    domainUsed1: false, domainUsed2: false,
+    turn: p1Id, round: 1, log: [],
   };
 }
 
-async function handleSlashCommand(interaction, commandName, player, userId, user) {
-  // 프로필
-  if (commandName === "프로필") {
-    return interaction.reply({ embeds: [profileEmbed(player)] });
-  }
+async function handleSlashCommand(interaction,commandName,player,userId,user) {
+  if (commandName==="프로필") return interaction.reply({ embeds:[profileEmbed(player)] });
 
-  // 전투
-  if (commandName === "전투") {
-    if (battles[userId]) return interaction.reply({ content: "❌ 이미 전투 중!", ephemeral: true });
+  if (commandName==="전투") {
+    if (battles[userId]) return interaction.reply({ content:"❌ 이미 전투 중!", ephemeral:true });
     let eBase;
-    if (Math.random() < 0.05) {
-      eBase = ENEMIES.find(e => e.id === "e_sukuna");
+    if (Math.random()<0.05) {
+      eBase=ENEMIES.find(e=>e.id==="e_sukuna");
     } else {
-      eBase = ENEMIES[Math.floor(Math.random() * 3)];
+      eBase=ENEMIES[Math.floor(Math.random()*3)];
     }
-    const enemy = { ...eBase, currentHp: eBase.hp, statusEffects: [] };
-    battles[userId] = { enemy };
-    const stats = getPlayerStats(player);
-    const embed = new EmbedBuilder()
-      .setTitle(eBase.id === "e_sukuna" ? "🔴 료멘 스쿠나 출현!" : "⚔️ 전투 시작!")
-      .setColor(eBase.id === "e_sukuna" ? 0x8b0000 : 0xff0000)
+    const enemy={ ...eBase, currentHp:eBase.hp, statusEffects:[] };
+    battles[userId]={ enemy };
+    const stats=getPlayerStats(player);
+    const isSukunaEnemy=eBase.id==="e_sukuna";
+    const embed=new EmbedBuilder()
+      .setTitle(isSukunaEnemy?"🔴 료멘 스쿠나 출현!":"⚔️ 전투 시작!")
+      .setColor(isSukunaEnemy?0x8b0000:0xff0000)
       .setDescription([
-        eBase.id === "e_sukuna" ? "```ansi\n\u001b[1;31m╔═══════════════════════════════════╗\n║  🔴  저주의 왕이 나타났다!  🔴     ║\n╚═══════════════════════════════════╝\n```" : "",
+        isSukunaEnemy?"```ansi\n\u001b[1;31m╔═══════════════════════════════════╗\n║  🔴  저주의 왕이 나타났다!  🔴     ║\n╚═══════════════════════════════════╝\n```":"",
         `**${enemy.emoji} ${enemy.name}** 이(가) 나타났다!`,
         `내 HP: ${player.hp}/${stats.maxHp}`,
       ].filter(Boolean).join("\n"))
-      .addFields({ name: "적 정보", value: `💚 HP: ${enemy.hp} | 🗡️ ATK: ${enemy.atk} | 🛡️ DEF: ${enemy.def}`, inline: false });
-    return interaction.reply({ embeds: [embed], components: mkBattleButtons(player) });
+      .addFields({ name:"적 정보",value:`💚 HP: ${enemy.hp} | 🗡️ ATK: ${enemy.atk} | 🛡️ DEF: ${enemy.def}`,inline:false });
+    return interaction.reply({ embeds:[embed], components:[mkBattleButtons(player)] });
   }
 
-  // 술식
-  if (commandName === "술식") {
-    return interaction.reply({ embeds: [buildSkillEmbed(player)] });
-  }
+  if (commandName==="술식") return interaction.reply({ embeds:[buildSkillEmbed(player)] });
 
-  // 스킬선택
-  if (commandName === "스킬선택") {
-    const num = interaction.options.getInteger("번호");
-    const available = getAvailableSkills(player, player.active);
-    if (num < 1 || num > available.length) {
-      return interaction.reply({ content: `❌ 1~${available.length} 사이의 번호를 입력하세요!`, ephemeral: true });
-    }
-    player.selectedSkillIndex = num - 1;
-    savePlayer(userId);
-    const skill = available[num - 1];
-    return interaction.reply({ content: `✅ **${skill.name}**(으)로 술식이 변경되었습니다!\n전투에서 \`🌀 술식\` 버튼을 눌러 사용하세요.`, ephemeral: true });
-  }
-
-  // 가챠
-  if (commandName === "가챠") {
-    const count = interaction.options.getInteger("횟수");
-    if (count !== 1 && count !== 10) return interaction.reply({ content: "❌ 1회 또는 10회만 가능!", ephemeral: true });
-    const cost = count === 1 ? 150 : 1350;
-    if (player.crystals < cost) return interaction.reply({ content: `💎 크리스탈 부족! (필요: ${cost})`, ephemeral: true });
-    player.crystals -= cost;
-    updateQuestProgress(player, "gacha_pull", count);
-    
-    await interaction.reply({ embeds: [gachaLoadingEmbed(1)] });
-    await new Promise(r => setTimeout(r, 1500));
-    await interaction.editReply({ embeds: [gachaLoadingEmbed(2)] });
-    await new Promise(r => setTimeout(r, 1500));
-    await interaction.editReply({ embeds: [gachaLoadingEmbed(3)] });
-    await new Promise(r => setTimeout(r, 1500));
-    
-    if (count === 1) {
-      const result = rollGacha(1)[0];
-      const isNew = !player.owned.includes(result);
-      if (isNew) { player.owned.push(result); if (!player.mastery[result]) player.mastery[result] = 0; }
-      else player.crystals += 50;
-      await interaction.editReply({ embeds: [gachaRevealEmbed(CHARACTERS[result].grade), gachaResultEmbed(result, isNew, player)] });
+  if (commandName==="가챠") {
+    const count=interaction.options.getInteger("횟수");
+    if (count!==1&&count!==10) return interaction.reply({ content:"❌ 1회 또는 10회만 가능!", ephemeral:true });
+    const cost=count===1?150:1350;
+    if (player.crystals<cost) return interaction.reply({ content:`💎 크리스탈 부족! (필요: ${cost})`, ephemeral:true });
+    player.crystals-=cost;
+    updateQuestProgress(player,"gacha_pull",1);
+    await interaction.reply({ embeds:[gachaLoadingEmbed(1)] });
+    await new Promise(r=>setTimeout(r,2000));
+    await interaction.editReply({ embeds:[gachaLoadingEmbed(2)] });
+    await new Promise(r=>setTimeout(r,2000));
+    await interaction.editReply({ embeds:[gachaLoadingEmbed(3)] });
+    await new Promise(r=>setTimeout(r,2000));
+    if (count===1) {
+      const result=rollGacha(1)[0];
+      const isNew=!player.owned.includes(result);
+      if (isNew) { player.owned.push(result); if (!player.mastery[result]) player.mastery[result]=0; }
+      else player.crystals+=50;
+      await interaction.editReply({ embeds:[gachaRevealEmbed(CHARACTERS[result].grade), gachaResultEmbed(result,isNew,player)] });
     } else {
-      const results = rollGacha(10);
-      const dupCrystals = results.filter(id => player.owned.includes(id)).length * 50;
-      const newOnes = results.filter(id => !player.owned.includes(id));
-      for (const id of newOnes) { player.owned.push(id); if (!player.mastery[id]) player.mastery[id] = 0; }
-      player.crystals += dupCrystals;
-      await interaction.editReply({ embeds: [gacha10ResultEmbed(results, newOnes, dupCrystals, player)] });
+      const results=rollGacha(10);
+      const dupCrystals=results.filter(id=>player.owned.includes(id)).length*50;
+      const newOnes=results.filter(id=>!player.owned.includes(id));
+      for (const id of newOnes) { player.owned.push(id); if (!player.mastery[id]) player.mastery[id]=0; }
+      player.crystals+=dupCrystals;
+      await interaction.editReply({ embeds:[gacha10ResultEmbed(results,newOnes,dupCrystals,player)] });
     }
     savePlayer(userId);
   }
 
-  // 코가네가챠
-  if (commandName === "코가네가챠") {
-    if (player.crystals < 200) return interaction.reply({ content: "💎 크리스탈 부족! (필요: 200)", ephemeral: true });
-    player.crystals -= 200;
-    player.koganeGachaCount = (player.koganeGachaCount || 0) + 1;
+  if (commandName==="코가네가챠") {
+    if (player.crystals<200) return interaction.reply({ content:"💎 부족! (필요: 200)", ephemeral:true });
+    player.crystals-=200;
+    player.koganeGachaCount=(player.koganeGachaCount||0)+1;
     
-    await interaction.reply({ embeds: [koganeLoadingEmbed(1)] });
-    await new Promise(r => setTimeout(r, 1500));
-    await interaction.editReply({ embeds: [koganeLoadingEmbed(2)] });
-    await new Promise(r => setTimeout(r, 1500));
-    await interaction.editReply({ embeds: [koganeLoadingEmbed(3)] });
-    await new Promise(r => setTimeout(r, 1500));
+    await interaction.reply({ embeds:[koganeLoadingEmbed(1)] });
+    await new Promise(r=>setTimeout(r,1800));
+    await interaction.editReply({ embeds:[koganeLoadingEmbed(2)] });
+    await new Promise(r=>setTimeout(r,1800));
+    await interaction.editReply({ embeds:[koganeLoadingEmbed(3)] });
+    await new Promise(r=>setTimeout(r,1500));
     
-    const grade = rollKogane();
-    const gradeOrder = ["3급", "2급", "1급", "특급", "전설"];
-    const isUpgrade = !player.kogane || gradeOrder.indexOf(grade) > gradeOrder.indexOf(player.kogane.grade);
-    if (isUpgrade) player.kogane = { grade };
-    else player.crystals += 50;
+    const grade=rollKogane();
+    const gradeOrder=["3급","2급","1급","특급","전설"];
+    const isUpgrade=!player.kogane||gradeOrder.indexOf(grade)>gradeOrder.indexOf(player.kogane.grade);
+    if (isUpgrade) player.kogane={ grade };
+    else player.crystals+=50;
     savePlayer(userId);
     
-    await interaction.editReply({ embeds: [koganeRevealEmbed(grade, isUpgrade, player)] });
+    await interaction.editReply({ embeds:[koganeRevealEmbed(grade, isUpgrade, player)] });
   }
 
-  // 코가네 정보
-  if (commandName === "코가네") {
-    return interaction.reply({ embeds: [koganeProfileEmbed(player)] });
-  }
+  if (commandName==="코가네") return interaction.reply({ embeds:[koganeProfileEmbed(player)] });
 
-  // 활성
-  if (commandName === "활성") {
-    if (player.owned.length === 0) return interaction.reply({ content: "❌ 보유 캐릭터 없음!", ephemeral: true });
-    const selectRow = mkCharSelectMenu(player, "char_select");
+  if (commandName==="활성") {
+    if (player.owned.length===0) return interaction.reply({ content:"❌ 보유 캐릭터 없음!", ephemeral:true });
+    const selectRow=mkCharSelectMenu(player,"char_select");
     return interaction.reply({
-      content: "🎭 **캐릭터를 선택하세요 (이름으로 표시):**",
-      components: [selectRow],
-      ephemeral: false,
+      content:"🎭 **캐릭터를 선택하세요:**",
+      components:[selectRow],
+      ephemeral:false,
     });
   }
 
-  // 도감
-  if (commandName === "도감") {
-    const ownedList = player.owned.map(id => {
-      const c = CHARACTERS[id];
-      const m = getMastery(player, id);
-      const ri = GACHA_RARITY[c.grade] || GACHA_RARITY["3급"];
-      const isActive = id === player.active;
-      return `${isActive ? "▶️" : "　"} ${c.emoji} **${c.name}** \`[${c.grade}]\` ${ri.stars} (숙련: ${m})`;
-    }).join("\n");
-    const total = Object.keys(CHARACTERS).length;
-    const embed = new EmbedBuilder()
-      .setTitle(`📖 도감 (${player.owned.length}/${total})`)
-      .setColor(0x7C5CFC)
-      .setDescription(ownedList || "보유한 캐릭터가 없습니다.\n`/가챠`로 캐릭터를 획득하세요!");
-    return interaction.reply({ embeds: [embed] });
-  }
-
-  // 출석
-  if (commandName === "출석") {
-    const now = Date.now();
-    if (now - (player.lastDaily || 0) < 86400000) {
-      const h = Math.ceil((86400000 - (now - player.lastDaily)) / 3600000);
-      return interaction.reply({ content: `⏰ ${h}시간 후 가능`, ephemeral: true });
+  if (commandName==="출석") {
+    const now=Date.now();
+    if (now-(player.lastDaily||0)<86400000) {
+      const h=Math.ceil((86400000-(now-player.lastDaily))/3600000);
+      return interaction.reply({ content:`⏰ ${h}시간 후 가능`, ephemeral:true });
     }
-    const streak = Math.min(player.dailyStreak || 0, 30);
-    const cr = 100 + streak * 5;
-    player.crystals += cr;
-    player.lastDaily = now;
-    player.dailyStreak = (player.dailyStreak || 0) + 1;
+    const streak=Math.min(player.dailyStreak||0,30);
+    const cr=100+streak*5;
+    player.crystals+=cr; player.lastDaily=now; player.dailyStreak=(player.dailyStreak||0)+1;
     savePlayer(userId);
-    return interaction.reply({ content: `✅ 출석 체크! +${cr}💎 (연속 ${player.dailyStreak}일)` });
+    return interaction.reply({ content:`✅ 출석 체크! +${cr}💎 (연속 ${player.dailyStreak}일)` });
   }
 
-  // 회복
-  if (commandName === "회복") {
-    if (player.potion <= 0) return interaction.reply({ content: "❌ 회복약 없음!", ephemeral: true });
-    const stats = getPlayerStats(player);
-    player.hp = stats.maxHp;
+  if (commandName==="회복") {
+    if (player.potion<=0) return interaction.reply({ content:"❌ 회복약 없음!", ephemeral:true });
+    const stats=getPlayerStats(player);
+    player.hp=stats.maxHp;
     player.potion--;
     savePlayer(userId);
-    return interaction.reply({ content: `✅ HP 완전 회복! (남은 회복약: ${player.potion}개)` });
+    return interaction.reply({ content:`✅ HP 완전 회복! (남은 회복약: ${player.potion}개)` });
   }
 
-  // 손가락
-  if (commandName === "손가락") {
-    const fingers = player.sukunaFingers || 0;
-    const bonus = getFingerBonus(fingers);
-    const bar = "█".repeat(fingers) + "░".repeat(SUKUNA_FINGER_MAX - fingers);
-    return interaction.reply({
-      embeds: [new EmbedBuilder().setColor(0x8b0000).setTitle("👹 스쿠나 손가락")
-        .setDescription([
-          `\`\`\`\n[${bar}]\n${fingers} / ${SUKUNA_FINGER_MAX} 개\n\`\`\``,
-          `> **${bonus.label}**`,
-          `> 🗡️ ATK +${bonus.atkBonus} · 🛡️ DEF +${bonus.defBonus} · 💚 HP +${bonus.hpBonus} · 💥 DMG ×${bonus.dmgMult.toFixed(2)}`,
-          fingers === 0 ? `> 💡 전투에서 스쿠나를 처치하면 손가락 획득!\n> 손가락 **1개**로 스쿠나 즉시 해금!` : "",
-          player.owned.includes("sukuna") ? "> 🔴 스쿠나 해금됨 — `/활성` 으로 선택 가능!" : "",
-        ].filter(Boolean).join("\n"))]
-    });
+  if (commandName==="손가락") {
+    const fingers=player.sukunaFingers||0;
+    const bonus=getFingerBonus(fingers);
+    const bar="█".repeat(fingers)+"░".repeat(SUKUNA_FINGER_MAX-fingers);
+    return interaction.reply({ embeds:[new EmbedBuilder().setColor(0x8b0000).setTitle("👹 스쿠나 손가락")
+      .setDescription([
+        `\`\`\`\n[${bar}]\n${fingers} / ${SUKUNA_FINGER_MAX} 개\n\`\`\``,
+        `> **${bonus.label}**`,
+        `> 🗡️ ATK +${bonus.atkBonus} · 🛡️ DEF +${bonus.defBonus} · 💚 HP +${bonus.hpBonus} · 💥 DMG ×${bonus.dmgMult.toFixed(2)}`,
+        fingers===0?`> 💡 전투에서 스쿠나를 처치하면 손가락 획득!\n> 손가락 **1개**로 스쿠나 즉시 해금!`:"",
+        player.owned.includes("sukuna")?"> 🔴 스쿠나 해금됨 — `/활성` 으로 선택 가능!":"",
+      ].filter(Boolean).join("\n"))] });
   }
 
-  // 컬링
-  if (commandName === "컬링") {
-    if (cullings[userId]) return interaction.reply({ content: "🌊 이미 컬링 중!", ephemeral: true });
-    const firstEnemy = pickCullingEnemy(1);
-    cullings[userId] = { wave: 1, kills: 0, totalXp: 0, totalCrystals: 0, currentEnemy: firstEnemy, enemyHp: firstEnemy.hp };
-    return interaction.reply({ embeds: [cullingEmbed(player, cullings[userId])], components: [mkCullingButtons(player)] });
+  if (commandName==="컬링") {
+    if (cullings[userId]) return interaction.reply({ content:"🌊 이미 컬링 중!", ephemeral:true });
+    const firstEnemy=pickCullingEnemy(1);
+    cullings[userId]={ wave:1,kills:0,totalXp:0,totalCrystals:0,currentEnemy:firstEnemy,enemyHp:firstEnemy.hp };
+    return interaction.reply({ embeds:[cullingEmbed(player,cullings[userId])], components:[mkCullingButtons(player)] });
   }
 
-  // 사멸회유
-  if (commandName === "사멸회유") {
-    if (jujutsus[userId]) return interaction.reply({ content: "🎯 이미 사멸회유 중!", ephemeral: true });
-    const choices = generateJujutsuChoices(1);
-    jujutsus[userId] = { wave: 1, points: 0, totalXp: 0, totalCrystals: 0, choices, currentEnemy: null, enemyHp: 0 };
-    return interaction.reply({ embeds: [jujutsuEmbed(player, jujutsus[userId], [], choices)], components: mkJujutsuButtons(player, choices) });
+  if (commandName==="사멸회유") {
+    if (jujutsus[userId]) return interaction.reply({ content:"🎯 이미 사멸회유 중!", ephemeral:true });
+    const choices=generateJujutsuChoices(1);
+    jujutsus[userId]={ wave:1,points:0,totalXp:0,totalCrystals:0,choices,currentEnemy:null,enemyHp:0 };
+    return interaction.reply({ embeds:[jujutsuEmbed(player,jujutsus[userId],[],choices)], components:mkJujutsuButtons(player,choices) });
   }
 
-  // 결투
-  if (commandName === "결투") {
-    const target = interaction.options.getUser("대상");
-    if (target.id === userId) return interaction.reply({ content: "❌ 자신과 결투 불가!", ephemeral: true });
-    if (getPvpSessionByUser(userId)) return interaction.reply({ content: "❌ 이미 PvP 진행 중!", ephemeral: true });
-    if (getPvpSessionByUser(target.id)) return interaction.reply({ content: "❌ 상대방이 이미 PvP 중!", ephemeral: true });
-    if (!players[target.id]) return interaction.reply({ content: "❌ 상대방이 아직 게임을 시작하지 않았습니다!", ephemeral: true });
-    
-    pvpChallenges[userId] = { target: target.id };
-    const challenger = player;
-    const ch1 = CHARACTERS[challenger.active];
-    const chTarget = CHARACTERS[players[target.id].active];
-    const s1 = getPlayerStats(challenger);
-    const s2 = getPlayerStats(players[target.id]);
-    const embed = new EmbedBuilder().setTitle("⚔️ PvP 결투 신청").setColor(0xF5C842)
+  if (commandName==="결투") {
+    const target=interaction.options.getUser("대상");
+    if (target.id===userId) return interaction.reply({ content:"❌ 자신과 결투 불가!", ephemeral:true });
+    if (getPvpSessionByUser(userId)) return interaction.reply({ content:"❌ 이미 PvP 진행 중!", ephemeral:true });
+    if (getPvpSessionByUser(target.id)) return interaction.reply({ content:"❌ 상대방이 이미 PvP 중!", ephemeral:true });
+    if (!players[target.id]) return interaction.reply({ content:"❌ 상대방이 아직 게임을 시작하지 않았습니다!", ephemeral:true });
+    pvpChallenges[userId]={ target:target.id };
+    const challenger=player;
+    const ch1=CHARACTERS[challenger.active];
+    const chTarget=CHARACTERS[players[target.id].active];
+    const s1=getPlayerStats(challenger);
+    const s2=getPlayerStats(players[target.id]);
+    const embed=new EmbedBuilder().setTitle("⚔️ PvP 결투 신청").setColor(0xF5C842)
       .setDescription([
         `${target}님, **${user.username}**님이 결투를 신청했습니다!`,
         `> 도전자: ${ch1.emoji} **${ch1.name}** [${ch1.grade}]  |  HP: ${s1.maxHp}  ATK: ${s1.atk}`,
         `> 상대방: ${chTarget.emoji} **${chTarget.name}** [${chTarget.grade}]  |  HP: ${s2.maxHp}  ATK: ${s2.atk}`,
-      ].join("\n")).setFooter({ text: "30초 내 수락/거절" });
-    const buttons = new ActionRowBuilder().addComponents(
+      ].join("\n")).setFooter({ text:"30초 내 수락/거절" });
+    const buttons=new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`pvp_challenge_accept_${userId}`).setLabel("✅ 수락").setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId(`pvp_challenge_decline_${userId}`).setLabel("❌ 거절").setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId(`pvp_challenge_decline_${userId}`).setLabel("❌ 거절").setStyle(ButtonStyle.Danger),
     );
-    await interaction.reply({ content: `${target}`, embeds: [embed], components: [buttons] });
-    setTimeout(() => { if (pvpChallenges[userId]) delete pvpChallenges[userId]; }, 30000);
-    return;
+    await interaction.reply({ content:`${target}`, embeds:[embed], components:[buttons] });
+    setTimeout(()=>{ if (pvpChallenges[userId]) delete pvpChallenges[userId]; },30000);
   }
 
-  // 파티생성
-  if (commandName === "파티생성") {
-    if (getPartyId(userId)) return interaction.reply({ content: "❌ 이미 파티 소속!", ephemeral: true });
-    const partyId = `${_partyIdSeq++}`;
-    parties[partyId] = { id: partyId, leader: userId, members: [userId], bestWave: 0 };
-    return interaction.reply({ content: `✅ 파티 생성! (1/4명)` });
+  if (commandName==="파티생성") {
+    if (getPartyId(userId)) return interaction.reply({ content:"❌ 이미 파티 소속!", ephemeral:true });
+    const partyId=`${_partyIdSeq++}`;
+    parties[partyId]={ id:partyId,leader:userId,members:[userId],bestWave:0 };
+    return interaction.reply({ content:`✅ 파티 생성! (1/4명)` });
   }
 
-  // 파티초대
-  if (commandName === "파티초대") {
-    const target = interaction.options.getUser("대상");
-    const party = getParty(userId);
-    if (!party) return interaction.reply({ content: "❌ 파티 없음!", ephemeral: true });
-    if (party.leader !== userId) return interaction.reply({ content: "❌ 파티장만 초대 가능!", ephemeral: true });
-    if (party.members.length >= 4) return interaction.reply({ content: "❌ 파티 가득참! (최대 4명)", ephemeral: true });
-    if (getPartyId(target.id)) return interaction.reply({ content: "❌ 이미 다른 파티 소속!", ephemeral: true });
-    
-    partyInvites[target.id] = { partyId: party.id, inviter: userId };
-    const buttons = new ActionRowBuilder().addComponents(
+  if (commandName==="파티초대") {
+    const target=interaction.options.getUser("대상");
+    const party=getParty(userId);
+    if (!party) return interaction.reply({ content:"❌ 파티 없음!", ephemeral:true });
+    if (party.leader!==userId) return interaction.reply({ content:"❌ 파티장만 초대 가능!", ephemeral:true });
+    if (party.members.length>=4) return interaction.reply({ content:"❌ 파티 가득참! (최대 4명)", ephemeral:true });
+    if (getPartyId(target.id)) return interaction.reply({ content:"❌ 이미 다른 파티 소속!", ephemeral:true });
+    partyInvites[target.id]={ partyId:party.id, inviter:userId };
+    const buttons=new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId(`party_invite_accept_${party.id}_${target.id}`).setLabel("✅ 수락").setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId(`party_invite_decline_${party.id}_${target.id}`).setLabel("❌ 거절").setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId(`party_invite_decline_${party.id}_${target.id}`).setLabel("❌ 거절").setStyle(ButtonStyle.Danger),
     );
-    await interaction.reply({ content: `${target}`, embeds: [new EmbedBuilder().setTitle("👥 파티 초대").setColor(0x4ade80).setDescription(`${target}님, **${user.username}**님의 파티에 초대받았습니다!\n현재 파티원: ${party.members.length}/4명`)], components: [buttons] });
-    setTimeout(() => { if (partyInvites[target.id]) delete partyInvites[target.id]; }, 60000);
-    return;
+    await interaction.reply({ content:`${target}`, embeds:[new EmbedBuilder().setTitle("👥 파티 초대").setColor(0x4ade80).setDescription(`${target}님, **${user.username}**님의 파티에 초대받았습니다!\n현재 파티원: ${party.members.length}/4명`)], components:[buttons] });
+    setTimeout(()=>{ if (partyInvites[target.id]) delete partyInvites[target.id]; },60000);
   }
 
-  // 파티나가기
-  if (commandName === "파티나가기") {
-    const party = getParty(userId);
-    if (!party) return interaction.reply({ content: "❌ 파티 없음!", ephemeral: true });
-    const isLeader = party.leader === userId;
-    party.members = party.members.filter(id => id !== userId);
-    if (party.members.length === 0) {
-      delete parties[party.id];
-      return interaction.reply({ content: "✅ 파티 탈퇴 (파티 해체)" });
-    }
-    if (isLeader) party.leader = party.members[0];
-    return interaction.reply({ content: `✅ 파티 탈퇴. 남은 파티원: ${party.members.length}명` });
+  if (commandName==="파티나가기") {
+    const party=getParty(userId);
+    if (!party) return interaction.reply({ content:"❌ 파티 없음!", ephemeral:true });
+    const isLeader=party.leader===userId;
+    party.members=party.members.filter(id=>id!==userId);
+    if (party.members.length===0) { delete parties[party.id]; return interaction.reply({ content:"✅ 파티 탈퇴 (파티 해체)" }); }
+    if (isLeader) party.leader=party.members[0];
+    return interaction.reply({ content:`✅ 파티 탈퇴. 남은 파티원: ${party.members.length}명` });
   }
 
-  // 파티컬링
-  if (commandName === "파티컬링") {
-    const party = getParty(userId);
-    if (!party) return interaction.reply({ content: "❌ 파티 없음!", ephemeral: true });
-    if (party.leader !== userId) return interaction.reply({ content: "❌ 파티장만 시작 가능!", ephemeral: true });
-    if (cullings[party.id]) return interaction.reply({ content: "🌊 이미 파티 컬링 중!", ephemeral: true });
-    const firstEnemy = pickCullingEnemy(1);
-    cullings[party.id] = { wave: 1, kills: 0, totalXp: 0, totalCrystals: 0, currentEnemy: firstEnemy, enemyHp: firstEnemy.hp };
-    return interaction.reply({ embeds: [partyCullingEmbed(party, cullings[party.id], [])], components: [mkCullingButtons(player)] });
+  if (commandName==="파티컬링") {
+    const party=getParty(userId);
+    if (!party) return interaction.reply({ content:"❌ 파티 없음!", ephemeral:true });
+    if (party.leader!==userId) return interaction.reply({ content:"❌ 파티장만 시작 가능!", ephemeral:true });
+    if (cullings[party.id]) return interaction.reply({ content:"🌊 이미 파티 컬링 중!", ephemeral:true });
+    const firstEnemy=pickCullingEnemy(1);
+    cullings[party.id]={ wave:1,kills:0,totalXp:0,totalCrystals:0,currentEnemy:firstEnemy,enemyHp:firstEnemy.hp };
+    return interaction.reply({ embeds:[partyCullingEmbed(party,cullings[party.id])], components:[mkCullingButtons(player)] });
   }
 
-  // 레이드
-  if (commandName === "레이드") {
-    const bossId = interaction.options.getString("보스").toLowerCase();
+  if (commandName==="레이드") {
+    const bossId=interaction.options.getString("보스").toLowerCase();
     if (!RAID_BOSSES[bossId]) {
-      return interaction.reply({ content: `❌ 존재하지 않는 보스!\n가능: \`heian_sukuna\` (헤이안 스쿠나), \`mahoraga\` (마허라가라)`, ephemeral: true });
+      return interaction.reply({ content:`❌ 존재하지 않는 보스!\n가능: \`heian_sukuna\` (헤이안 스쿠나), \`mahoraga\` (마허라가라)`, ephemeral:true });
     }
-    if (getRaidByUser(userId)) return interaction.reply({ content: "❌ 이미 레이드 진행 중!", ephemeral: true });
-    
-    const party = getParty(userId);
-    const members = party ? [...party.members] : [userId];
-    const boss = RAID_BOSSES[bossId];
-    const raidId = `${_raidIdSeq++}`;
-    raidSessions[raidId] = {
-      id: raidId, bossId,
-      hp: boss.hp, enraged: false,
-      members: [...members],
-      adaptedSkills: [],
+    if (getRaidByUser(userId)) return interaction.reply({ content:"❌ 이미 레이드 진행 중!", ephemeral:true });
+    const party=getParty(userId);
+    const members=party?party.members:[userId];
+    const boss=RAID_BOSSES[bossId];
+    const raidId=`${_raidIdSeq++}`;
+    raidSessions[raidId]={
+      id:raidId, bossId,
+      hp:boss.hp, enraged:false,
+      members:[...members],
+      adaptedSkills:[],
     };
     for (const uid of members) {
-      const p = players[uid];
-      if (p && p.hp <= 0) {
-        const stats = getPlayerStats(p);
-        p.hp = Math.floor(stats.maxHp * 0.5);
-        savePlayer(uid);
-      }
+      const p=players[uid];
+      if (p&&p.hp<=0) { const stats=getPlayerStats(p); p.hp=Math.floor(stats.maxHp*0.5); savePlayer(uid); }
     }
-    const introEmbed = new EmbedBuilder()
+    const introEmbed=new EmbedBuilder()
       .setTitle(`🔥 레이드 시작: ${boss.name}`)
       .setColor(boss.color)
       .setDescription([
-        "```ansi", `\u001b[1;31m╔══════════════════════════════════╗\n║  ⚔️  RAID BATTLE START!  ⚔️       ║\n╚══════════════════════════════════╝`, "```",
+        "```ansi",`\u001b[1;31m╔══════════════════════════════════╗\n║  ⚔️  RAID BATTLE START!  ⚔️       ║\n╚══════════════════════════════════╝`,"```",
         `> *"${boss.lore}"*`,
         `> 💚 보스 HP: **${boss.hp}**  |  🗡️ ATK: **${boss.atk}**  |  🛡️ DEF: **${boss.def}**`,
-        bossId === "mahoraga" ? `> 🔄 **마허라가라 특성**: 맞은 술식에 적응하여 다음부터 무효화!` : "",
-        bossId === "heian_sukuna" ? `> ⚠️ **헤이안 스쿠나**: HP ${boss.phaseHp * 100}% 이하 시 분노 페이즈 (ATK 상승)!` : "",
+        bossId==="mahoraga"?`> 🔄 **마허라가라 특성**: 맞은 술식에 적응하여 다음부터 무효화!`:"",
+        bossId==="heian_sukuna"?`> ⚠️ **헤이안 스쿠나**: HP ${boss.phaseHp*100}% 이하 시 분노 페이즈 (ATK 2배)!`:"",
         `> 참여 파티원: ${members.length}명`,
-      ].filter(Boolean).join("\n"));
-    return interaction.reply({ embeds: [introEmbed, raidEmbed(raidSessions[raidId])], components: [mkRaidButtons(player)] });
+      ].filter(Boolean).join("\n"))
+      .addFields({ name:"👥 파티", value:members.map(uid=>{
+        const p=players[uid];
+        if(!p)return `> ❓`;
+        const ch=CHARACTERS[p.active];
+        return `> ${ch.emoji} **${p.name}** \`${ch.name}\``;
+      }).join("\n") });
+    return interaction.reply({ embeds:[introEmbed,raidEmbed(raidSessions[raidId])], components:[mkRaidButtons(player)] });
   }
 
-  // 코드
-  if (commandName === "코드") {
-    const code = interaction.options.getString("코드").toLowerCase();
-    if (player.usedCodes.includes(code)) return interaction.reply({ content: "❌ 이미 사용한 코드!", ephemeral: true });
+  if (commandName==="코드") {
+    const code=interaction.options.getString("코드").toLowerCase();
+    if (player.usedCodes.includes(code)) return interaction.reply({ content:"❌ 이미 사용한 코드!", ephemeral:true });
     if (CODES[code]) {
-      player.crystals += (CODES[code].crystals || 0);
+      player.crystals+=(CODES[code].crystals||0);
       player.usedCodes.push(code);
       savePlayer(userId);
-      return interaction.reply({ content: `✅ 코드 사용! +${CODES[code].crystals || 0}💎` });
+      return interaction.reply({ content:`✅ 코드 사용! +${CODES[code].crystals||0}💎` });
     }
-    return interaction.reply({ content: "❌ 유효하지 않은 코드!", ephemeral: true });
+    return interaction.reply({ content:"❌ 유효하지 않은 코드!", ephemeral:true });
   }
 
-  // 퀘스트
-  if (commandName === "퀘스트") {
-    return interaction.reply({ embeds: [questEmbed(player)] });
-  }
+  if (commandName==="퀘스트") return interaction.reply({ embeds:[questEmbed(player)] });
+  if (commandName==="재료") return interaction.reply({ embeds:[materialsEmbed(player)] });
+  if (commandName==="주구목록") return interaction.reply({ embeds:[weaponListEmbed(player)] });
 
-  // 재료
-  if (commandName === "재료") {
-    return interaction.reply({ embeds: [materialsEmbed(player)] });
-  }
-
-  // 주구목록
-  if (commandName === "주구목록") {
-    return interaction.reply({ embeds: [weaponListEmbed(player)] });
-  }
-
-  // 주구제작
-  if (commandName === "주구제작") {
-    const weaponName = interaction.options.getString("이름");
-    const w = getWeaponByName(weaponName);
+  if (commandName==="주구제작") {
+    const weaponName=interaction.options.getString("이름");
+    const w=getWeaponByName(weaponName);
     if (!w) {
-      const list = Object.keys(WEAPONS).join(", ");
-      return interaction.reply({ content: `❌ 존재하지 않는 주구!\n가능: ${list}`, ephemeral: true });
+      const list=Object.keys(WEAPONS).join(", ");
+      return interaction.reply({ content:`❌ 존재하지 않는 주구!\n가능: ${list}`, ephemeral:true });
     }
-    if ((player.craftedWeapons || []).includes(w.id)) return interaction.reply({ content: "❌ 이미 제작한 주구!", ephemeral: true });
-    const mats = player.materials || {};
-    for (const [mat, qty] of Object.entries(w.recipe)) {
-      if ((mats[mat] || 0) < qty) {
-        const m = MATERIALS[mat];
-        return interaction.reply({ content: `❌ 재료 부족! ${m.emoji}**${m.name}** ${mats[mat] || 0}/${qty}`, ephemeral: true });
+    if ((player.craftedWeapons||[]).includes(w.id)) return interaction.reply({ content:"❌ 이미 제작한 주구!", ephemeral:true });
+    const mats=player.materials||{};
+    for (const [mat,qty] of Object.entries(w.recipe)) {
+      if ((mats[mat]||0)<qty) {
+        const m=MATERIALS[mat];
+        return interaction.reply({ content:`❌ 재료 부족! ${m.emoji}**${m.name}** ${mats[mat]||0}/${qty}`, ephemeral:true });
       }
     }
-    for (const [mat, qty] of Object.entries(w.recipe)) mats[mat] -= qty;
-    if (!player.craftedWeapons) player.craftedWeapons = [];
+    for (const [mat,qty] of Object.entries(w.recipe)) mats[mat]-=qty;
+    if (!player.craftedWeapons) player.craftedWeapons=[];
     player.craftedWeapons.push(w.id);
-    updateQuestProgress(player, "weapon_craft", 1);
+    updateQuestProgress(player,"weapon_craft",1);
     savePlayer(userId);
-    return interaction.reply({ embeds: [new EmbedBuilder().setTitle(`${w.emoji} ${w.name} 제작 완료!`).setColor(w.color).setDescription([`> **등급:** ${w.grade}`, `> 🗡️ ATK+${w.atkBonus} 🛡️ DEF+${w.defBonus} 💚 HP+${w.hpBonus}`, `> ${w.desc}`, `> \`/장착\` 으로 장착하세요!`].join("\n"))] });
+    return interaction.reply({ embeds:[new EmbedBuilder().setTitle(`${w.emoji} ${w.name} 제작 완료!`).setColor(w.color).setDescription([`> **등급:** ${w.grade}`,`> 🗡️ ATK+${w.atkBonus} 🛡️ DEF+${w.defBonus} 💚 HP+${w.hpBonus}`,`> ${w.desc}`,`> \`/장착\` 으로 장착하세요!`].join("\n"))] });
   }
 
-  // 장착
-  if (commandName === "장착") {
-    const weaponName = interaction.options.getString("이름");
-    const w = getWeaponByName(weaponName);
-    if (!w) return interaction.reply({ content: `❌ 존재하지 않는 주구!`, ephemeral: true });
-    if (!(player.craftedWeapons || []).includes(w.id)) return interaction.reply({ content: "❌ 제작하지 않은 주구!", ephemeral: true });
-    player.equippedWeapon = w.name;
+  if (commandName==="장착") {
+    const weaponName=interaction.options.getString("이름");
+    const w=getWeaponByName(weaponName);
+    if (!w) return interaction.reply({ content:`❌ 존재하지 않는 주구!`, ephemeral:true });
+    if (!(player.craftedWeapons||[]).includes(w.id)) return interaction.reply({ content:"❌ 제작하지 않은 주구!", ephemeral:true });
+    player.equippedWeapon=w.name;
     savePlayer(userId);
-    return interaction.reply({ content: `✅ **${w.emoji} ${w.name}** 장착! ATK+${w.atkBonus} DEF+${w.defBonus} HP+${w.hpBonus}` });
+    return interaction.reply({ content:`✅ **${w.emoji} ${w.name}** 장착! ATK+${w.atkBonus} DEF+${w.defBonus} HP+${w.hpBonus}` });
   }
 
-  // 해제
-  if (commandName === "해제") {
-    if (!player.equippedWeapon) return interaction.reply({ content: "❌ 장착된 주구 없음!", ephemeral: true });
-    const w = getWeaponByName(player.equippedWeapon);
-    player.equippedWeapon = null;
+  if (commandName==="해제") {
+    if (!player.equippedWeapon) return interaction.reply({ content:"❌ 장착된 주구 없음!", ephemeral:true });
+    const w=getWeaponByName(player.equippedWeapon);
+    player.equippedWeapon=null;
     savePlayer(userId);
-    return interaction.reply({ content: `✅ **${w?.name || "주구"}** 해제됨.` });
+    return interaction.reply({ content:`✅ **${w?.name||"주구"}** 해제됨.` });
   }
 
-  // 도움말
-  if (commandName === "도움말") {
-    const helpEmbed = new EmbedBuilder()
-      .setColor(0xF5C842)
-      .setTitle("🔱 주술회전 RPG — 명령어 목록")
+  if (commandName==="도움말") {
+    return interaction.reply({ embeds:[new EmbedBuilder().setColor(0xF5C842).setTitle("🔱 주술회전 RPG — 명령어 목록")
       .setDescription([
         "**⚔️ 전투 시스템**",
         "> `/전투` — 일반 전투 (5% 확률로 스쿠나 등장!)",
@@ -3232,9 +2911,7 @@ async function handleSlashCommand(interaction, commandName, player, userId, user
         "",
         "**🎭 캐릭터**",
         "> `/활성` — 캐릭터 선택 (이름으로 표시)",
-        "> `/스킬선택 [번호]` — 사용할 술식 변경",
         "> `/가챠 1|10` — 소환 (150/1350💎)",
-        "> `/도감` — 보유 캐릭터 목록",
         "> `/손가락` — 스쿠나 손가락 현황",
         "",
         "**👥 파티**",
@@ -3243,24 +2920,16 @@ async function handleSlashCommand(interaction, commandName, player, userId, user
         "**⚔️ 주구**",
         "> `/재료` `/주구목록` `/주구제작 [이름]` `/장착 [이름]` `/해제`",
         "",
-        "**🐾 펫**",
-        "> `/코가네가챠` — 코가네 1회 뽑기 (200💎)",
-        "> `!코가네가챠10` — 코가네 10회 뽑기 (2000💎)",
-        "> `/코가네` — 코가네 정보",
-        "",
         "**📋 기타**",
-        "> `/프로필` `/술식` `/출석` `/회복` `/퀘스트` `/코드`",
+        "> `/프로필` `/술식` `/출석` `/회복` `/퀘스트` `/코가네가챠` `/코드`",
         "",
         "**⭐ 특수 기믹**",
         "> ⚫ 흑섬: **10%** 확률 → 피해 **×2.5** +50💎",
         "> 👹 스쿠나: 전투 처치 시 손가락 획득 → **1개**로 즉시 해금!",
         "> 🧪 회복약: 전투 승리 시 **35~100%** 확률 드롭!",
-        "> 🌌 영역전개: **15턴 쿨다운**, 캐릭터별 고유 효과!",
-        "> ♻️ 반전술식: **3턴 쿨다운** (고조/유타만 가능)",
+        "> 🌌 영역전개: **PvP 전용** 1회 한정 강력 기술!",
         "> 🔄 마허라가라: 맞은 술식 **다음 턴부터 면역**!",
-      ].join("\n"))
-      .setFooter({ text: "🔱 주술회전 RPG | 저주 에너지를 최대로!" });
-    return interaction.reply({ embeds: [helpEmbed] });
+      ].join("\n")).setFooter({ text:"🔱 주술회전 RPG | 저주 에너지를 최대로!" })] });
   }
 }
 
@@ -3273,31 +2942,47 @@ client.on("messageCreate", async (message) => {
   const cmd = args[0].toLowerCase();
   const userId = message.author.id;
   const player = getPlayer(userId, message.author.username);
-
+  
   // !전투
   if (cmd === "전투") {
     if (battles[userId]) return message.reply("❌ 이미 전투 중!");
     let eBase;
-    if (Math.random() < 0.05) eBase = ENEMIES.find(e => e.id === "e_sukuna");
-    else eBase = ENEMIES[Math.floor(Math.random() * ENEMIES.length)];
+    if (Math.random() < 0.05) {
+      eBase = ENEMIES.find(e => e.id === "e_sukuna");
+    } else {
+      eBase = ENEMIES[Math.floor(Math.random() * ENEMIES.length)];
+    }
     const enemy = { ...eBase, currentHp: eBase.hp, statusEffects: [] };
     battles[userId] = { enemy };
     const stats = getPlayerStats(player);
     const embed = new EmbedBuilder()
       .setTitle(eBase.id === "e_sukuna" ? "🔴 료멘 스쿠나 출현!" : "⚔️ 전투 시작!")
       .setColor(eBase.id === "e_sukuna" ? 0x8b0000 : 0xff0000)
-      .setDescription(`**${enemy.emoji} ${enemy.name}** 이(가) 나타났다!\n내 HP: ${player.hp}/${stats.maxHp}`);
-    return message.reply({ embeds: [embed], components: mkBattleButtons(player) });
+      .setDescription([
+        eBase.id === "e_sukuna" ? "```ansi\n\u001b[1;31m╔═══════════════════════════════════╗\n║  🔴  저주의 왕이 나타났다!  🔴     ║\n╚═══════════════════════════════════╝\n```" : "",
+        `**${enemy.emoji} ${enemy.name}** 이(가) 나타났다!`,
+        `내 HP: ${player.hp}/${stats.maxHp}`,
+      ].filter(Boolean).join("\n"))
+      .addFields({ name: "적 정보", value: `💚 HP: ${enemy.hp} | 🗡️ ATK: ${enemy.atk} | 🛡️ DEF: ${enemy.def}`, inline: false });
+    return message.reply({ embeds: [embed], components: [mkBattleButtons(player)] });
   }
-
+  
   // !컬링
   if (cmd === "컬링") {
     if (cullings[userId]) return message.reply("🌊 이미 컬링 중!");
     const firstEnemy = pickCullingEnemy(1);
     cullings[userId] = { wave: 1, kills: 0, totalXp: 0, totalCrystals: 0, currentEnemy: firstEnemy, enemyHp: firstEnemy.hp };
-    return message.reply({ embeds: [cullingEmbed(player, cullings[userId])], components: [mkCullingButtons(player)] });
+    const stats = getPlayerStats(player);
+    const embed = new EmbedBuilder()
+      .setTitle("⚔️ 컬링 게임 — 🌊 WAVE 1")
+      .setColor(0x7C5CFC)
+      .addFields(
+        { name: `${CHARACTERS[player.active].emoji} 내 HP`, value: `${hpBar(player.hp, stats.maxHp)} \`${player.hp}/${stats.maxHp}\``, inline: true },
+        { name: `${firstEnemy.emoji} ${firstEnemy.name}`, value: `${hpBar(firstEnemy.hp, firstEnemy.hp)} \`${firstEnemy.hp}/${firstEnemy.hp}\``, inline: true },
+      );
+    return message.reply({ embeds: [embed], components: [mkCullingButtons(player)] });
   }
-
+  
   // !사멸회유
   if (cmd === "사멸회유") {
     if (jujutsus[userId]) return message.reply("🎯 이미 사멸회유 중!");
@@ -3305,7 +2990,7 @@ client.on("messageCreate", async (message) => {
     jujutsus[userId] = { wave: 1, points: 0, totalXp: 0, totalCrystals: 0, choices, currentEnemy: null, enemyHp: 0 };
     return message.reply({ embeds: [jujutsuEmbed(player, jujutsus[userId], [], choices)], components: mkJujutsuButtons(player, choices) });
   }
-
+  
   // !가챠 / !가챠10
   if (cmd === "가챠" || cmd === "가챠10") {
     const count = cmd === "가챠10" ? 10 : (parseInt(args[1]) || 1);
@@ -3313,7 +2998,7 @@ client.on("messageCreate", async (message) => {
     const cost = count === 1 ? 150 : 1350;
     if (player.crystals < cost) return message.reply(`💎 크리스탈 부족! (필요: ${cost})`);
     player.crystals -= cost;
-    updateQuestProgress(player, "gacha_pull", count);
+    updateQuestProgress(player, "gacha_pull", 1);
     
     const loadingMsg = await message.reply({ embeds: [gachaLoadingEmbed(1)] });
     await new Promise(r => setTimeout(r, 1500));
@@ -3325,102 +3010,38 @@ client.on("messageCreate", async (message) => {
     if (count === 1) {
       const result = rollGacha(1)[0];
       const isNew = !player.owned.includes(result);
-      if (isNew) { player.owned.push(result); if (!player.mastery[result]) player.mastery[result] = 0; }
-      else player.crystals += 50;
+      if (isNew) {
+        player.owned.push(result);
+        if (!player.mastery[result]) player.mastery[result] = 0;
+      } else {
+        player.crystals += 50;
+      }
       await loadingMsg.edit({ embeds: [gachaRevealEmbed(CHARACTERS[result].grade), gachaResultEmbed(result, isNew, player)] });
     } else {
       const results = rollGacha(10);
       const dupCrystals = results.filter(id => player.owned.includes(id)).length * 50;
       const newOnes = results.filter(id => !player.owned.includes(id));
-      for (const id of newOnes) { player.owned.push(id); if (!player.mastery[id]) player.mastery[id] = 0; }
+      for (const id of newOnes) {
+        player.owned.push(id);
+        if (!player.mastery[id]) player.mastery[id] = 0;
+      }
       player.crystals += dupCrystals;
       await loadingMsg.edit({ embeds: [gacha10ResultEmbed(results, newOnes, dupCrystals, player)] });
     }
     savePlayer(userId);
     return;
   }
-
-  // !코가네가챠10 (10회 뽑기)
-  if (cmd === "코가네가챠10" || cmd === "코가네10회") {
-    if (player.crystals < 2000) return message.reply(`💎 크리스탈 부족! 10회에 2000💎 필요 (현재: ${player.crystals}💎)`);
-    player.crystals -= 2000;
-    player.koganeGachaCount = (player.koganeGachaCount || 0) + 10;
-    
-    const loadingMsg = await message.reply({ embeds: [koganeLoadingEmbed(1)] });
-    await new Promise(r => setTimeout(r, 1500));
-    await loadingMsg.edit({ embeds: [koganeLoadingEmbed(2)] });
-    await new Promise(r => setTimeout(r, 1500));
-    await loadingMsg.edit({ embeds: [koganeLoadingEmbed(3)] });
-    await new Promise(r => setTimeout(r, 1500));
-    
-    const results = [];
-    for (let i = 0; i < 10; i++) results.push(rollKogane());
-    
-    const gradeOrder = ["3급", "2급", "1급", "특급", "전설"];
-    let currentGrade = player.kogane?.grade || "3급";
-    let totalRefund = 0;
-    let upgrades = [];
-    
-    for (const grade of results) {
-      if (gradeOrder.indexOf(grade) > gradeOrder.indexOf(currentGrade)) {
-        upgrades.push(`${currentGrade} → ${grade}`);
-        currentGrade = grade;
-      } else {
-        totalRefund += 50;
-      }
-    }
-    
-    if (upgrades.length > 0) {
-      player.kogane = { grade: currentGrade };
-    }
-    player.crystals += totalRefund;
-    savePlayer(userId);
-    
-    const resultEmbed = new EmbedBuilder()
-      .setTitle("🐾 코가네 10회 연속 소환 결과")
-      .setColor(0xFFD700)
-      .setDescription([
-        "```ansi",
-        "\u001b[1;33m╔══════════════════════════════════════╗",
-        "\u001b[1;33m║  🐾  10연차 코가네 소환 결과!  🐾    ║",
-        "\u001b[1;33m╚══════════════════════════════════════╝",
-        "```",
-        results.map(g => `${KOGANE_GRADES[g].emoji} **${g}**`).join(" · "),
-        upgrades.length ? `\n✨ **등급 상승!** ${upgrades.join(" → ")}` : `> 🔄 최고 등급: **${currentGrade}**`,
-        `> 💰 환급: **+${totalRefund}**💎`,
-        `> 💎 최종 잔여: **${player.crystals}**💎`,
-      ].join("\n"));
-    await loadingMsg.edit({ embeds: [resultEmbed] });
-    return;
-  }
-
-  // !활성
+  
+  // !활성 (셀렉트 메뉴)
   if (cmd === "활성") {
     if (player.owned.length === 0) return message.reply("❌ 보유 캐릭터 없음!");
     const selectRow = mkCharSelectMenu(player, "char_select");
     return message.reply({
-      content: "🎭 **캐릭터를 선택하세요 (이름으로 표시):**",
+      content: "🎭 **캐릭터를 선택하세요:**",
       components: [selectRow]
     });
   }
-
-  // !도감
-  if (cmd === "도감") {
-    const ownedList = player.owned.map(id => {
-      const c = CHARACTERS[id];
-      const m = getMastery(player, id);
-      const ri = GACHA_RARITY[c.grade] || GACHA_RARITY["3급"];
-      const isActive = id === player.active;
-      return `${isActive ? "▶️" : "　"} ${c.emoji} **${c.name}** \`[${c.grade}]\` ${ri.stars} (숙련: ${m})`;
-    }).join("\n");
-    const total = Object.keys(CHARACTERS).length;
-    const embed = new EmbedBuilder()
-      .setTitle(`📖 도감 (${player.owned.length}/${total})`)
-      .setColor(0x7C5CFC)
-      .setDescription(ownedList || "보유한 캐릭터가 없습니다.\n`!가챠`로 캐릭터를 획득하세요!");
-    return message.reply({ embeds: [embed] });
-  }
-
+  
   // !출석
   if (cmd === "출석") {
     const now = Date.now();
@@ -3436,69 +3057,113 @@ client.on("messageCreate", async (message) => {
     savePlayer(userId);
     return message.reply(`✅ 출석 체크! +${bonus}💎 (연속 ${player.dailyStreak}일)`);
   }
-
+  
   // !회복
   if (cmd === "회복") {
-    if (player.potion <= 0) return message.reply("❌ 회복약 없음!");
+    if (player.potion <= 0) return message.reply("❌ 회복약 없음! 전투에서 획득하세요.");
     const stats = getPlayerStats(player);
     player.hp = stats.maxHp;
     player.potion--;
     savePlayer(userId);
-    return message.reply(`💚 HP 완전 회복! 남은 회복약: ${player.potion}개`);
+    return message.reply(`💚 HP 완전 회복! 남은 회복약: **${player.potion}**개`);
   }
-
+  
+  // !구매
+  if (cmd === "구매") {
+    const amount = parseInt(args[1]) || 1;
+    if (amount <= 0) return message.reply("❌ 1개 이상 입력하세요!");
+    const cost = amount * 50;
+    if (player.crystals < cost) return message.reply(`💎 크리스탈 부족! (필요: ${cost})`);
+    player.crystals -= cost;
+    player.potion += amount;
+    savePlayer(userId);
+    return message.reply(`✅ 회복약 ${amount}개 구매! +${amount}개 (총 ${player.potion}개)`);
+  }
+  
   // !코가네
   if (cmd === "코가네") {
     if (!player.kogane) return message.reply("🐾 코가네가 없습니다! `!코가네가챠` (200💎)");
     const g = KOGANE_GRADES[player.kogane.grade];
-    return message.reply(`🐾 **코가네 [${player.kogane.grade}]** ${g.stars}\n${g.passiveDesc}`);
+    return message.reply(`🐾 **코가네 [${player.kogane.grade}]** ${g.stars}\n${g.passiveDesc}\n스킬: ${g.skill} — ${g.skillDesc}`);
   }
-
+  
+  // !코가네가챠
+  if (cmd === "코가네가챠") {
+    if (player.crystals < 200) return message.reply("💎 크리스탈 부족! (필요: 200)");
+    player.crystals -= 200;
+    player.koganeGachaCount = (player.koganeGachaCount || 0) + 1;
+    
+    const loadingMsg = await message.reply({ embeds: [koganeLoadingEmbed(1)] });
+    await new Promise(r => setTimeout(r, 1800));
+    await loadingMsg.edit({ embeds: [koganeLoadingEmbed(2)] });
+    await new Promise(r => setTimeout(r, 1800));
+    await loadingMsg.edit({ embeds: [koganeLoadingEmbed(3)] });
+    await new Promise(r => setTimeout(r, 1500));
+    
+    const grade = rollKogane();
+    const gradeOrder = ["3급", "2급", "1급", "특급", "전설"];
+    const isUpgrade = !player.kogane || gradeOrder.indexOf(grade) > gradeOrder.indexOf(player.kogane.grade);
+    if (isUpgrade) player.kogane = { grade };
+    else player.crystals += 50;
+    savePlayer(userId);
+    
+    await loadingMsg.edit({ embeds: [koganeRevealEmbed(grade, isUpgrade, player)] });
+    return;
+  }
+  
   // !손가락
   if (cmd === "손가락") {
     const fingers = player.sukunaFingers || 0;
     const bonus = getFingerBonus(fingers);
     const bar = "█".repeat(fingers) + "░".repeat(SUKUNA_FINGER_MAX - fingers);
-    return message.reply(`👹 **스쿠나 손가락**: ${fingers}/${SUKUNA_FINGER_MAX}\n\`[${bar}]\`\n${bonus.label}`);
+    return message.reply(`👹 **스쿠나 손가락**: ${fingers}/${SUKUNA_FINGER_MAX}\n\`[${bar}]\`\n${bonus.label}\nATK +${bonus.atkBonus} | DEF +${bonus.defBonus} | HP +${bonus.hpBonus} | DMG ×${bonus.dmgMult.toFixed(2)}`);
   }
-
+  
   // !재료
   if (cmd === "재료") {
     const mats = player.materials || {};
-    const lines = Object.entries(MATERIALS).map(([id, m]) => `> ${m.emoji} **${m.name}** ×${mats[id] || 0}`);
+    const lines = Object.entries(MATERIALS).map(([id, m]) => `> ${m.emoji} **${m.name}** ×${mats[id] || 0} — ${m.desc}`);
     return message.reply({ embeds: [new EmbedBuilder().setTitle("📦 재료 인벤토리").setColor(0x7c5cfc).setDescription(lines.join("\n"))] });
   }
-
+  
   // !주구목록
   if (cmd === "주구목록") {
     const mats = player.materials || {};
     const lines = Object.entries(WEAPONS).map(([name, w]) => {
+      const canCraft = Object.entries(w.recipe).every(([m, q]) => (mats[m] || 0) >= q);
       const owned = (player.craftedWeapons || []).includes(w.id);
       const equipped = player.equippedWeapon === name;
-      return `${equipped ? "⚔️" : owned ? "✅" : "🔒"} **${w.name}** (ATK+${w.atkBonus})`;
+      const recipeStr = Object.entries(w.recipe).map(([m, q]) => `${MATERIALS[m]?.emoji || ""}${mats[m] || 0}/${q}`).join(" ");
+      return `${equipped ? "⚔️[장착]" : owned ? "✅[보유]" : "🔒[미제작]"} **${w.emoji} ${name}** \`[${w.grade}]\`\n> ATK+${w.atkBonus} DEF+${w.defBonus} HP+${w.hpBonus}\n> 재료: ${recipeStr} ${canCraft && !owned ? "✨ 제작 가능!" : ""}`;
     });
-    return message.reply({ embeds: [new EmbedBuilder().setTitle("⚔️ 주구 목록").setColor(0xF5C842).setDescription(lines.join("\n"))] });
+    return message.reply({ embeds: [new EmbedBuilder().setTitle("⚔️ 주구 목록").setColor(0xF5C842).setDescription(lines.join("\n\n"))] });
   }
-
-  // !주구제작
+  
+  // !주구제작 (이름으로)
   if (cmd === "주구제작") {
     const weaponName = args.slice(1).join(" ");
     const w = getWeaponByName(weaponName);
-    if (!w) return message.reply(`❌ 존재하지 않는 주구!`);
+    if (!w) {
+      const list = Object.keys(WEAPONS).join(", ");
+      return message.reply(`❌ 존재하지 않는 주구!\n가능: ${list}`);
+    }
     if ((player.craftedWeapons || []).includes(w.id)) return message.reply("❌ 이미 제작한 주구!");
     const mats = player.materials || {};
     for (const [mat, qty] of Object.entries(w.recipe)) {
-      if ((mats[mat] || 0) < qty) return message.reply(`❌ ${mat} 부족!`);
+      if ((mats[mat] || 0) < qty) {
+        const m = MATERIALS[mat];
+        return message.reply(`❌ 재료 부족! ${m.emoji} **${m.name}** ${mats[mat] || 0}/${qty}`);
+      }
     }
     for (const [mat, qty] of Object.entries(w.recipe)) mats[mat] -= qty;
     if (!player.craftedWeapons) player.craftedWeapons = [];
     player.craftedWeapons.push(w.id);
     updateQuestProgress(player, "weapon_craft", 1);
     savePlayer(userId);
-    return message.reply(`✅ **${w.name}** 제작 완료!`);
+    return message.reply(`✅ **${w.emoji} ${w.name}** 제작 완료! \`!장착 ${w.name}\` 로 장착 가능`);
   }
-
-  // !장착
+  
+  // !장착 (이름으로)
   if (cmd === "장착") {
     const weaponName = args.slice(1).join(" ");
     const w = getWeaponByName(weaponName);
@@ -3506,17 +3171,18 @@ client.on("messageCreate", async (message) => {
     if (!(player.craftedWeapons || []).includes(w.id)) return message.reply("❌ 제작하지 않은 주구!");
     player.equippedWeapon = w.name;
     savePlayer(userId);
-    return message.reply(`⚔️ **${w.name}** 장착! ATK+${w.atkBonus}`);
+    return message.reply(`⚔️ **${w.emoji} ${w.name}** 장착! ATK+${w.atkBonus} DEF+${w.defBonus} HP+${w.hpBonus}`);
   }
-
+  
   // !해제
   if (cmd === "해제") {
     if (!player.equippedWeapon) return message.reply("❌ 장착된 주구 없음!");
+    const w = getWeaponByName(player.equippedWeapon);
     player.equippedWeapon = null;
     savePlayer(userId);
-    return message.reply(`✅ 주구 해제!`);
+    return message.reply(`⚔️ **${w?.name || "주구"}** 해제!`);
   }
-
+  
   // !퀘스트
   if (cmd === "퀘스트") {
     initQuests(player);
@@ -3546,7 +3212,7 @@ client.on("messageCreate", async (message) => {
       );
     return message.reply({ embeds: [embed] });
   }
-
+  
   // !퀘보상
   if (cmd === "퀘보상") {
     const type = args[1];
@@ -3564,21 +3230,34 @@ client.on("messageCreate", async (message) => {
     savePlayer(userId);
     return message.reply(`🎁 보상 수령! +${reward.crystals}💎 +${reward.xp}XP`);
   }
-
-  // !스킬선택
-  if (cmd === "스킬선택") {
-    const num = parseInt(args[1]);
-    const available = getAvailableSkills(player, player.active);
-    if (isNaN(num) || num < 1 || num > available.length) {
-      const skills = available.map((s, i) => `\`${i + 1}. ${s.name}\``).join(" ");
-      return message.reply(`❌ 1~${available.length} 사이 번호 입력!\n사용 가능: ${skills}`);
+  
+  // !술식
+  if (cmd === "술식") {
+    const ch = CHARACTERS[player.active];
+    const mastery = getMastery(player, player.active);
+    let skillText = "";
+    for (const s of ch.skills) {
+      const unlocked = mastery >= s.minMastery;
+      skillText += `${unlocked ? "✅" : "🔒"} **${s.name}** (숙련 ${s.minMastery}) — 피해 ${s.dmg}\n> ${s.desc}\n\n`;
     }
-    player.selectedSkillIndex = num - 1;
-    savePlayer(userId);
-    const skill = available[num - 1];
-    return message.reply(`✅ **${skill.name}**(으)로 술식 변경됨! (피해: ${skill.dmg})`);
+    const embed = new EmbedBuilder()
+      .setTitle(`${ch.emoji} ${ch.name}의 술식`)
+      .setColor(JJK_GRADE_COLOR[ch.grade] || 0x7c5cfc)
+      .setDescription(`📈 숙련도: ${mastery}\n🌌 영역전개: ${ch.domain || "없음"}`)
+      .addFields({ name: "📖 술식 목록", value: skillText || "없음", inline: false });
+    return message.reply({ embeds: [embed] });
   }
-
+  
+  // !도감
+  if (cmd === "도감") {
+    const ownedList = player.owned.map(id => {
+      const c = CHARACTERS[id];
+      return `${c.emoji} **${c.name}** \`${c.grade}\``;
+    }).join("\n");
+    const total = Object.keys(CHARACTERS).length;
+    return message.reply(`📖 **도감** (${player.owned.length}/${total})\n\n**보유**\n${ownedList || "없음"}`);
+  }
+  
   // !레이드
   if (cmd === "레이드") {
     const bossId = args[1]?.toLowerCase();
@@ -3596,13 +3275,40 @@ client.on("messageCreate", async (message) => {
       members: members,
       adaptedSkills: [],
     };
+    for (const uid of members) {
+      const p = players[uid];
+      if (p && p.hp <= 0) {
+        const stats = getPlayerStats(p);
+        p.hp = Math.floor(stats.maxHp * 0.5);
+        savePlayer(uid);
+      }
+    }
     const embed = new EmbedBuilder()
       .setTitle(`🔥 레이드: ${boss.name}`)
       .setColor(boss.color)
       .setDescription(`💚 HP: ${boss.hp} | 🗡️ ATK: ${boss.atk} | 🛡️ DEF: ${boss.def}\n참여: ${members.length}명`);
     return message.reply({ embeds: [embed, raidEmbed(raidSessions[raidId])], components: [mkRaidButtons(player)] });
   }
-
+  
+  // !코드
+  if (cmd === "코드") {
+    const code = args[1]?.toLowerCase();
+    if (!code) return message.reply("!코드 [코드명]");
+    if (player.usedCodes.includes(code)) return message.reply("❌ 이미 사용한 코드!");
+    if (CODES[code]) {
+      player.crystals += CODES[code].crystals || 0;
+      player.usedCodes.push(code);
+      savePlayer(userId);
+      return message.reply(`✅ 코드 사용! +${CODES[code].crystals || 0}💎`);
+    }
+    return message.reply("❌ 유효하지 않은 코드!");
+  }
+  
+  // !결투
+  if (cmd === "결투") {
+    return message.reply("⚔️ PvP 결투 기능은 `/결투 @유저` 로 이용해주세요!");
+  }
+  
   // !파티생성
   if (cmd === "파티생성") {
     if (getPartyId(userId)) return message.reply("❌ 이미 파티 소속!");
@@ -3610,7 +3316,7 @@ client.on("messageCreate", async (message) => {
     parties[partyId] = { id: partyId, leader: userId, members: [userId], bestWave: 0 };
     return message.reply(`✅ 파티 생성! (1/4명)`);
   }
-
+  
   // !파티초대
   if (cmd === "파티초대") {
     const target = message.mentions.users.first();
@@ -3629,7 +3335,7 @@ client.on("messageCreate", async (message) => {
     setTimeout(() => delete partyInvites[target.id], 60000);
     return;
   }
-
+  
   // !파티나가기
   if (cmd === "파티나가기") {
     const party = getParty(userId);
@@ -3642,7 +3348,7 @@ client.on("messageCreate", async (message) => {
     if (party.leader === userId) party.leader = party.members[0];
     return message.reply(`✅ 파티 탈퇴! 남은 인원: ${party.members.length}명`);
   }
-
+  
   // !파티컬링
   if (cmd === "파티컬링") {
     const party = getParty(userId);
@@ -3651,23 +3357,9 @@ client.on("messageCreate", async (message) => {
     if (cullings[party.id]) return message.reply("🌊 이미 파티 컬링 중!");
     const firstEnemy = pickCullingEnemy(1);
     cullings[party.id] = { wave: 1, kills: 0, totalXp: 0, totalCrystals: 0, currentEnemy: firstEnemy, enemyHp: firstEnemy.hp };
-    return message.reply({ embeds: [partyCullingEmbed(party, cullings[party.id], [])], components: [mkCullingButtons(player)] });
+    return message.reply(`✅ 파티 컬링 시작! WAVE 1`);
   }
-
-  // !코드
-  if (cmd === "코드") {
-    const code = args[1]?.toLowerCase();
-    if (!code) return message.reply("!코드 [코드명]");
-    if (player.usedCodes.includes(code)) return message.reply("❌ 이미 사용한 코드!");
-    if (CODES[code]) {
-      player.crystals += CODES[code].crystals || 0;
-      player.usedCodes.push(code);
-      savePlayer(userId);
-      return message.reply(`✅ 코드 사용! +${CODES[code].crystals || 0}💎`);
-    }
-    return message.reply("❌ 유효하지 않은 코드!");
-  }
-
+  
   // !도움말
   if (cmd === "도움말") {
     return message.reply([
@@ -3679,32 +3371,66 @@ client.on("messageCreate", async (message) => {
       "⚔️ `!레이드 [보스]` - 레이드",
       "",
       "🎭 `!프로필` - 내 정보",
-      "🎭 `!활성` - 캐릭터 변경 (셀렉트 메뉴, 이름으로 표시)",
+      "🎭 `!활성` - 캐릭터 변경 (셀렉트 메뉴)",
       "🎭 `!가챠` / `!가챠10` - 캐릭터 소환 (150💎/1350💎)",
       "🎭 `!술식` - 술식 확인",
-      "🎭 `!도감` - 보유 캐릭터 목록",
-      "🎭 `!스킬선택 [번호]` - 사용할 술식 변경",
+      "🎭 `!도감` - 보유 캐릭터",
       "🎭 `!손가락` - 스쿠나 손가락 현황",
-      "",
-      "🐾 `!코가네가챠` - 코가네 1회 (200💎)",
-      "🐾 `!코가네가챠10` - 코가네 10회 (2000💎)",
       "",
       "⚔️ `!재료` - 재료 인벤토리",
       "⚔️ `!주구목록` - 주구 목록",
       "⚔️ `!주구제작 [이름]` - 주구 제작",
       "⚔️ `!장착 [이름]` / `!해제`",
       "",
-      "📋 `!출석` / `!회복` / `!구매`",
-      "📋 `!퀘스트` / `!퀘보상 일/주 [번호]`",
+      "📋 `!퀘스트` - 퀘스트 확인",
+      "📋 `!퀘보상 일/주 [번호]` - 보상",
       "",
-      "👥 `!파티생성` / `!파티초대` / `!파티나가기` / `!파티컬링`",
+      "🛠️ `!출석` / `!회복` / `!구매`",
+      "🛠️ `!코드` / `!코가네` / `!코가네가챠`",
+      "🛠️ `!파티생성` / `!파티초대` / `!파티컬링`",
       "",
       "⚫ 흑섬: 10% 확률 → 2.5배 +50💎",
-      "🌌 영역전개: 15턴 쿨다운, 캐릭터별 특수 효과",
-      "♻️ 반전술식: 3턴 쿨다운 (고조/유타만 가능)",
+      "👹 스쿠나: 처치 시 손가락 획득 → 1개로 해금!",
       "🧪 회복약: 전투 드랍 (35~100%)",
       "🔄 마허라가라: 맞은 술식 다음 턴부터 면역!",
     ].join("\n"));
+  }
+  
+  // 개발자 명령어
+  if (cmd === "개발자패널" && isDev(userId)) {
+    return message.reply("🛠️ `!쿨다운초기화` `!아이템지급` `!전체저장` `!플레이어정보`");
+  }
+  if (cmd === "쿨다운초기화" && isDev(userId)) {
+    player.skillCooldown = 0;
+    player.reverseCooldown = 0;
+    savePlayer(userId);
+    return message.reply("✅ 쿨다운 초기화!");
+  }
+  if (cmd === "아이템지급" && isDev(userId)) {
+    const item = args[1];
+    const amount = parseInt(args[2]) || 1;
+    if (item === "크리스탈") player.crystals += amount;
+    else if (item === "회복약") player.potion += amount;
+    else if (item === "손가락") player.sukunaFingers = Math.min(SUKUNA_FINGER_MAX, (player.sukunaFingers || 0) + amount);
+    else if (MATERIALS[item]) {
+      if (!player.materials) player.materials = {};
+      player.materials[item] = (player.materials[item] || 0) + amount;
+    } else {
+      return message.reply("❌ 아이템: 크리스탈, 회복약, 손가락, 저주 실, 저주 뼈, 저주 핵, 저주 수정, 철 파편, 영혼 정수, 용 비늘");
+    }
+    savePlayer(userId);
+    return message.reply(`✅ ${item} +${amount}`);
+  }
+  if (cmd === "전체저장" && isDev(userId)) {
+    for (const uid of Object.keys(players)) await dbSave(uid, players[uid]);
+    return message.reply("✅ 전체 저장 완료!");
+  }
+  if (cmd === "플레이어정보" && isDev(userId)) {
+    const target = message.mentions.users.first() || message.author;
+    const p = players[target.id];
+    if (!p) return message.reply("❌ 정보 없음");
+    const matSummary = Object.entries(p.materials || {}).filter(([, q]) => q > 0).map(([id, q]) => `${MATERIALS[id]?.emoji || ""}${q}`).join(" ") || "없음";
+    return message.reply(`📊 **${p.name}**\n💎${p.crystals} XP${p.xp} LV.${getLevel(p.xp)}\n🎭 ${CHARACTERS[p.active]?.name || p.active}\n⚔️${p.wins}승 ${p.losses}패\n🧪 회복약: ${p.potion}개\n👹 손가락: ${p.sukunaFingers || 0}개\n📦 재료: ${matSummary}\n⚔️ 장착: ${p.equippedWeapon || "없음"}`);
   }
 });
 
