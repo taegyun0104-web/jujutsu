@@ -3438,7 +3438,7 @@ client.on("messageCreate", async (message) => {
 // ── 봇 실행
 // ════════════════════════════════════════════════════════
 client.login(TOKEN);
-/assets/profile.png
+const bg = await loadImage('./assets/profile.png');
 const { AttachmentBuilder } = require('discord.js');
 const { createCanvas, loadImage } = require('canvas');
 const GIFEncoder = require('gifencoder');
