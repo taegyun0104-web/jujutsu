@@ -7,7 +7,10 @@ const { Pool } = require("pg");
 const {
   Client, GatewayIntentBits, EmbedBuilder,
   ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder,
+  AttachmentBuilder,
 } = require("discord.js");
+const { createCanvas, loadImage } = require("canvas");
+const GIFEncoder = require("gifencoder");
 
 const app = express();
 app.get("/", (_, res) => res.send("🔱 주술회전 RPG 봇 가동 중"));
@@ -451,7 +454,7 @@ function getKoganeBonus(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 고퀄 스킬 이펙트 (ANSI 아트 + 이모지)
+// ── 고퀄 스킬 이펙트 (ANSI 아트 + 이모지) - 발현 계열 제거됨
 // ════════════════════════════════════════════════════════
 const SKILL_EFFECTS = {
   "주먹질": { 
@@ -463,12 +466,6 @@ const SKILL_EFFECTS = {
   "흑섬": { 
     art: "```ansi\n\u001b[1;30m🌑🌑🌑🌑🌑\n\u001b[1;31m⬛ 黑 閃 ⬛\n\u001b[1;30m🌑🌑🌑🌑🌑\n```", 
     color: 0x1a0a2e, flavorText: "⚫ 순간적으로 발산되는 최대 저주 에너지!", emoji: "⚫" },
-  "어주자": { 
-    art: "```ansi\n\u001b[1;31m👹✨👹✨👹\n\u001b[1;33m✨ 廻 夏 ✨\n\u001b[1;31m👹✨👹✨👹\n```", 
-    color: 0xb5451b, flavorText: "👹 스쿠나의 힘이 몸을 가득 채운다...", emoji: "👹" },
-  "스쿠나 발현": { 
-    art: "```ansi\n\u001b[1;31m🔴👹🔴👹🔴\n\u001b[1;33m👹 両面宿儺 👹\n\u001b[1;31m🔴👹🔴👹🔴\n```", 
-    color: 0x8b0000, flavorText: "🔴 저주의 왕이 이타도리의 몸을 장악한다!", emoji: "🔴" },
   "아오": { 
     art: "```ansi\n\u001b[1;34m  🔵🔵🔵  \n\u001b[1;36m🔵  蒼  🔵\n\u001b[1;34m  🔵🔵🔵  \n```", 
     color: 0x0066ff, flavorText: "🌀 무한의 인력 — 모든 것을 끌어당긴다", emoji: "🌀" },
@@ -524,7 +521,7 @@ const SKILL_EFFECTS = {
 function getSkillEffect(n) { return SKILL_EFFECTS[n]||SKILL_EFFECTS["_default"]; }
 
 // ════════════════════════════════════════════════════════
-// ── 캐릭터 데이터
+// ── 캐릭터 데이터 (발현 스킬 제거됨)
 // ════════════════════════════════════════════════════════
 const CHARACTERS = {
   itadori:  { name:"이타도리 유지",    emoji:"🟠", grade:"준1급", atk:90,  def:75,  spd:85,  maxHp:1000, domain:null,      desc:"특급주술사 후보생. 스쿠나의 그릇.", lore:"\"남은 건 내가 어떻게 죽느냐다.\"",   fingerSkills:true,
@@ -532,8 +529,7 @@ const CHARACTERS = {
       { name:"주먹질",         minMastery:0,  dmg:95,  desc:"강력한 기본 주먹.",                              statusApply:null },
       { name:"다이버전트 주먹",minMastery:5,  dmg:160, desc:"저주 에너지를 실은 주먹.",                       statusApply:{ target:"enemy",statusId:"stun",chance:0.3 } },
       { name:"흑섬",           minMastery:15, dmg:240, desc:"최대 저주 에너지 방출!",                         statusApply:{ target:"enemy",statusId:"weaken",chance:0.5 } },
-      { name:"어주자",         minMastery:30, dmg:340, desc:"스쿠나의 힘을 빌린 궁극기.",                     statusApply:{ target:"enemy",statusId:"burn",chance:0.7 } },
-      { name:"스쿠나 발현",    minMastery:50, dmg:520, desc:"스쿠나가 몸을 장악! 손가락 10개 필요.",          statusApply:{ target:"enemy",statusId:"freeze",chance:0.8 } },
+      // "어주자"와 "스쿠나 발현" 제거됨
     ],
   },
   gojo:     { name:"고조 사토루",      emoji:"🔵", grade:"특급",  atk:130, def:120, spd:110, maxHp:1800, domain:"무량공처", desc:"최강의 주술사. 무한을 구사한다.", lore:"\"사람들이 왜 내가 최강이라고 하는지 알아?\"",
@@ -759,7 +755,7 @@ const raidSessions  = {};
 let _partyIdSeq=1, _pvpIdSeq=1, _raidIdSeq=1;
 
 // ════════════════════════════════════════════════════════
-// ── 주력 스킬
+// ── 주력 스킬 (발현 제거, 그대로 유지)
 // ════════════════════════════════════════════════════════
 function getMainSkill(player, charId) {
   if (charId==="gojo"&&player.mainSkillUnlocked?.gojo)
@@ -813,11 +809,7 @@ function getPlayer(userId, username="플레이어") {
 function getMastery(player,charId) { return player.mastery?.[charId]||0; }
 function getAvailableSkills(player,charId) {
   const m=getMastery(player,charId);
-  return CHARACTERS[charId].skills.filter(s=>{
-    if (m<s.minMastery) return false;
-    if (s.name==="스쿠나 발현"&&(player.sukunaFingers||0)<10) return false;
-    return true;
-  });
+  return CHARACTERS[charId].skills.filter(s=>s.minMastery<=m);
 }
 function getCurrentSkill(player,charId) {
   const skills=getAvailableSkills(player,charId);
@@ -969,7 +961,7 @@ async function processBattleWin(player, enemy) {
   player.mastery[player.active]=(player.mastery[player.active]||0)+masteryGain;
   player.wins++;
 
-  // 회복약 드롭 (35~100% 확률)
+  // 회복약 드롭
   const potionChances = { e1:0.35, e2:0.45, e3:0.60, e4:0.80, e_sukuna:1.00 };
   const potionChance = potionChances[enemy.id] || 0.25;
   let potionMsg = "";
@@ -1548,8 +1540,7 @@ function buildSkillEmbed(player) {
     ].filter(Boolean).join("\n"))
     .addFields(ch.skills.map((s,idx)=>{
       const unlocked=mastery>=s.minMastery;
-      const fingerLock=s.name==="스쿠나 발현"&&fingers<10;
-      const available=unlocked&&!fingerLock;
+      const available=unlocked;
       const fx=getSkillEffect(s.name);
       const statusNote=s.statusApply?` \`${STATUS_EFFECTS[s.statusApply.statusId]?.emoji}${STATUS_EFFECTS[s.statusApply.statusId]?.name} ${Math.round(s.statusApply.chance*100)}%\``:"";
       return {
@@ -2937,89 +2928,15 @@ async function handleSlashCommand(interaction,commandName,player,userId,user) {
 // ── ! 명령어 핸들러
 // ════════════════════════════════════════════════════════
 client.on("messageCreate", async (message) => {
-  const { AttachmentBuilder } = require('discord.js');
-const { createCanvas, loadImage } = require('canvas');
-const GIFEncoder = require('gifencoder');
-
-client.on('messageCreate', async (message) => {
-
-  if (message.author.bot) return;
-
-  if (message.content === '!프로필') {
-
-    const canvas = createCanvas(800, 350);
-    const ctx = canvas.getContext('2d');
-
-    const encoder = new GIFEncoder(800, 350);
-
-    encoder.start();
-    encoder.setRepeat(0);
-    encoder.setDelay(80);
-
-    const chunks = [];
-
-    encoder.createReadStream().on('data', c => {
-      chunks.push(c);
-    });
-
-    // 여기 안에서는 await 가능
-    const bg = await loadImage('./assets/profile.png');
-
-    const avatar = await loadImage(
-      message.author.displayAvatarURL({
-        extension: 'png'
-      })
-    );
-
-    for (let i = 0; i < 12; i++) {
-
-      ctx.drawImage(bg, 0, 0, 800, 350);
-
-      ctx.fillStyle = 'rgba(255,255,255,0.05)';
-      ctx.fillRect(i * 60, 0, 120, 350);
-
-      ctx.save();
-
-      ctx.beginPath();
-      ctx.arc(120, 175, 65, 0, Math.PI * 2);
-      ctx.clip();
-
-      ctx.drawImage(avatar, 55, 110, 130, 130);
-
-      ctx.restore();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 35px Sans';
-
-      ctx.fillText(message.author.username, 230, 120);
-
-      ctx.font = '28px Sans';
-      ctx.fillStyle = '#00d5ff';
-
-      ctx.fillText('LEVEL 15', 230, 180);
-
-      encoder.addFrame(ctx);
-    }
-
-    encoder.finish();
-
-    const gif = Buffer.concat(chunks);
-
-    const attachment = new AttachmentBuilder(gif, {
-      name: 'profile.gif'
-    });
-
-    await message.reply({
-      files: [attachment]
-    });
-  }
-});
   if (message.author.bot || !message.content.startsWith("!")) return;
   const args = message.content.slice(1).trim().split(/\s+/);
   const cmd = args[0].toLowerCase();
   const userId = message.author.id;
   const player = getPlayer(userId, message.author.username);
   
+  // 디버깅 로그
+  console.log(`[CMD] ${message.author.tag}: ${cmd}`);
+
   // !전투
   if (cmd === "전투") {
     if (battles[userId]) return message.reply("❌ 이미 전투 중!");
@@ -3447,7 +3364,7 @@ client.on('messageCreate', async (message) => {
       "⚔️ `!사멸회유` - 포인트 게임",
       "⚔️ `!레이드 [보스]` - 레이드",
       "",
-      "🎭 `!프로필` - 내 정보",
+      "🎭 `!프로필` - 움직이는 GIF 프로필 카드",
       "🎭 `!활성` - 캐릭터 변경 (셀렉트 메뉴)",
       "🎭 `!가챠` / `!가챠10` - 캐릭터 소환 (150💎/1350💎)",
       "🎭 `!술식` - 술식 확인",
@@ -3471,6 +3388,129 @@ client.on('messageCreate', async (message) => {
       "🧪 회복약: 전투 드랍 (35~100%)",
       "🔄 마허라가라: 맞은 술식 다음 턴부터 면역!",
     ].join("\n"));
+  }
+  
+  // !프로필 - 움직이는 GIF 프로필 (canvas + gifencoder)
+  if (cmd === "프로필") {
+    console.log(`[!프로필] ${message.author.tag} 실행 시작`);
+    try {
+      const stats = getPlayerStats(player);
+      const level = getLevel(player.xp);
+      const currentHp = player.hp;
+      const maxHp = stats.maxHp;
+      const gold = player.crystals;
+
+      // 캔버스 & GIF 인코더 초기화
+      const canvas = createCanvas(800, 350);
+      const ctx = canvas.getContext("2d");
+      const encoder = new GIFEncoder(800, 350);
+      encoder.start();
+      encoder.setRepeat(0);   // 무한 반복
+      encoder.setDelay(90);   // 프레임 간 지연 (ms)
+      encoder.setQuality(10); // 품질 (1~20, 낮을수록 고화질)
+
+      const chunks = [];
+      encoder.createReadStream().on("data", chunk => chunks.push(chunk));
+      encoder.createReadStream().on("error", (err) => {
+        console.error("[GIFEncoder] 스트림 오류:", err);
+      });
+
+      // 배경 이미지 로드 (프로젝트 루트에 assets/profile.png 필요)
+      const bg = await loadImage("./assets/profile.png").catch(err => {
+        console.error("배경 이미지 로드 실패:", err);
+        return null;
+      });
+      if (!bg) {
+        return message.reply("❌ 배경 이미지(`assets/profile.png`)를 찾을 수 없습니다.");
+      }
+
+      // 유저 아바타 로드
+      const avatarUrl = message.author.displayAvatarURL({ extension: "png", size: 256 });
+      const avatar = await loadImage(avatarUrl);
+
+      // 14프레임 애니메이션 생성
+      for (let i = 0; i < 14; i++) {
+        // 1) 배경
+        ctx.drawImage(bg, 0, 0, 800, 350);
+
+        // 2) 움직이는 빛 효과 (좌→우)
+        ctx.fillStyle = "rgba(255,255,255,0.06)";
+        ctx.fillRect(-150 + i * 60, 0, 160, 350);
+
+        // 3) 아바타 (원형 클리핑)
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(120, 175, 70, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(avatar, 50, 105, 140, 140);
+        ctx.restore();
+
+        // 4) 아바타 테두리
+        ctx.beginPath();
+        ctx.arc(120, 175, 74, 0, Math.PI * 2);
+        ctx.strokeStyle = "#00d5ff";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+
+        // 5) 닉네임
+        ctx.fillStyle = "#ffffff";
+        ctx.font = 'bold 38px "Noto Sans KR", "Malgun Gothic", sans-serif';
+        ctx.fillText(message.author.username, 230, 110);
+
+        // 6) 레벨
+        ctx.fillStyle = "#00d5ff";
+        ctx.font = "28px sans-serif";
+        ctx.fillText(`LEVEL ${level}`, 230, 165);
+
+        // 7) 골드 (크리스탈)
+        ctx.fillStyle = "#ffd700";
+        ctx.font = "28px sans-serif";
+        ctx.fillText(`${gold.toLocaleString()} GOLD`, 230, 215);
+
+        // 8) HP바 배경
+        ctx.fillStyle = "#2a2a2a";
+        ctx.fillRect(230, 270, 350, 28);
+
+        // 9) HP바 (현재 HP 비율)
+        const hpPercent = currentHp / maxHp;
+        const hpBarWidth = Math.max(0, 350 * hpPercent);
+        ctx.fillStyle = "#00d5ff";
+        ctx.fillRect(230, 270, hpBarWidth, 28);
+
+        // 10) HP 텍스트
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "20px sans-serif";
+        ctx.fillText(`${currentHp} / ${maxHp}`, 360, 291);
+
+        // 11) 반짝이 효과 (움직이는 작은 점)
+        for (let p = 0; p < 12; p++) {
+          ctx.beginPath();
+          ctx.arc(
+            (p * 70 + i * 20) % 800,
+            (p * 35) % 350,
+            2,
+            0,
+            Math.PI * 2
+          );
+          ctx.fillStyle = "rgba(255,255,255,0.7)";
+          ctx.fill();
+        }
+
+        encoder.addFrame(ctx);
+      }
+
+      encoder.finish();
+
+      // GIF 파일 생성 및 전송
+      const gifBuffer = Buffer.concat(chunks);
+      const attachment = new AttachmentBuilder(gifBuffer, { name: "profile.gif" });
+      await message.reply({ files: [attachment] });
+      console.log(`[!프로필] ${message.author.tag} 완료`);
+    } catch (err) {
+      console.error("[!프로필] 오류:", err);
+      await message.reply("❌ 프로필 생성 중 오류가 발생했습니다.");
+    }
   }
   
   // 개발자 명령어
