@@ -40,6 +40,11 @@ async function dbLoad() {
     return obj;
   } catch (e) { return {}; }
 }
+async function dbDelete(userId) {
+  try {
+    await pool.query("DELETE FROM players WHERE user_id = $1", [userId]);
+  } catch (e) { console.error(`DB 삭제 오류 [${userId}]:`, e.message); }
+}
 
 const saveQueue = new Map();
 const savePending = new Set();
@@ -1327,7 +1332,7 @@ function partyCullingEmbed(party,session,log=[]) {
     const p=players[uid]; if (!p) return `> ❓`;
     const ch=CHARACTERS[p.active],stats=getPlayerStats(p),aw=isMakiAwakened(p);
     const pct=Math.max(0,p.hp)/stats.maxHp;
-    const icon=pct>0.5?"🟢":pct>0.25?"🟡":"🔴";
+    const icon=pct>0.5?"🟢":pct>0.3?"🟡":"🔴";
     return `> ${party.leader===uid?"👑":"👤"} **${p.name}** ${ch.emoji} ${icon} \`${Math.max(0,p.hp)}/${stats.maxHp}\`${aw?" 🔥":""}`;
   }).join("\n");
   return new EmbedBuilder()
@@ -2557,7 +2562,7 @@ async function handleSlashCommand(interaction,commandName,player,userId,user) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── ! 명령어 핸들러 (최적화 및 !프로필 추가)
+// ── ! 명령어 핸들러 (최적화 및 !프로필, !도감, !가입, !탈퇴 추가)
 // ════════════════════════════════════════════════════════
 client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.content.startsWith("!")) return;
@@ -2811,7 +2816,54 @@ client.on("messageCreate", async (message) => {
   if (cmd === "도감") {
     const ownedList = player.owned.map(id => { const c = CHARACTERS[id]; return `${c.emoji} **${c.name}** \`${c.grade}\``; }).join("\n");
     const total = Object.keys(CHARACTERS).length;
-    return message.reply(`📖 **도감** (${player.owned.length}/${total})\n\n**보유**\n${ownedList || "없음"}`);
+    return message.reply(`📖 **도감** (${player.owned.length}/${total})\n\n**보유 캐릭터**\n${ownedList || "없음"}`);
+  }
+  
+  // !가입
+  if (cmd === "가입") {
+    if (players[userId]) return message.reply("✅ 이미 주술회전 RPG에 가입되어 있습니다!\n> `!프로필` 로 내 정보를 확인하세요.");
+    // getPlayer will create new entry
+    const newPlayer = getPlayer(userId, message.author.username);
+    savePlayer(userId);
+    return message.reply(`🎴 **${message.author.username}** 님, 주술회전 RPG에 오신 것을 환영합니다!\n> 기본 캐릭터 '이타도리 유지' 와 500💎, 회복약 3개를 지급받았습니다.\n> \`!도움말\` 로 명령어를 확인하세요!`);
+  }
+  
+  // !탈퇴
+  if (cmd === "탈퇴") {
+    if (!players[userId]) return message.reply("❌ 가입되지 않은 사용자입니다.");
+    // Remove from all sessions
+    delete battles[userId];
+    delete cullings[userId];
+    delete jujutsus[userId];
+    // Remove from parties
+    const party = getParty(userId);
+    if (party) {
+      party.members = party.members.filter(id => id !== userId);
+      if (party.members.length === 0) delete parties[party.id];
+      else if (party.leader === userId) party.leader = party.members[0];
+    }
+    // Remove from PvP
+    const pvp = getPvpSessionByUser(userId);
+    if (pvp) {
+      const sid = Object.keys(pvpSessions).find(k => pvpSessions[k] === pvp);
+      if (sid) delete pvpSessions[sid];
+    }
+    // Remove from raid
+    const raid = getRaidByUser(userId);
+    if (raid) {
+      raid.members = raid.members.filter(id => id !== userId);
+      if (raid.members.length === 0) {
+        const sid = Object.keys(raidSessions).find(k => raidSessions[k] === raid);
+        if (sid) delete raidSessions[sid];
+      }
+    }
+    // Delete from memory and DB
+    delete players[userId];
+    await dbDelete(userId);
+    // Cancel any pending save queue
+    if (saveQueue.has(userId)) clearTimeout(saveQueue.get(userId));
+    if (savePending.has(userId)) savePending.delete(userId);
+    return message.reply("🗑️ 주술회전 RPG에서 탈퇴 처리되었습니다.\n> 모든 데이터가 삭제되었습니다. 다시 시작하려면 `!가입` 해주세요.");
   }
   
   // !레이드
@@ -2894,7 +2946,7 @@ client.on("messageCreate", async (message) => {
       "⚔️ `!전투` - 일반 전투 (5% 확률 스쿠나 등장)",
       "⚔️ `!컬링` - 컬링 게임",
       "⚔️ `!사멸회유` - 포인트 게임",
-      "⚔️ `!레이드 [보스]` - 레이드",
+      "⚔️ `!레이드 [보스]` - 레이드 (heian_sukuna / mahoraga)",
       "",
       "🎭 `!프로필` - 움직이는 GIF 프로필 카드",
       "🎭 `!활성` - 캐릭터 변경 (셀렉트 메뉴)",
@@ -2911,7 +2963,7 @@ client.on("messageCreate", async (message) => {
       "📋 `!퀘스트` - 퀘스트 확인",
       "📋 `!퀘보상 일/주 [번호]` - 보상",
       "",
-      "🛠️ `!출석` / `!회복` / `!구매`",
+      "🛠️ `!출석` / `!회복` / `!구매` `!가입` `!탈퇴`",
       "🛠️ `!코드` / `!코가네` / `!코가네가챠`",
       "🛠️ `!파티생성` / `!파티초대` / `!파티컬링`",
       "",
@@ -2948,21 +3000,17 @@ client.on("messageCreate", async (message) => {
       encoder.start();
       encoder.setRepeat(0);
       encoder.setDelay(90);
-      encoder.setQuality(15); // 품질 낮춰 파일 크기 감소 (기본 10보다 빠름)
+      encoder.setQuality(15);
 
       const chunks = [];
       const stream = encoder.createReadStream();
       stream.on("data", chunk => chunks.push(chunk));
       
-      // 프레임 수 줄임 (14 → 8)
       for (let i = 0; i < 8; i++) {
         ctx.drawImage(cachedProfileBg, 0, 0, 800, 350);
-        
-        // 빛 효과
         ctx.fillStyle = "rgba(255,255,255,0.06)";
         ctx.fillRect(-150 + i * 70, 0, 160, 350);
 
-        // 아바타 (원형)
         ctx.save();
         ctx.beginPath();
         ctx.arc(120, 175, 70, 0, Math.PI * 2);
@@ -2970,28 +3018,23 @@ client.on("messageCreate", async (message) => {
         ctx.drawImage(avatar, 50, 105, 140, 140);
         ctx.restore();
 
-        // 테두리
         ctx.beginPath();
         ctx.arc(120, 175, 74, 0, Math.PI * 2);
         ctx.strokeStyle = "#00d5ff";
         ctx.lineWidth = 5;
         ctx.stroke();
 
-        // 닉네임
         ctx.fillStyle = "#ffffff";
         ctx.font = 'bold 38px "Noto Sans KR", "Malgun Gothic", sans-serif';
         ctx.fillText(message.author.username, 230, 110);
 
-        // 레벨
         ctx.fillStyle = "#00d5ff";
         ctx.font = "28px sans-serif";
         ctx.fillText(`LEVEL ${level}`, 230, 165);
 
-        // 골드
         ctx.fillStyle = "#ffd700";
         ctx.fillText(`${gold.toLocaleString()} GOLD`, 230, 215);
 
-        // HP바
         ctx.fillStyle = "#2a2a2a";
         ctx.fillRect(230, 270, 350, 28);
         const hpPercent = currentHp / maxHp;
@@ -3002,7 +3045,6 @@ client.on("messageCreate", async (message) => {
         ctx.font = "20px sans-serif";
         ctx.fillText(`${currentHp} / ${maxHp}`, 360, 291);
 
-        // 반짝이 (개수 줄임: 12 → 8)
         for (let p = 0; p < 8; p++) {
           ctx.beginPath();
           ctx.arc((p * 90 + i * 25) % 800, (p * 40) % 350, 2, 0, Math.PI * 2);
@@ -3014,12 +3056,7 @@ client.on("messageCreate", async (message) => {
       }
 
       encoder.finish();
-      
-      // 스트림 완료 대기
-      await new Promise((resolve) => {
-        stream.on("end", resolve);
-      });
-      
+      await new Promise((resolve) => { stream.on("end", resolve); });
       const gifBuffer = Buffer.concat(chunks);
       const attachment = new AttachmentBuilder(gifBuffer, { name: "profile.gif" });
       await message.reply({ files: [attachment] });
