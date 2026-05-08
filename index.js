@@ -1006,7 +1006,7 @@ function profileEmbed(player) {
         const ri=GACHA_RARITY[c.grade]||GACHA_RARITY["3급"];
         const isActive=id===player.active;
         const fingerNote=id==="sukuna"?` | 손가락 ${fingers}개`:"";
-        return `> ${isActive?"▶️ **[활성]** ":"　"}${c.emoji} **${c.name}** \`[${c.grade}]\` ${ri.stars}  숙련 \`${m}\`${fingerNote}`;
+        return `> ${isActive?"▶️ **[활성]**":"　"}${c.emoji} **${c.name}** \`[${c.grade}]\` ${ri.stars}  숙련 \`${m}\`${fingerNote}`;
       }).join("\n")||"> 없음", inline:false
     })
     .setFooter({ text:`!전투 !컬링 !사멸회유 !결투 !레이드 !가챠 !퀘스트 | LV.${lv} · ${ch.name}` })
@@ -2639,6 +2639,68 @@ client.on("messageCreate", async (message) => {
     return message.reply({ content: "🎭 **캐릭터를 선택하세요:**", components: [selectRow] });
   }
   
+  // !도감 (복구)
+  if (cmd === "도감") {
+    const ownedList = player.owned.map(id => {
+      const c = CHARACTERS[id];
+      return `${c.emoji} **${c.name}** \`${c.grade}\``;
+    }).join("\n");
+    const total = Object.keys(CHARACTERS).length;
+    const embed = new EmbedBuilder()
+      .setTitle("📖 도감")
+      .setColor(0x7C5CFC)
+      .setDescription(`**보유 캐릭터** (${player.owned.length}/${total})\n\n${ownedList || "없음"}`)
+      .setFooter({ text: "!활성 으로 캐릭터를 변경할 수 있습니다." });
+    return message.reply({ embeds: [embed] });
+  }
+  
+  // !가입 (DB 생성)
+  if (cmd === "가입") {
+    if (players[userId]) return message.reply("✅ 이미 주술회전 RPG에 가입되어 있습니다!\n> `!프로필` 로 내 정보를 확인하세요.");
+    // getPlayer already creates new entry with default data
+    const newPlayer = getPlayer(userId, message.author.username);
+    savePlayer(userId);
+    return message.reply(`🎴 **${message.author.username}** 님, 주술회전 RPG에 오신 것을 환영합니다!\n> 기본 캐릭터 '이타도리 유지' 와 500💎, 회복약 3개를 지급받았습니다.\n> \`!도움말\` 로 명령어를 확인하세요!`);
+  }
+  
+  // !탈퇴 (DB 삭제)
+  if (cmd === "탈퇴") {
+    if (!players[userId]) return message.reply("❌ 가입되지 않은 사용자입니다.");
+    // Remove from all sessions
+    delete battles[userId];
+    delete cullings[userId];
+    delete jujutsus[userId];
+    // Remove from parties
+    const party = getParty(userId);
+    if (party) {
+      party.members = party.members.filter(id => id !== userId);
+      if (party.members.length === 0) delete parties[party.id];
+      else if (party.leader === userId) party.leader = party.members[0];
+    }
+    // Remove from PvP
+    const pvp = getPvpSessionByUser(userId);
+    if (pvp) {
+      const sid = Object.keys(pvpSessions).find(k => pvpSessions[k] === pvp);
+      if (sid) delete pvpSessions[sid];
+    }
+    // Remove from raid
+    const raid = getRaidByUser(userId);
+    if (raid) {
+      raid.members = raid.members.filter(id => id !== userId);
+      if (raid.members.length === 0) {
+        const sid = Object.keys(raidSessions).find(k => raidSessions[k] === raid);
+        if (sid) delete raidSessions[sid];
+      }
+    }
+    // Delete from memory and DB
+    delete players[userId];
+    await dbDelete(userId);
+    // Cancel any pending save queue for this user
+    if (saveQueue.has(userId)) clearTimeout(saveQueue.get(userId));
+    if (savePending.has(userId)) savePending.delete(userId);
+    return message.reply("🗑️ 주술회전 RPG에서 탈퇴 처리되었습니다.\n> 모든 데이터가 삭제되었습니다. 다시 시작하려면 `!가입` 해주세요.");
+  }
+  
   // !출석
   if (cmd === "출석") {
     const now = Date.now();
@@ -2812,60 +2874,6 @@ client.on("messageCreate", async (message) => {
     return message.reply({ embeds: [embed] });
   }
   
-  // !도감
-  if (cmd === "도감") {
-    const ownedList = player.owned.map(id => { const c = CHARACTERS[id]; return `${c.emoji} **${c.name}** \`${c.grade}\``; }).join("\n");
-    const total = Object.keys(CHARACTERS).length;
-    return message.reply(`📖 **도감** (${player.owned.length}/${total})\n\n**보유 캐릭터**\n${ownedList || "없음"}`);
-  }
-  
-  // !가입
-  if (cmd === "가입") {
-    if (players[userId]) return message.reply("✅ 이미 주술회전 RPG에 가입되어 있습니다!\n> `!프로필` 로 내 정보를 확인하세요.");
-    // getPlayer will create new entry
-    const newPlayer = getPlayer(userId, message.author.username);
-    savePlayer(userId);
-    return message.reply(`🎴 **${message.author.username}** 님, 주술회전 RPG에 오신 것을 환영합니다!\n> 기본 캐릭터 '이타도리 유지' 와 500💎, 회복약 3개를 지급받았습니다.\n> \`!도움말\` 로 명령어를 확인하세요!`);
-  }
-  
-  // !탈퇴
-  if (cmd === "탈퇴") {
-    if (!players[userId]) return message.reply("❌ 가입되지 않은 사용자입니다.");
-    // Remove from all sessions
-    delete battles[userId];
-    delete cullings[userId];
-    delete jujutsus[userId];
-    // Remove from parties
-    const party = getParty(userId);
-    if (party) {
-      party.members = party.members.filter(id => id !== userId);
-      if (party.members.length === 0) delete parties[party.id];
-      else if (party.leader === userId) party.leader = party.members[0];
-    }
-    // Remove from PvP
-    const pvp = getPvpSessionByUser(userId);
-    if (pvp) {
-      const sid = Object.keys(pvpSessions).find(k => pvpSessions[k] === pvp);
-      if (sid) delete pvpSessions[sid];
-    }
-    // Remove from raid
-    const raid = getRaidByUser(userId);
-    if (raid) {
-      raid.members = raid.members.filter(id => id !== userId);
-      if (raid.members.length === 0) {
-        const sid = Object.keys(raidSessions).find(k => raidSessions[k] === raid);
-        if (sid) delete raidSessions[sid];
-      }
-    }
-    // Delete from memory and DB
-    delete players[userId];
-    await dbDelete(userId);
-    // Cancel any pending save queue
-    if (saveQueue.has(userId)) clearTimeout(saveQueue.get(userId));
-    if (savePending.has(userId)) savePending.delete(userId);
-    return message.reply("🗑️ 주술회전 RPG에서 탈퇴 처리되었습니다.\n> 모든 데이터가 삭제되었습니다. 다시 시작하려면 `!가입` 해주세요.");
-  }
-  
   // !레이드
   if (cmd === "레이드") {
     const bossId = args[1]?.toLowerCase();
@@ -2938,6 +2946,103 @@ client.on("messageCreate", async (message) => {
     return message.reply(`✅ 파티 컬링 시작! WAVE 1`);
   }
   
+  // !프로필 - 움직이는 GIF 프로필 (지직거림 수정: 12프레임, 딜레이 60ms)
+  if (cmd === "프로필") {
+    try {
+      const stats = getPlayerStats(player);
+      const level = getLevel(player.xp);
+      const currentHp = player.hp;
+      const maxHp = stats.maxHp;
+      const gold = player.crystals;
+      const title = `${player.name} (Lv.${level})`;
+
+      // 배경 이미지 캐싱
+      if (!cachedProfileBg) {
+        cachedProfileBg = await loadImage("./assets/profile.png").catch(() => null);
+      }
+      if (!cachedProfileBg) {
+        return message.reply("❌ 배경 이미지(`assets/profile.png`)를 찾을 수 없습니다.");
+      }
+
+      const avatarUrl = message.author.displayAvatarURL({ extension: "png", size: 256 });
+      const avatar = await loadImage(avatarUrl);
+
+      const canvas = createCanvas(800, 350);
+      const ctx = canvas.getContext("2d");
+      const encoder = new GIFEncoder(800, 350);
+      encoder.start();
+      encoder.setRepeat(0);
+      encoder.setDelay(60);        // 부드러운 전환
+      encoder.setQuality(10);      // 품질 약간 향상
+
+      const chunks = [];
+      const stream = encoder.createReadStream();
+      stream.on("data", chunk => chunks.push(chunk));
+      
+      const frameCount = 12;       // 프레임 증가로 부드러움
+      for (let i = 0; i < frameCount; i++) {
+        ctx.drawImage(cachedProfileBg, 0, 0, 800, 350);
+        
+        // 부드러운 빛 효과
+        ctx.fillStyle = "rgba(255,255,255,0.04)";
+        ctx.fillRect(-120 + i * 90, 0, 160, 350);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(120, 175, 70, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(avatar, 50, 105, 140, 140);
+        ctx.restore();
+
+        ctx.beginPath();
+        ctx.arc(120, 175, 74, 0, Math.PI * 2);
+        ctx.strokeStyle = "#00d5ff";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = 'bold 38px "Noto Sans KR", "Malgun Gothic", sans-serif';
+        ctx.fillText(title, 230, 110);
+
+        ctx.fillStyle = "#00d5ff";
+        ctx.font = "28px sans-serif";
+        ctx.fillText(`LEVEL ${level}`, 230, 165);
+
+        ctx.fillStyle = "#ffd700";
+        ctx.fillText(`${gold.toLocaleString()} GOLD`, 230, 215);
+
+        ctx.fillStyle = "#2a2a2a";
+        ctx.fillRect(230, 270, 350, 28);
+        const hpPercent = currentHp / maxHp;
+        const hpBarWidth = Math.max(0, 350 * hpPercent);
+        ctx.fillStyle = "#00ffaa";
+        ctx.fillRect(230, 270, hpBarWidth, 28);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "20px sans-serif";
+        ctx.fillText(`${currentHp} / ${maxHp}`, 360, 291);
+        
+        // 반짝임 효과 (프레임마다 위치 변경)
+        for (let p = 0; p < 12; p++) {
+          ctx.beginPath();
+          ctx.arc((p * 70 + i * 15) % 800, (p * 30 + i * 5) % 350, 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255,255,255,${0.3 + Math.sin(i * 0.5) * 0.2})`;
+          ctx.fill();
+        }
+
+        encoder.addFrame(ctx);
+      }
+
+      encoder.finish();
+      await new Promise((resolve) => { stream.on("end", resolve); });
+      const gifBuffer = Buffer.concat(chunks);
+      const attachment = new AttachmentBuilder(gifBuffer, { name: "profile.gif" });
+      await message.reply({ files: [attachment] });
+    } catch (err) {
+      console.error("[!프로필] 오류:", err);
+      await message.reply("❌ 프로필 생성 중 오류가 발생했습니다.");
+    }
+  }
+  
   // !도움말
   if (cmd === "도움말") {
     return message.reply([
@@ -2950,9 +3055,9 @@ client.on("messageCreate", async (message) => {
       "",
       "🎭 `!프로필` - 움직이는 GIF 프로필 카드",
       "🎭 `!활성` - 캐릭터 변경 (셀렉트 메뉴)",
+      "🎭 `!도감` - 보유 캐릭터 확인",
       "🎭 `!가챠` / `!가챠10` - 캐릭터 소환 (150💎/1350💎)",
       "🎭 `!술식` - 술식 확인",
-      "🎭 `!도감` - 보유 캐릭터",
       "🎭 `!손가락` - 스쿠나 손가락 현황",
       "",
       "⚔️ `!재료` - 재료 인벤토리",
@@ -2972,98 +3077,6 @@ client.on("messageCreate", async (message) => {
       "🧪 회복약: 전투 드랍 (35~100%)",
       "🔄 마허라가라: 맞은 술식 다음 턴부터 면역!",
     ].join("\n"));
-  }
-  
-  // !프로필 - 움직이는 GIF 프로필 (최적화 버전)
-  if (cmd === "프로필") {
-    try {
-      const stats = getPlayerStats(player);
-      const level = getLevel(player.xp);
-      const currentHp = player.hp;
-      const maxHp = stats.maxHp;
-      const gold = player.crystals;
-
-      // 배경 이미지 캐싱 (최초 1회만 로드)
-      if (!cachedProfileBg) {
-        cachedProfileBg = await loadImage("./assets/profile.png").catch(() => null);
-      }
-      if (!cachedProfileBg) {
-        return message.reply("❌ 배경 이미지(`assets/profile.png`)를 찾을 수 없습니다.");
-      }
-
-      const avatarUrl = message.author.displayAvatarURL({ extension: "png", size: 256 });
-      const avatar = await loadImage(avatarUrl);
-
-      const canvas = createCanvas(800, 350);
-      const ctx = canvas.getContext("2d");
-      const encoder = new GIFEncoder(800, 350);
-      encoder.start();
-      encoder.setRepeat(0);
-      encoder.setDelay(90);
-      encoder.setQuality(15);
-
-      const chunks = [];
-      const stream = encoder.createReadStream();
-      stream.on("data", chunk => chunks.push(chunk));
-      
-      for (let i = 0; i < 8; i++) {
-        ctx.drawImage(cachedProfileBg, 0, 0, 800, 350);
-        ctx.fillStyle = "rgba(255,255,255,0.06)";
-        ctx.fillRect(-150 + i * 70, 0, 160, 350);
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(120, 175, 70, 0, Math.PI * 2);
-        ctx.clip();
-        ctx.drawImage(avatar, 50, 105, 140, 140);
-        ctx.restore();
-
-        ctx.beginPath();
-        ctx.arc(120, 175, 74, 0, Math.PI * 2);
-        ctx.strokeStyle = "#00d5ff";
-        ctx.lineWidth = 5;
-        ctx.stroke();
-
-        ctx.fillStyle = "#ffffff";
-        ctx.font = 'bold 38px "Noto Sans KR", "Malgun Gothic", sans-serif';
-        ctx.fillText(message.author.username, 230, 110);
-
-        ctx.fillStyle = "#00d5ff";
-        ctx.font = "28px sans-serif";
-        ctx.fillText(`LEVEL ${level}`, 230, 165);
-
-        ctx.fillStyle = "#ffd700";
-        ctx.fillText(`${gold.toLocaleString()} GOLD`, 230, 215);
-
-        ctx.fillStyle = "#2a2a2a";
-        ctx.fillRect(230, 270, 350, 28);
-        const hpPercent = currentHp / maxHp;
-        const hpBarWidth = Math.max(0, 350 * hpPercent);
-        ctx.fillStyle = "#00d5ff";
-        ctx.fillRect(230, 270, hpBarWidth, 28);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "20px sans-serif";
-        ctx.fillText(`${currentHp} / ${maxHp}`, 360, 291);
-
-        for (let p = 0; p < 8; p++) {
-          ctx.beginPath();
-          ctx.arc((p * 90 + i * 25) % 800, (p * 40) % 350, 2, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(255,255,255,0.7)";
-          ctx.fill();
-        }
-
-        encoder.addFrame(ctx);
-      }
-
-      encoder.finish();
-      await new Promise((resolve) => { stream.on("end", resolve); });
-      const gifBuffer = Buffer.concat(chunks);
-      const attachment = new AttachmentBuilder(gifBuffer, { name: "profile.gif" });
-      await message.reply({ files: [attachment] });
-    } catch (err) {
-      console.error("[!프로필] 오류:", err);
-      await message.reply("❌ 프로필 생성 중 오류가 발생했습니다.");
-    }
   }
   
   // 개발자 명령어
