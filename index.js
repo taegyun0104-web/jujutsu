@@ -1,6 +1,3 @@
-// ════════════════════════════════════════════════════════
-// 주술회전 RPG 봇 — 고퀄 통합 완성본 (Railway 최적화)
-// ════════════════════════════════════════════════════════
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
@@ -19,7 +16,7 @@ app.get("/health", (_, res) => res.json({ status: "ok", uptime: process.uptime()
 app.listen(process.env.PORT || 3000, () => console.log(`🌐 HTTP 포트 ${process.env.PORT || 3000}`));
 
 // ════════════════════════════════════════════════════════
-// ── PostgreSQL
+// PostgreSQL
 // ════════════════════════════════════════════════════════
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -82,7 +79,7 @@ setInterval(async () => {
 }, 3 * 60 * 1000);
 
 // ════════════════════════════════════════════════════════
-// ── Discord 클라이언트
+// Discord 클라이언트
 // ════════════════════════════════════════════════════════
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
@@ -94,7 +91,7 @@ const DEV_IDS = new Set(["1284771557633425470", "1397218266505678881"]);
 const isDev = (id) => DEV_IDS.has(id);
 
 // ════════════════════════════════════════════════════════
-// ── 등급/색상
+// 등급/색상
 // ════════════════════════════════════════════════════════
 const JJK_GRADE_COLOR = {
   "특급": 0xF5C842, "준특급": 0xff8c00, "1급": 0x7C5CFC, "준1급": 0x9b72cf,
@@ -110,7 +107,7 @@ const GACHA_RARITY = {
 };
 
 // ════════════════════════════════════════════════════════
-// ── 📦 재료 시스템 (한글 키)
+// 재료 시스템 (한글 키)
 // ════════════════════════════════════════════════════════
 const MATERIALS = {
   "저주 실":   { name:"저주 실",   emoji:"🧵", desc:"저급 저주령에서 획득" },
@@ -123,7 +120,7 @@ const MATERIALS = {
 };
 
 // ════════════════════════════════════════════════════════
-// ── 주구 시스템 (이름으로 검색)
+// 주구 시스템
 // ════════════════════════════════════════════════════════
 const WEAPONS = {
   "저주 단검": { id: "cursed_knife", name: "저주 단검", emoji: "🗡️", grade: "일반", atkBonus: 15, defBonus: 0, hpBonus: 0, desc: "저주 에너지가 깃든 단검.", recipe: { "저주 실": 3, "철 파편": 5 }, color: 0x94a3b8 },
@@ -143,7 +140,7 @@ function getWeaponStats(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 적 드롭 테이블 (회복약 드랍 추가)
+// 드롭 테이블 (회복약 드랍 포함)
 // ════════════════════════════════════════════════════════
 const ENEMY_DROPS = {
   e1: [{ mat: "저주 실", min: 1, max: 3, chance: 0.80 }, { mat: "철 파편", min: 1, max: 2, chance: 0.60 }, { mat: "저주 뼈", min: 1, max: 1, chance: 0.10 }],
@@ -189,7 +186,7 @@ function formatDrops(drops) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 퀘스트 시스템
+// 퀘스트 시스템
 // ════════════════════════════════════════════════════════
 const DAILY_QUESTS = [
   { id:"dq_battle3",  type:"battle_win",   target:3,  name:"오늘의 수련",   desc:"전투 3회 승리",              reward:{ crystals:80,  xp:150, materials:{ "철 파편":3 } } },
@@ -260,7 +257,7 @@ function claimQuestReward(player,questId,isWeekly=false) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 상태이상
+// 상태이상
 // ════════════════════════════════════════════════════════
 const STATUS_EFFECTS = {
   poison:        { id:"poison",        name:"독",      emoji:"☠️", desc:"매 턴 최대HP의 5% 피해",       duration:3 },
@@ -317,7 +314,7 @@ function rollHit(attackerSe,defenderSe) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 흑섬
+// 흑섬
 // ════════════════════════════════════════════════════════
 function isBlackFlash() { return Math.random()<0.10; }
 function getBlackFlashArt() {
@@ -325,7 +322,7 @@ function getBlackFlashArt() {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 스쿠나 손가락 (1개로 해금)
+// 스쿠나 손가락
 // ════════════════════════════════════════════════════════
 const SUKUNA_FINGER_MAX = 20;
 function getFingerBonus(fingers) {
@@ -343,7 +340,7 @@ function getFingerBonus(fingers) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 코가네 펫
+// 코가네 펫
 // ════════════════════════════════════════════════════════
 const KOGANE_GRADES = {
   "전설":{ color:0xF5C842,emoji:"🌟",stars:"★★★★★",rate:0.5,  atkBonus:0.25,defBonus:0.20,hpBonus:0.20,xpBonus:0.30,crystalBonus:0.25, skill:"황금 포효",   skillDesc:"전투 시작 시 적에게 추가 피해 (ATK의 50%)", skillChance:0.35, passiveDesc:"ATK+25% DEF+20% HP+20% XP+30% 크리스탈+25%" },
@@ -365,7 +362,7 @@ function getKoganeBonus(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 고퀄 스킬 이펙트 (축약)
+// 고퀄 스킬 이펙트
 // ════════════════════════════════════════════════════════
 const SKILL_EFFECTS = {
   "주먹질": { art: "```ansi\n\u001b[1;31m    💥    \n\u001b[1;33m   ▓▓▓   \n\u001b[1;31m    💥    \n```", color: 0xff6b35, flavorText: "💪 저주 에너지를 주먹에 집중시킨다!" },
@@ -388,7 +385,7 @@ const SKILL_EFFECTS = {
 function getSkillEffect(n) { return SKILL_EFFECTS[n]||SKILL_EFFECTS["_default"]; }
 
 // ════════════════════════════════════════════════════════
-// ── 캐릭터 데이터
+// 캐릭터 데이터
 // ════════════════════════════════════════════════════════
 const CHARACTERS = {
   itadori:  { name:"이타도리 유지",    emoji:"🟠", grade:"준1급", atk:90,  def:75,  spd:85,  maxHp:1000, domain:null,      desc:"특급주술사 후보생. 스쿠나의 그릇.", lore:"\"남은 건 내가 어떻게 죽느냐다.\"",   fingerSkills:true,
@@ -538,7 +535,7 @@ const CHARACTERS = {
 };
 
 // ════════════════════════════════════════════════════════
-// ── 적 데이터
+// 적 데이터
 // ════════════════════════════════════════════════════════
 const ENEMIES = [
   { id:"e1", name:"저급 저주령",      emoji:"👹", hp:550,  atk:38,  def:12,  xp:75,   crystals:18,  masteryXp:1,  fingers:0, statusAttack:null },
@@ -549,7 +546,7 @@ const ENEMIES = [
 ];
 
 // ════════════════════════════════════════════════════════
-// ── 레이드 보스 데이터
+// 레이드 보스 데이터
 // ════════════════════════════════════════════════════════
 const RAID_BOSSES = {
   heian_sukuna: {
@@ -573,7 +570,7 @@ const RAID_BOSSES = {
 };
 
 // ════════════════════════════════════════════════════════
-// ── 사멸회유 적 데이터
+// 사멸회유 적 데이터
 // ════════════════════════════════════════════════════════
 const JUJUTSU_ENEMIES = [
   { id:"j1",name:"약화된 저주령",   emoji:"💧",hp:300, atk:25,def:8,  xp:55, crystals:12,masteryXp:1,points:1,fingers:0,statusAttack:null,                              desc:"⚡ 빠르지만 약함 (1포인트)" },
@@ -585,7 +582,7 @@ const JUJUTSU_ENEMIES = [
 ];
 
 // ════════════════════════════════════════════════════════
-// ── 가챠 풀
+// 가챠 풀
 // ════════════════════════════════════════════════════════
 const GACHA_POOL = [
   { id:"gojo",rate:0.3 },{ id:"yuta",rate:0.45 },{ id:"geto",rate:0.9 },{ id:"jogo",rate:0.6 },
@@ -607,7 +604,7 @@ const REVERSE_CHARS = new Set(["gojo","yuta"]);
 const CODES = { "release":{ crystals:200 },"sorryforbugs":{ crystals:1000 } };
 
 // ════════════════════════════════════════════════════════
-// ── 인메모리 세션
+// 인메모리 세션
 // ════════════════════════════════════════════════════════
 let players = {};
 const battles       = {};
@@ -621,7 +618,7 @@ const raidSessions  = {};
 let _partyIdSeq=1, _pvpIdSeq=1, _raidIdSeq=1;
 
 // ════════════════════════════════════════════════════════
-// ── 주력 스킬
+// 주력 스킬
 // ════════════════════════════════════════════════════════
 function getMainSkill(player, charId) {
   if (charId==="gojo"&&player.mainSkillUnlocked?.gojo)
@@ -632,7 +629,7 @@ function getMainSkill(player, charId) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 플레이어 유틸 (스탯 구조: HP, ATK, DEF, CRIT, LV, EXP, GOLD, HEAL_ITEM, EQUIPPED_CHARACTER)
+// 플레이어 유틸 (스탯)
 // ════════════════════════════════════════════════════════
 function getPlayer(userId, username="플레이어") {
   if (!players[userId]) {
@@ -651,7 +648,7 @@ function getPlayer(userId, username="플레이어") {
       mainSkillUnlocked:{ gojo:false,sukuna:false },
       materials:{}, equippedWeapon:null, craftedWeapons:[],
       quests:{}, raidClears:{},
-      crit:5, // 추가: 기본 치명타 확률 5%
+      crit:5,
     };
     savePlayer(userId);
   }
@@ -737,7 +734,6 @@ function calcDmgForPlayer(player,enemyDef,baseMult=1) {
     const bonus=getFingerBonus(player.sukunaFingers||0);
     mult*=bonus.dmgMult;
   }
-  // 크리티컬 확률 (흑섬과 별도로)
   const critChance = (player.crit || 5) / 100;
   let isCrit = false;
   if (Math.random() < critChance) {
@@ -760,7 +756,6 @@ function calcSkillDmgForPlayer(player,baseSkillDmg) {
   dmg=Math.floor(dmg*kb.atk);
   const ws=getWeaponStats(player);
   dmg+=Math.floor(ws.atk*0.5);
-  // 크리티컬 확률
   const critChance = (player.crit || 5) / 100;
   let isCrit = false;
   if (Math.random() < critChance) {
@@ -790,7 +785,7 @@ function tickCooldowns(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 파티/PvP 유틸
+// 파티/PvP 유틸
 // ════════════════════════════════════════════════════════
 function getPartyId(userId) { return Object.keys(parties).find(pid=>parties[pid]?.members?.includes(userId))||null; }
 function getParty(userId) { const pid=getPartyId(userId); return pid?parties[pid]:null; }
@@ -806,7 +801,7 @@ function pvpSelf(session,userId) {
 function getRaidByUser(userId) { return Object.values(raidSessions).find(r=>r.members.includes(userId))||null; }
 
 // ════════════════════════════════════════════════════════
-// ── 컬링/사멸회유 유틸
+// 컬링/사멸회유 유틸
 // ════════════════════════════════════════════════════════
 function getCullingPool(wave) {
   if (wave<=3) return ["e1","e1","e1","e2"];
@@ -834,7 +829,7 @@ function generateJujutsuChoices(wave) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 전투 승리 공통 처리 (회복약 드롭 포함)
+// 전투 승리 공통 처리
 // ════════════════════════════════════════════════════════
 async function processBattleWin(player, enemy) {
   const kb=getKoganeBonus(player);
@@ -926,7 +921,7 @@ function getNewlyCompletedQuestMsg(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 고퀄 프로필 카드 임베드 (GIF 안정화, 크리스탈/회복약 표시)
+// 프로필 임베드
 // ════════════════════════════════════════════════════════
 function profileEmbed(player) {
   const ch=CHARACTERS[player.active];
@@ -1037,7 +1032,7 @@ function profileEmbed(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 고퀄 가챠 컷씬 (3단계 연출)
+// 가챠 컷씬
 // ════════════════════════════════════════════════════════
 function gachaLoadingEmbed(stage=1) {
   const frames=[
@@ -1099,7 +1094,7 @@ function gacha10ResultEmbed(results, newOnes, dupCrystals, player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 코가네 가챠 고퀄 컷씬 (3단계 연출)
+// 코가네 가챠 컷씬
 // ════════════════════════════════════════════════════════
 function koganeLoadingEmbed(stage=1) {
   const frames = [
@@ -1170,12 +1165,7 @@ function koganeProfileEmbed(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 캐시용 전역 변수 (GIF 최적화)
-// ════════════════════════════════════════════════════════
-let cachedProfileBg = null;
-
-// ════════════════════════════════════════════════════════
-// ── 기타 임베드 함수들
+// 기타 임베드 함수들
 // ════════════════════════════════════════════════════════
 function questEmbed(player) {
   initQuests(player);
@@ -1402,7 +1392,7 @@ function buildSkillEmbed(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 버튼 팩토리
+// 버튼 팩토리
 // ════════════════════════════════════════════════════════
 function mkBattleButtons(player) {
   const canSkill=!player||player.skillCooldown<=0;
@@ -1476,7 +1466,7 @@ function mkRaidButtons(player) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 캐릭터 선택 셀렉트 메뉴 (이름으로 선택)
+// 캐릭터 선택 메뉴
 // ════════════════════════════════════════════════════════
 function mkCharSelectMenu(player, customId="char_select") {
   const options=player.owned.map(id=>{
@@ -1504,7 +1494,7 @@ function mkCharSelectMenu(player, customId="char_select") {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 적 반격 (공통)
+// 적 반격 (공통)
 // ════════════════════════════════════════════════════════
 async function doEnemyAttack(player,enemy,log) {
   const stats=getPlayerStats(player);
@@ -1523,7 +1513,7 @@ async function doEnemyAttack(player,enemy,log) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 레이드 보스 반격
+// 레이드 보스 반격
 // ════════════════════════════════════════════════════════
 async function doRaidBossAttack(player,raidSession,boss,log) {
   const stats=getPlayerStats(player);
@@ -1545,7 +1535,7 @@ async function doRaidBossAttack(player,raidSession,boss,log) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 일반 전투 핸들러 (크리티컬 통합)
+// 일반 전투 핸들러
 // ════════════════════════════════════════════════════════
 async function handleBattleAction(interaction,player,battle,action) {
   const enemy=battle.enemy;
@@ -1705,7 +1695,7 @@ async function handleBattleAction(interaction,player,battle,action) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 컬링 핸들러 (크리티컬 통합)
+// 컬링 핸들러
 // ════════════════════════════════════════════════════════
 async function handleCullingAction(interaction,player,culling,action) {
   const enemy=culling.currentEnemy;
@@ -1793,7 +1783,7 @@ async function handleCullingAction(interaction,player,culling,action) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 사멸회유 핸들러 (크리티컬 통합)
+// 사멸회유 핸들러
 // ════════════════════════════════════════════════════════
 async function handleJujutsuAction(interaction,player,jujutsu,action) {
   const stats=getPlayerStats(player);
@@ -1891,7 +1881,7 @@ async function handleJujutsuAction(interaction,player,jujutsu,action) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── PvP 핸들러 (크리티컬 통합)
+// PvP 핸들러 (수정: 영역전개 사용 플래그, 턴제 정상화)
 // ════════════════════════════════════════════════════════
 async function handlePvpAction(interaction,player,session,action) {
   const selfKeys=pvpSelf(session,player.id);
@@ -1953,8 +1943,11 @@ async function handlePvpAction(interaction,player,session,action) {
   } else if (action==="pvp_domain") {
     const ch=CHARACTERS[player.active];
     if (!ch.domain) return interaction.reply({ content:"❌ 이 캐릭터는 영역전개가 없습니다!", ephemeral:true });
+    // 영역전개 사용 여부 확인
+    if (session[selfKeys.domainUsedKey]) return interaction.reply({ content:"❌ 이미 영역전개를 사용했습니다!", ephemeral:true });
     const dmg=Math.floor(selfStats.atk*2.8);
     session[oppKeys.hpKey]=Math.max(0,session[oppKeys.hpKey]-dmg);
+    session[selfKeys.domainUsedKey]=true;
     log.push(`🌌 **${ch.domain}** — **${dmg}** 피해!`);
   } else if (action==="pvp_reverse") {
     if (!REVERSE_CHARS.has(player.active)) return interaction.reply({ content:"❌ 반전술식 불가!", ephemeral:true });
@@ -2012,7 +2005,7 @@ async function handlePvpAction(interaction,player,session,action) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 레이드 핸들러 (크리티컬 통합)
+// 레이드 핸들러
 // ════════════════════════════════════════════════════════
 async function handleRaidAction(interaction,player,raidSession,action) {
   const boss=RAID_BOSSES[raidSession.bossId];
@@ -2176,7 +2169,7 @@ async function handleRaidAction(interaction,player,raidSession,action) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── 파티 컬링 핸들러
+// 파티 컬링 핸들러
 // ════════════════════════════════════════════════════════
 async function handlePartyCullingAction(interaction,player,session,action) {
   const party=getParty(player.id);
@@ -2248,7 +2241,7 @@ async function handlePartyCullingAction(interaction,player,session,action) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── Discord 준비 & 슬래시 커맨드 등록
+// Discord 준비 & 슬래시 커맨드 등록
 // ════════════════════════════════════════════════════════
 client.once("ready", async () => {
   console.log(`✅ 로그인: ${client.user.tag}`);
@@ -2289,7 +2282,7 @@ client.once("ready", async () => {
 });
 
 // ════════════════════════════════════════════════════════
-// ── 인터랙션 핸들러
+// 인터랙션 핸들러
 // ════════════════════════════════════════════════════════
 client.on("interactionCreate", async (interaction) => {
   if (interaction.isStringSelectMenu() && interaction.customId === "char_select") {
@@ -2613,7 +2606,7 @@ async function handleSlashCommand(interaction,commandName,player,userId,user) {
 }
 
 // ════════════════════════════════════════════════════════
-// ── ! 명령어 핸들러 (최적화 및 !프로필, !도감, !가입, !탈퇴, !캐릭터 추가)
+// ! 명령어 핸들러 (GIF 프로필 수정 포함)
 // ════════════════════════════════════════════════════════
 client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.content.startsWith("!")) return;
@@ -2690,7 +2683,7 @@ client.on("messageCreate", async (message) => {
     return message.reply({ content: "🎭 **캐릭터를 선택하세요:**", components: [selectRow] });
   }
   
-  // !도감 (보유 + 미획득 표시)
+  // !도감
   if (cmd === "도감") {
     const ownedSet = new Set(player.owned);
     const allChars = Object.keys(CHARACTERS);
@@ -2710,36 +2703,31 @@ client.on("messageCreate", async (message) => {
     return message.reply({ embeds: [embed] });
   }
   
-  // !가입 (DB 생성)
+  // !가입
   if (cmd === "가입") {
     if (players[userId]) return message.reply("✅ 이미 주술회전 RPG에 가입되어 있습니다!\n> `!프로필` 로 내 정보를 확인하세요.");
-    // getPlayer already creates new entry with default data
     const newPlayer = getPlayer(userId, message.author.username);
     savePlayer(userId);
     return message.reply(`🎴 **${message.author.username}** 님, 주술회전 RPG에 오신 것을 환영합니다!\n> 기본 캐릭터 '이타도리 유지' 와 500💎, 회복약 3개를 지급받았습니다.\n> \`!도움말\` 로 명령어를 확인하세요!`);
   }
   
-  // !탈퇴 (DB 삭제)
+  // !탈퇴
   if (cmd === "탈퇴") {
     if (!players[userId]) return message.reply("❌ 가입되지 않은 사용자입니다.");
-    // Remove from all sessions
     delete battles[userId];
     delete cullings[userId];
     delete jujutsus[userId];
-    // Remove from parties
     const party = getParty(userId);
     if (party) {
       party.members = party.members.filter(id => id !== userId);
       if (party.members.length === 0) delete parties[party.id];
       else if (party.leader === userId) party.leader = party.members[0];
     }
-    // Remove from PvP
     const pvp = getPvpSessionByUser(userId);
     if (pvp) {
       const sid = Object.keys(pvpSessions).find(k => pvpSessions[k] === pvp);
       if (sid) delete pvpSessions[sid];
     }
-    // Remove from raid
     const raid = getRaidByUser(userId);
     if (raid) {
       raid.members = raid.members.filter(id => id !== userId);
@@ -2748,10 +2736,8 @@ client.on("messageCreate", async (message) => {
         if (sid) delete raidSessions[sid];
       }
     }
-    // Delete from memory and DB
     delete players[userId];
     await dbDelete(userId);
-    // Cancel any pending save queue for this user
     if (saveQueue.has(userId)) clearTimeout(saveQueue.get(userId));
     if (savePending.has(userId)) savePending.delete(userId);
     return message.reply("🗑️ 주술회전 RPG에서 탈퇴 처리되었습니다.\n> 모든 데이터가 삭제되었습니다. 다시 시작하려면 `!가입` 해주세요.");
@@ -3002,16 +2988,20 @@ client.on("messageCreate", async (message) => {
     return message.reply(`✅ 파티 컬링 시작! WAVE 1`);
   }
   
-  // !프로필 - 움직이는 GIF 프로필 (안정화: 10프레임, 딜레이 80ms, 테두리 글로우, 움직이는 별)
+  // !프로필 - 움직이는 GIF 프로필 (수정: 닉네임/크리스탈/회복약/장착캐릭터/치명타율 모두 표시)
   if (cmd === "프로필") {
     try {
+      // 실제 디스플레이 닉네임 사용 (서버 닉네임 또는 유저네임)
+      const member = message.member;
+      const displayName = member ? member.displayName : message.author.username;
       const stats = getPlayerStats(player);
       const level = getLevel(player.xp);
       const currentHp = player.hp;
       const maxHp = stats.maxHp;
-      const gold = player.crystals;
+      const crystals = player.crystals;
       const potion = player.potion || 0;
-      const title = `${player.name} (Lv.${level})`;
+      const equippedChar = CHARACTERS[player.active]?.name || player.active;
+      const critRate = player.crit || 5;
 
       // 여러 경로로 배경 이미지 시도
       let backgroundImage = null;
@@ -3032,7 +3022,7 @@ client.on("messageCreate", async (message) => {
       const encoder = new GIFEncoder(800, 400);
       encoder.start();
       encoder.setRepeat(0);
-      encoder.setDelay(80);        // 부드러운 전환
+      encoder.setDelay(80);
       encoder.setQuality(10);
       
       const chunks = [];
@@ -3082,10 +3072,10 @@ client.on("messageCreate", async (message) => {
         ctx.drawImage(avatar, 50, 115, 140, 140);
         ctx.restore();
         
-        // 닉네임
+        // 닉네임 (displayName)
         ctx.fillStyle = "#ffffff";
         ctx.font = 'bold 38px "Noto Sans KR", "Malgun Gothic", sans-serif';
-        ctx.fillText(title, 230, 120);
+        ctx.fillText(displayName, 230, 120);
         
         // 레벨
         ctx.fillStyle = "#00d5ff";
@@ -3095,7 +3085,7 @@ client.on("messageCreate", async (message) => {
         // 크리스탈 (반짝임 효과)
         ctx.fillStyle = "#ffd700";
         ctx.font = "26px sans-serif";
-        ctx.fillText(`💎 ${gold.toLocaleString()}`, 230, 225);
+        ctx.fillText(`💎 ${crystals.toLocaleString()}`, 230, 225);
         // 회복약
         ctx.fillStyle = "#ff6b6b";
         ctx.fillText(`🧪 ${potion}`, 420, 225);
@@ -3116,8 +3106,13 @@ client.on("messageCreate", async (message) => {
         
         // 치명타율 표시
         ctx.fillStyle = "#ffaa44";
-        ctx.font = "18px sans-serif";
-        ctx.fillText(`⚡ 치명타율: ${player.crit || 5}%`, 230, 350);
+        ctx.font = "20px sans-serif";
+        ctx.fillText(`⚡ 치명타율: ${critRate}%`, 230, 345);
+        
+        // 장착 캐릭터 표시
+        ctx.fillStyle = "#cc88ff";
+        ctx.font = "22px sans-serif";
+        ctx.fillText(`⚔️ 장착 캐릭터: ${equippedChar}`, 230, 378);
         
         // 외부 글로우 테두리
         ctx.beginPath();
@@ -3203,6 +3198,6 @@ client.on("messageCreate", async (message) => {
 });
 
 // ════════════════════════════════════════════════════════
-// ── 봇 실행
+// 봇 실행
 // ════════════════════════════════════════════════════════
 client.login(TOKEN);
