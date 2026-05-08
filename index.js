@@ -3438,3 +3438,164 @@ client.on("messageCreate", async (message) => {
 // ── 봇 실행
 // ════════════════════════════════════════════════════════
 client.login(TOKEN);
+/assets/profile.png
+const { AttachmentBuilder } = require('discord.js');
+const { createCanvas, loadImage } = require('canvas');
+const GIFEncoder = require('gifencoder');
+
+client.on('messageCreate', async (message) => {
+
+  if (message.author.bot) return;
+
+  if (message.content === '!프로필') {
+
+    const canvas = createCanvas(800, 350);
+    const ctx = canvas.getContext('2d');
+
+    const encoder = new GIFEncoder(800, 350);
+
+    encoder.start();
+    encoder.setRepeat(0);
+    encoder.setDelay(80);
+    encoder.setQuality(10);
+
+    const chunks = [];
+
+    encoder.createReadStream().on('data', (c) => {
+      chunks.push(c);
+    });
+
+    // ===== 데이터 =====
+    const level = 15;
+    const hp = 80;
+    const maxHp = 100;
+    const gold = 25000;
+    const rank = '1급';
+
+    // ===== 이미지 =====
+    const bg = await loadImage('./assets/profile.png');
+
+    const avatar = await loadImage(
+      message.author.displayAvatarURL({
+        extension: 'png',
+        size: 256
+      })
+    );
+
+    // ===== 애니메이션 =====
+    for (let i = 0; i < 18; i++) {
+
+      // 배경
+      ctx.drawImage(bg, 0, 0, 800, 350);
+
+      // 움직이는 빛
+      const x = -200 + i * 45;
+
+      const grad = ctx.createLinearGradient(
+        x,
+        0,
+        x + 200,
+        350
+      );
+
+      grad.addColorStop(0, 'rgba(255,255,255,0)');
+      grad.addColorStop(0.5, 'rgba(255,255,255,0.12)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 800, 350);
+
+      // 프로필 원
+      ctx.save();
+
+      ctx.beginPath();
+      ctx.arc(120, 175, 70, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+
+      ctx.drawImage(avatar, 50, 105, 140, 140);
+
+      ctx.restore();
+
+      // 외곽선
+      ctx.beginPath();
+      ctx.arc(120, 175, 74, 0, Math.PI * 2);
+
+      ctx.strokeStyle = '#00d5ff';
+      ctx.lineWidth = 5;
+      ctx.stroke();
+
+      // 닉네임
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 36px Sans';
+
+      ctx.fillText(message.author.username, 230, 90);
+
+      // 랭크
+      ctx.fillStyle = '#00d5ff';
+      ctx.font = '26px Sans';
+
+      ctx.fillText(`랭크 : ${rank}`, 230, 140);
+
+      // 레벨
+      ctx.fillStyle = '#ffffff';
+
+      ctx.fillText(`레벨 : ${level}`, 230, 185);
+
+      // 돈
+      ctx.fillStyle = '#ffd700';
+
+      ctx.fillText(`${gold.toLocaleString()} GOLD`, 230, 230);
+
+      // HP바 배경
+      ctx.fillStyle = '#2a2a2a';
+      ctx.fillRect(230, 280, 350, 28);
+
+      // HP바
+      ctx.fillStyle = '#00d5ff';
+      ctx.fillRect(
+        230,
+        280,
+        (hp / maxHp) * 350,
+        28
+      );
+
+      // HP 텍스트
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '20px Sans';
+
+      ctx.fillText(`${hp} / ${maxHp}`, 360, 300);
+
+      // 반짝이
+      for (let p = 0; p < 10; p++) {
+
+        ctx.beginPath();
+
+        ctx.arc(
+          (p * 80 + i * 20) % 800,
+          (p * 35) % 350,
+          2,
+          0,
+          Math.PI * 2
+        );
+
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.fill();
+      }
+
+      encoder.addFrame(ctx);
+    }
+
+    encoder.finish();
+
+    const gif = Buffer.concat(chunks);
+
+    const attachment = new AttachmentBuilder(gif, {
+      name: 'profile.gif'
+    });
+
+    await message.reply({
+      files: [attachment]
+    });
+  }
+});
