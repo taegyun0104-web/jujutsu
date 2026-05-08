@@ -3,6 +3,7 @@
 // ════════════════════════════════════════════════════════
 require("dotenv").config();
 const express = require("express");
+const path = require("path"); // 추가: 경로 처리를 위해
 const { Pool } = require("pg");
 const {
   Client, GatewayIntentBits, EmbedBuilder,
@@ -2946,7 +2947,7 @@ client.on("messageCreate", async (message) => {
     return message.reply(`✅ 파티 컬링 시작! WAVE 1`);
   }
   
-  // !프로필 - 움직이는 GIF 프로필 (지직거림 수정: 12프레임, 딜레이 60ms)
+  // !프로필 - 움직이는 GIF 프로필 (지직거림 수정: 12프레임, 딜레이 60ms, 배경 fallback 추가)
   if (cmd === "프로필") {
     try {
       const stats = getPlayerStats(player);
@@ -2956,19 +2957,44 @@ client.on("messageCreate", async (message) => {
       const gold = player.crystals;
       const title = `${player.name} (Lv.${level})`;
 
-      // 배경 이미지 캐싱
-      if (!cachedProfileBg) {
-        cachedProfileBg = await loadImage("./assets/profile.png").catch(() => null);
+      // 여러 경로로 배경 이미지 시도
+      let backgroundImage = null;
+      const bgPaths = [
+        path.join(__dirname, "assets", "profile.png"),
+        path.join(process.cwd(), "assets", "profile.png"),
+        "./assets/profile.png",
+      ];
+      for (const bgPath of bgPaths) {
+        try {
+          backgroundImage = await loadImage(bgPath);
+          if (backgroundImage) break;
+        } catch (e) { /* continue */ }
       }
-      if (!cachedProfileBg) {
-        return message.reply("❌ 배경 이미지(`assets/profile.png`)를 찾을 수 없습니다.");
+      
+      // fallback: 이미지 없으면 캔버스에 직접 그라데이션 배경 생성
+      const canvas = createCanvas(800, 350);
+      const ctx = canvas.getContext("2d");
+      
+      if (!backgroundImage) {
+        // 그라데이션 배경 (fallback)
+        const grad = ctx.createLinearGradient(0, 0, 800, 350);
+        grad.addColorStop(0, "#0a0a2a");
+        grad.addColorStop(1, "#1a1a3a");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 800, 350);
+        ctx.fillStyle = "#ffffff30";
+        for (let i = 0; i < 50; i++) {
+          ctx.beginPath();
+          ctx.arc(Math.random() * 800, Math.random() * 350, Math.random() * 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        ctx.drawImage(backgroundImage, 0, 0, 800, 350);
       }
 
       const avatarUrl = message.author.displayAvatarURL({ extension: "png", size: 256 });
       const avatar = await loadImage(avatarUrl);
 
-      const canvas = createCanvas(800, 350);
-      const ctx = canvas.getContext("2d");
       const encoder = new GIFEncoder(800, 350);
       encoder.start();
       encoder.setRepeat(0);
@@ -2981,7 +3007,22 @@ client.on("messageCreate", async (message) => {
       
       const frameCount = 12;       // 프레임 증가로 부드러움
       for (let i = 0; i < frameCount; i++) {
-        ctx.drawImage(cachedProfileBg, 0, 0, 800, 350);
+        if (backgroundImage) {
+          ctx.drawImage(backgroundImage, 0, 0, 800, 350);
+        } else {
+          // fallback 배경 다시 그리기 (프레임마다 유지)
+          const grad = ctx.createLinearGradient(0, 0, 800, 350);
+          grad.addColorStop(0, "#0a0a2a");
+          grad.addColorStop(1, "#1a1a3a");
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 800, 350);
+          ctx.fillStyle = "#ffffff30";
+          for (let p = 0; p < 30; p++) {
+            ctx.beginPath();
+            ctx.arc((p * 47 + i * 13) % 800, (p * 29 + i * 7) % 350, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
         
         // 부드러운 빛 효과
         ctx.fillStyle = "rgba(255,255,255,0.04)";
@@ -3039,7 +3080,7 @@ client.on("messageCreate", async (message) => {
       await message.reply({ files: [attachment] });
     } catch (err) {
       console.error("[!프로필] 오류:", err);
-      await message.reply("❌ 프로필 생성 중 오류가 발생했습니다.");
+      await message.reply("❌ 프로필 생성 중 오류가 발생했습니다.\n> 이미지 파일이 없다면 관리자에게 문의하세요.");
     }
   }
   
