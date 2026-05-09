@@ -707,11 +707,9 @@ function masteryBar(mastery,charId) {
   if (mastery>=max) return "`[MAX]` 모든 스킬 해금!";
   const next=tiers.find(t=>t>mastery)||max;
   const prev=[...tiers].reverse().find(t=>t<=mastery)||0;
-  // 마스터리 바를 숫자만 표시하도록 변경 (막대 제거)
   return `숙련도: ${mastery} / ${next}`;
 }
 function getLevel(xp) { return Math.floor(xp/200)+1; }
-// 막대 UI 함수는 더 이상 사용하지 않지만 충돌 방지를 위해 빈 함수로 유지
 function hpBar(cur,max,len=10) { return ""; }
 function isMakiAwakened(player) {
   if (player.active!=="maki") return false;
@@ -2944,22 +2942,25 @@ client.on("messageCreate", async (message) => {
     return message.reply(`✅ 파티 컬링 시작! WAVE 1`);
   }
   
-  // !프로필 - 고퀄 GIF, 숫자 기반 표시 (막대/게이지 없음)
+  // !프로필 - 고퀄 GIF, 숫자 기반 표시 (막대/게이지 없음, DB 완전 동기화)
   if (cmd === "프로필") {
     try {
-      const member = message.member;
-      const displayName = member ? member.displayName : message.author.username;
-      const stats = getPlayerStats(player);
-      const level = getLevel(player.xp);
-      const currentHp = player.hp;
+      // 최신 플레이어 데이터 재확보 (동기화 보장)
+      const freshPlayer = getPlayer(userId, message.author.username);
+      // 실제 DB와 동기화된 최신 값 사용
+      const stats = getPlayerStats(freshPlayer);
+      const level = getLevel(freshPlayer.xp);
+      const currentHp = freshPlayer.hp;
       const maxHp = stats.maxHp;
       const atk = stats.atk;
       const def = stats.def;
-      const critRate = player.crit || 5;
-      const crystals = player.crystals;
-      const potion = player.potion || 0;
-      const equippedChar = CHARACTERS[player.active]?.name || player.active;
+      const critRate = freshPlayer.crit || 5;
+      const crystals = freshPlayer.crystals;
+      const potion = freshPlayer.potion || 0;
+      const equippedChar = CHARACTERS[freshPlayer.active]?.name || freshPlayer.active;
+      const displayName = message.member ? message.member.displayName : message.author.username;
       
+      // 배경 이미지 로딩 (Railway 환경 호환)
       let backgroundImage = null;
       const bgPaths = [
         path.join(__dirname, "assets", "profile.png"),
@@ -2968,8 +2969,10 @@ client.on("messageCreate", async (message) => {
       ];
       for (const bgPath of bgPaths) {
         try {
-          backgroundImage = await loadImage(bgPath);
-          if (backgroundImage) break;
+          if (require('fs').existsSync(bgPath)) {
+            backgroundImage = await loadImage(bgPath);
+            if (backgroundImage) break;
+          }
         } catch (e) { /* continue */ }
       }
       
@@ -2987,7 +2990,7 @@ client.on("messageCreate", async (message) => {
       
       const frameCount = 12;
       for (let i = 0; i < frameCount; i++) {
-        // 배경 (고퀄 그라데이션 + 별 효과)
+        // 배경 (그라데이션 + 별 효과)
         if (backgroundImage) {
           ctx.drawImage(backgroundImage, 0, 0, 800, 400);
         } else {
@@ -2997,6 +3000,7 @@ client.on("messageCreate", async (message) => {
           grad.addColorStop(1, "#1a1a3a");
           ctx.fillStyle = grad;
           ctx.fillRect(0, 0, 800, 400);
+          // 별빛 효과
           for (let p = 0; p < 80; p++) {
             ctx.beginPath();
             const x = (p * 97 + i * 23) % 800;
@@ -3011,7 +3015,7 @@ client.on("messageCreate", async (message) => {
         ctx.fillStyle = "rgba(255,255,255,0.04)";
         ctx.fillRect(0, 0, 800, 400);
         
-        // 아바타 (글로우 + 테두리)
+        // 아바타 (글로우 + 원형)
         ctx.save();
         ctx.shadowBlur = 20;
         ctx.shadowColor = "#00aaff";
@@ -3024,11 +3028,22 @@ client.on("messageCreate", async (message) => {
         ctx.arc(120, 185, 70, 0, Math.PI * 2);
         ctx.clip();
         const avatarUrl = message.author.displayAvatarURL({ extension: "png", size: 256 });
-        const avatar = await loadImage(avatarUrl);
-        ctx.drawImage(avatar, 50, 115, 140, 140);
+        let avatar;
+        try {
+          avatar = await loadImage(avatarUrl);
+        } catch {
+          // 아바타 로드 실패 시 기본 이미지 대체 (간단히 색상 원)
+          avatar = null;
+        }
+        if (avatar) {
+          ctx.drawImage(avatar, 50, 115, 140, 140);
+        } else {
+          ctx.fillStyle = "#666";
+          ctx.fillRect(50, 115, 140, 140);
+        }
         ctx.restore();
         
-        // 닉네임 (그림자)
+        // 닉네임 + 레벨 (그림자)
         ctx.shadowBlur = 5;
         ctx.shadowColor = "#000000";
         ctx.fillStyle = "#ffffff";
@@ -3038,7 +3053,7 @@ client.on("messageCreate", async (message) => {
         ctx.font = "26px sans-serif";
         ctx.fillText(`LV ${level}`, 230, 170);
         
-        // 스탯 - 숫자만 표시 (막대 전혀 없음)
+        // === 숫자 기반 스탯 UI (막대/게이지 없음) ===
         ctx.fillStyle = "#ffaaaa";
         ctx.font = "26px 'Consolas', monospace";
         ctx.fillText(`HP: ${currentHp}/${maxHp}`, 230, 220);
@@ -3060,7 +3075,7 @@ client.on("messageCreate", async (message) => {
         ctx.font = "22px 'Noto Sans KR'";
         ctx.fillText(`⚔️ 장착 캐릭터: ${equippedChar}`, 230, 375);
         
-        // 외부 광택 테두리
+        // 외부 테두리 (반짝임 효과 유지)
         ctx.beginPath();
         ctx.rect(10, 10, 780, 380);
         ctx.strokeStyle = "#88ddff";
