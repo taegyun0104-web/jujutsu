@@ -3032,7 +3032,6 @@ client.on("messageCreate", async (message) => {
         try {
           avatar = await loadImage(avatarUrl);
         } catch {
-          // 아바타 로드 실패 시 기본 이미지 대체 (간단히 색상 원)
           avatar = null;
         }
         if (avatar) {
