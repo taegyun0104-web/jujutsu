@@ -2606,7 +2606,7 @@ async function handleSlashCommand(interaction,commandName,player,userId,user) {
 }
 
 // ════════════════════════════════════════════════════════
-// ! 명령어 핸들러 (GIF 프로필 수정 포함)
+// ! 명령어 핸들러 (GIF 프로필 수정 - 숫자 기반 UI, 막대 제거)
 // ════════════════════════════════════════════════════════
 client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.content.startsWith("!")) return;
@@ -2988,7 +2988,7 @@ client.on("messageCreate", async (message) => {
     return message.reply(`✅ 파티 컬링 시작! WAVE 1`);
   }
   
-  // !프로필 - 움직이는 GIF 프로필 (수정: 숫자 기반 스탯 표시, 막대 제거)
+  // !프로필 - 고퀄 GIF, 숫자 기반 표시 (막대/게이지 없음)
   if (cmd === "프로필") {
     try {
       const member = message.member;
@@ -3000,8 +3000,6 @@ client.on("messageCreate", async (message) => {
       const atk = stats.atk;
       const def = stats.def;
       const critRate = player.crit || 5;
-      const xpNow = player.xp % 200;
-      const xpRequired = 200;
       const crystals = player.crystals;
       const potion = player.potion || 0;
       const equippedChar = CHARACTERS[player.active]?.name || player.active;
@@ -3031,37 +3029,39 @@ client.on("messageCreate", async (message) => {
       const stream = encoder.createReadStream();
       stream.on("data", chunk => chunks.push(chunk));
       
-      const frameCount = 10;
+      const frameCount = 12;
       for (let i = 0; i < frameCount; i++) {
-        // 배경
+        // 배경 (고퀄 그라데이션 + 별 효과)
         if (backgroundImage) {
           ctx.drawImage(backgroundImage, 0, 0, 800, 400);
         } else {
           const grad = ctx.createLinearGradient(0, 0, 800, 400);
           grad.addColorStop(0, "#0a0a2a");
+          grad.addColorStop(0.5, "#151540");
           grad.addColorStop(1, "#1a1a3a");
           ctx.fillStyle = grad;
           ctx.fillRect(0, 0, 800, 400);
-          for (let p = 0; p < 60; p++) {
+          for (let p = 0; p < 80; p++) {
             ctx.beginPath();
-            const x = (p * 73 + i * 19) % 800;
-            const y = (p * 41 + i * 11) % 400;
-            ctx.arc(x, y, 1.5, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255,255,200,${0.3 + Math.sin(i * 0.4) * 0.2})`;
+            const x = (p * 97 + i * 23) % 800;
+            const y = (p * 53 + i * 17) % 400;
+            ctx.arc(x, y, 1.2, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255,255,200,${0.2 + Math.sin(i * 0.3) * 0.15})`;
             ctx.fill();
           }
         }
         
-        ctx.fillStyle = "rgba(255,255,255,0.05)";
+        // 빛 오버레이
+        ctx.fillStyle = "rgba(255,255,255,0.04)";
         ctx.fillRect(0, 0, 800, 400);
         
-        // 아바타
+        // 아바타 (글로우 + 테두리)
         ctx.save();
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = "#00d5ff";
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "#00aaff";
         ctx.beginPath();
         ctx.arc(120, 185, 75, 0, Math.PI * 2);
-        ctx.strokeStyle = "#00ffff";
+        ctx.strokeStyle = "#88ddff";
         ctx.lineWidth = 6;
         ctx.stroke();
         ctx.beginPath();
@@ -3072,51 +3072,48 @@ client.on("messageCreate", async (message) => {
         ctx.drawImage(avatar, 50, 115, 140, 140);
         ctx.restore();
         
-        // 닉네임
+        // 닉네임 (그림자)
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = "#000000";
         ctx.fillStyle = "#ffffff";
-        ctx.font = 'bold 38px "Noto Sans KR", "Malgun Gothic", sans-serif';
+        ctx.font = 'bold 36px "Noto Sans KR", "Malgun Gothic", sans-serif';
         ctx.fillText(displayName, 230, 120);
-        
-        // LV
-        ctx.fillStyle = "#00d5ff";
-        ctx.font = "28px sans-serif";
-        ctx.fillText(`LV ${level}`, 230, 175);
-        
-        // HP, ATK, DEF, CRIT
-        ctx.fillStyle = "#ffaaaa";
+        ctx.fillStyle = "#ffd966";
         ctx.font = "26px sans-serif";
-        ctx.fillText(`HP: ${currentHp}/${maxHp}`, 230, 225);
+        ctx.fillText(`LV ${level}`, 230, 170);
+        
+        // 스탯 - 숫자만 표시 (막대 전혀 없음)
+        ctx.fillStyle = "#ffaaaa";
+        ctx.font = "26px 'Consolas', monospace";
+        ctx.fillText(`HP: ${currentHp}/${maxHp}`, 230, 220);
         ctx.fillStyle = "#aaffaa";
-        ctx.fillText(`ATK: ${atk}`, 420, 225);
+        ctx.fillText(`ATK: ${atk}`, 430, 220);
         ctx.fillStyle = "#aaccff";
-        ctx.fillText(`DEF: ${def}`, 580, 225);
+        ctx.fillText(`DEF: ${def}`, 610, 220);
         
         ctx.fillStyle = "#ffcc88";
-        ctx.font = "22px sans-serif";
+        ctx.font = "23px 'Consolas', monospace";
         ctx.fillText(`CRIT: ${critRate}%`, 230, 270);
         
-        // EXP
         ctx.fillStyle = "#ccccff";
-        ctx.font = "22px sans-serif";
-        ctx.fillText(`EXP: ${xpNow}/${xpRequired}`, 230, 310);
+        ctx.fillText(`크리스탈: ${crystals.toLocaleString()}`, 230, 320);
+        ctx.fillStyle = "#ffaa66";
+        ctx.fillText(`회복약: ${potion}`, 480, 320);
         
-        // 크리스탈 & 회복약
-        ctx.fillStyle = "#ffd700";
-        ctx.font = "24px sans-serif";
-        ctx.fillText(`💎 ${crystals.toLocaleString()}`, 230, 350);
-        ctx.fillStyle = "#ff6b6b";
-        ctx.fillText(`🧪 ${potion}`, 420, 350);
+        ctx.fillStyle = "#dd88ff";
+        ctx.font = "22px 'Noto Sans KR'";
+        ctx.fillText(`⚔️ 장착 캐릭터: ${equippedChar}`, 230, 375);
         
-        // 장착 캐릭터
-        ctx.fillStyle = "#cc88ff";
-        ctx.font = "22px sans-serif";
-        ctx.fillText(`⚔️ 장착 캐릭터: ${equippedChar}`, 230, 388);
-        
-        // 외부 테두리
+        // 외부 광택 테두리
         ctx.beginPath();
         ctx.rect(10, 10, 780, 380);
-        ctx.strokeStyle = "#00d5ff";
+        ctx.strokeStyle = "#88ddff";
         ctx.lineWidth = 4;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.rect(12, 12, 776, 376);
+        ctx.strokeStyle = "rgba(255,255,255,0.3)";
+        ctx.lineWidth = 1;
         ctx.stroke();
         
         encoder.addFrame(ctx);
