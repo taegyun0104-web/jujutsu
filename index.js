@@ -2988,22 +2988,24 @@ client.on("messageCreate", async (message) => {
     return message.reply(`✅ 파티 컬링 시작! WAVE 1`);
   }
   
-  // !프로필 - 움직이는 GIF 프로필 (수정: 닉네임/크리스탈/회복약/장착캐릭터/치명타율 모두 표시)
+  // !프로필 - 움직이는 GIF 프로필 (수정: 숫자 기반 스탯 표시, 막대 제거)
   if (cmd === "프로필") {
     try {
-      // 실제 디스플레이 닉네임 사용 (서버 닉네임 또는 유저네임)
       const member = message.member;
       const displayName = member ? member.displayName : message.author.username;
       const stats = getPlayerStats(player);
       const level = getLevel(player.xp);
       const currentHp = player.hp;
       const maxHp = stats.maxHp;
+      const atk = stats.atk;
+      const def = stats.def;
+      const critRate = player.crit || 5;
+      const xpNow = player.xp % 200;
+      const xpRequired = 200;
       const crystals = player.crystals;
       const potion = player.potion || 0;
       const equippedChar = CHARACTERS[player.active]?.name || player.active;
-      const critRate = player.crit || 5;
-
-      // 여러 경로로 배경 이미지 시도
+      
       let backgroundImage = null;
       const bgPaths = [
         path.join(__dirname, "assets", "profile.png"),
@@ -3040,7 +3042,6 @@ client.on("messageCreate", async (message) => {
           grad.addColorStop(1, "#1a1a3a");
           ctx.fillStyle = grad;
           ctx.fillRect(0, 0, 800, 400);
-          // 움직이는 별 효과
           for (let p = 0; p < 60; p++) {
             ctx.beginPath();
             const x = (p * 73 + i * 19) % 800;
@@ -3051,11 +3052,10 @@ client.on("messageCreate", async (message) => {
           }
         }
         
-        // 부드러운 빛 효과 오버레이
         ctx.fillStyle = "rgba(255,255,255,0.05)";
         ctx.fillRect(0, 0, 800, 400);
         
-        // 아바타 둥근 테두리 + 글로우
+        // 아바타
         ctx.save();
         ctx.shadowBlur = 15;
         ctx.shadowColor = "#00d5ff";
@@ -3072,49 +3072,47 @@ client.on("messageCreate", async (message) => {
         ctx.drawImage(avatar, 50, 115, 140, 140);
         ctx.restore();
         
-        // 닉네임 (displayName)
+        // 닉네임
         ctx.fillStyle = "#ffffff";
         ctx.font = 'bold 38px "Noto Sans KR", "Malgun Gothic", sans-serif';
         ctx.fillText(displayName, 230, 120);
         
-        // 레벨
+        // LV
         ctx.fillStyle = "#00d5ff";
         ctx.font = "28px sans-serif";
-        ctx.fillText(`LEVEL ${level}`, 230, 175);
+        ctx.fillText(`LV ${level}`, 230, 175);
         
-        // 크리스탈 (반짝임 효과)
-        ctx.fillStyle = "#ffd700";
+        // HP, ATK, DEF, CRIT
+        ctx.fillStyle = "#ffaaaa";
         ctx.font = "26px sans-serif";
-        ctx.fillText(`💎 ${crystals.toLocaleString()}`, 230, 225);
-        // 회복약
+        ctx.fillText(`HP: ${currentHp}/${maxHp}`, 230, 225);
+        ctx.fillStyle = "#aaffaa";
+        ctx.fillText(`ATK: ${atk}`, 420, 225);
+        ctx.fillStyle = "#aaccff";
+        ctx.fillText(`DEF: ${def}`, 580, 225);
+        
+        ctx.fillStyle = "#ffcc88";
+        ctx.font = "22px sans-serif";
+        ctx.fillText(`CRIT: ${critRate}%`, 230, 270);
+        
+        // EXP
+        ctx.fillStyle = "#ccccff";
+        ctx.font = "22px sans-serif";
+        ctx.fillText(`EXP: ${xpNow}/${xpRequired}`, 230, 310);
+        
+        // 크리스탈 & 회복약
+        ctx.fillStyle = "#ffd700";
+        ctx.font = "24px sans-serif";
+        ctx.fillText(`💎 ${crystals.toLocaleString()}`, 230, 350);
         ctx.fillStyle = "#ff6b6b";
-        ctx.fillText(`🧪 ${potion}`, 420, 225);
+        ctx.fillText(`🧪 ${potion}`, 420, 350);
         
-        // HP 바 + 글로우
-        ctx.fillStyle = "#2a2a2a";
-        ctx.fillRect(230, 280, 500, 32);
-        const hpPercent = currentHp / maxHp;
-        const hpBarWidth = Math.max(0, 500 * hpPercent);
-        const gradient = ctx.createLinearGradient(230, 280, 230 + hpBarWidth, 280);
-        gradient.addColorStop(0, "#00ffaa");
-        gradient.addColorStop(1, "#00cc88");
-        ctx.fillStyle = gradient;
-        ctx.fillRect(230, 280, hpBarWidth, 32);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 24px sans-serif";
-        ctx.fillText(`${currentHp} / ${maxHp}`, 480, 307);
-        
-        // 치명타율 표시
-        ctx.fillStyle = "#ffaa44";
-        ctx.font = "20px sans-serif";
-        ctx.fillText(`⚡ 치명타율: ${critRate}%`, 230, 345);
-        
-        // 장착 캐릭터 표시
+        // 장착 캐릭터
         ctx.fillStyle = "#cc88ff";
         ctx.font = "22px sans-serif";
-        ctx.fillText(`⚔️ 장착 캐릭터: ${equippedChar}`, 230, 378);
+        ctx.fillText(`⚔️ 장착 캐릭터: ${equippedChar}`, 230, 388);
         
-        // 외부 글로우 테두리
+        // 외부 테두리
         ctx.beginPath();
         ctx.rect(10, 10, 780, 380);
         ctx.strokeStyle = "#00d5ff";
