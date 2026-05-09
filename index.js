@@ -2959,6 +2959,9 @@ client.on("messageCreate", async (message) => {
       const potion = freshPlayer.potion || 0;
       const equippedChar = CHARACTERS[freshPlayer.active]?.name || freshPlayer.active;
       const displayName = message.member ? message.member.displayName : message.author.username;
+      // 총 경험치 및 다음 레벨 필요 경험치 (레벨 * 200)
+      const totalXp = freshPlayer.xp;
+      const xpNeeded = level * 200;
       
       // 배경 이미지 로딩 (Railway 환경 호환)
       let backgroundImage = null;
@@ -3042,37 +3045,48 @@ client.on("messageCreate", async (message) => {
         }
         ctx.restore();
         
-        // 닉네임 + 레벨 (그림자)
+        // 그림자 효과
         ctx.shadowBlur = 5;
         ctx.shadowColor = "#000000";
+        
+        // 닉네임
         ctx.fillStyle = "#ffffff";
-        ctx.font = 'bold 36px "Noto Sans KR", "Malgun Gothic", sans-serif';
-        ctx.fillText(displayName, 230, 120);
+        ctx.font = 'bold 32px "Noto Sans KR", "Malgun Gothic", sans-serif';
+        ctx.fillText(`닉네임: ${displayName}`, 230, 110);
+        
+        // 레벨
         ctx.fillStyle = "#ffd966";
         ctx.font = "26px sans-serif";
-        ctx.fillText(`LV ${level}`, 230, 170);
+        ctx.fillText(`LV: ${level}`, 230, 155);
         
-        // === 숫자 기반 스탯 UI (막대/게이지 없음) ===
+        // 장착 캐릭터
+        ctx.fillStyle = "#dd88ff";
+        ctx.font = "24px 'Noto Sans KR'";
+        ctx.fillText(`장착 캐릭터: ${equippedChar}`, 230, 195);
+        
+        // HP
         ctx.fillStyle = "#ffaaaa";
         ctx.font = "26px 'Consolas', monospace";
-        ctx.fillText(`HP: ${currentHp}/${maxHp}`, 230, 220);
+        ctx.fillText(`HP: ${currentHp}/${maxHp}`, 230, 240);
+        
+        // ATK / DEF
         ctx.fillStyle = "#aaffaa";
-        ctx.fillText(`ATK: ${atk}`, 430, 220);
+        ctx.fillText(`ATK: ${atk}`, 430, 240);
         ctx.fillStyle = "#aaccff";
-        ctx.fillText(`DEF: ${def}`, 610, 220);
+        ctx.fillText(`DEF: ${def}`, 610, 240);
         
+        // CRIT / EXP
         ctx.fillStyle = "#ffcc88";
-        ctx.font = "23px 'Consolas', monospace";
-        ctx.fillText(`CRIT: ${critRate}%`, 230, 270);
+        ctx.font = "24px 'Consolas', monospace";
+        ctx.fillText(`CRIT: ${critRate}%`, 230, 285);
+        ctx.fillStyle = "#88ffaa";
+        ctx.fillText(`EXP: ${totalXp} / ${xpNeeded}`, 430, 285);
         
+        // 크리스탈 / 회복약
         ctx.fillStyle = "#ccccff";
-        ctx.fillText(`크리스탈: ${crystals.toLocaleString()}`, 230, 320);
+        ctx.fillText(`크리스탈: ${crystals.toLocaleString()}`, 230, 330);
         ctx.fillStyle = "#ffaa66";
-        ctx.fillText(`회복약: ${potion}`, 480, 320);
-        
-        ctx.fillStyle = "#dd88ff";
-        ctx.font = "22px 'Noto Sans KR'";
-        ctx.fillText(`⚔️ 장착 캐릭터: ${equippedChar}`, 230, 375);
+        ctx.fillText(`회복약: ${potion}`, 500, 330);
         
         // 외부 테두리 (반짝임 효과 유지)
         ctx.beginPath();
@@ -3110,7 +3124,7 @@ client.on("messageCreate", async (message) => {
       "⚔️ `!사멸회유` - 포인트 게임",
       "⚔️ `!레이드 [보스]` - 레이드 (heian_sukuna / mahoraga)",
       "",
-      "🎭 `!프로필` - 움직이는 GIF 프로필 카드",
+      "🎭 `!프로필` - 움직이는 GIF 프로필 카드 (숫자 기반 스탯)",
       "🎭 `!활성` / `!캐릭터` - 캐릭터 변경 (셀렉트 메뉴)",
       "🎭 `!도감` - 보유 + 미획득 캐릭터 확인",
       "🎭 `!가챠` / `!가챠10` - 캐릭터 소환 (150💎/1350💎)",
