@@ -1490,73 +1490,14 @@ client.on("messageCreate", async (message) => {
       }
     }
 
-// =====================================
-// !도감 수정 코드 (안전 버전)
-// =====================================
-if (message.content === "!도감") {
-
-    try {
-
-        const userId = message.author.id;
-
-        // 유저 존재 확인
-        if (!users[userId]) {
-            return message.reply("먼저 !가입 해주세요.");
-        }
-
-        const userData = users[userId];
-
-        // 캐릭터 배열 없으면 생성
-        if (!userData.characters) {
-            userData.characters = [];
-        }
-
-        // 배열 강제 변환
-        if (!Array.isArray(userData.characters)) {
-            userData.characters = [];
-        }
-
-        // 보유 캐릭터
-        const owned = userData.characters;
-
-        // 없을 경우
-        if (owned.length <= 0) {
-            return message.reply("보유 캐릭터가 없습니다.");
-        }
-
-        let text = `📖 ${message.author.username}의 도감\n\n`;
-
-        for (const charName of owned) {
-
-            // 캐릭터 데이터 없을 경우
-            if (!characters[charName]) continue;
-
-            const charData = characters[charName];
-
-            const equipped =
-                userData.equippedCharacter === charName
-                ? " [장착중]"
-                : "";
-
-            text +=
-`◆ ${charName}${equipped}
-HP: ${charData.hp || 100}
-ATK: ${charData.atk || 10}
-DEF: ${charData.def || 5}
-CRIT: ${charData.crit || 0}%
-
-`;
-        }
-
-        return message.reply(text);
-
-    } catch (err) {
-
-        console.error("도감 오류:", err);
-
-        return message.reply("도감 실행 중 오류 발생");
+    // ── !도감
+    if (cmd === "도감") {
+      const owned=player.owned||["itadori"];
+      const lines=owned.map(id=>{ const ch=CHARACTERS[id]; if (!ch) return ""; const ri=GACHA_RARITY[ch.grade]||GACHA_RARITY["3급"]; const mastery=getMastery(player,id); const isActive=id===player.active; const tmpStats=getPlayerStats({...player,active:id}); return `${isActive?"▶️ **[활성]**":"　"}${ch.emoji} **${ch.name}** \`[${ch.grade}]\` ${ri.stars}\n> ATK ${tmpStats.atk} · DEF ${tmpStats.def} · HP ${tmpStats.maxHp} · 숙련 \`${mastery}\`${ch.domain?` · 영역: ${ch.domain}`:""}`;}).join("\n\n");
+      const embed=new EmbedBuilder().setTitle(`🎴 ${player.name}의 주술사 도감`).setColor(0x7C5CFC).setDescription(lines||"> 보유 캐릭터 없음").setFooter({text:`총 ${owned.length}명 보유`});
+      return message.reply({ embeds:[embed] });
     }
-}
+
     // ── !술식
     if (cmd === "술식") {
       return message.reply({ embeds:[buildSkillEmbed(player)] });
