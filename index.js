@@ -1491,76 +1491,72 @@ client.on("messageCreate", async (message) => {
     }
 
 // =====================================
-// !도감 버그 수정 코드
-// 기존 !도감 부분 교체
+// !도감 수정 코드 (안전 버전)
 // =====================================
 if (message.content === "!도감") {
 
-    // 유저 체크
-    if (!users[message.author.id]) {
-        return message.reply("먼저 !가입 해주세요.");
-    }
+    try {
 
-    const userData = users[message.author.id];
+        const userId = message.author.id;
 
-    // 캐릭터 배열 없으면 생성
-    if (!Array.isArray(userData.characters)) {
-        userData.characters = [];
-    }
+        // 유저 존재 확인
+        if (!users[userId]) {
+            return message.reply("먼저 !가입 해주세요.");
+        }
 
-    // 캐릭터 목록
-    const ownedCharacters = userData.characters;
+        const userData = users[userId];
 
-    // 도감 비었을 경우
-    if (ownedCharacters.length === 0) {
-        return message.reply("보유한 캐릭터가 없습니다.");
-    }
+        // 캐릭터 배열 없으면 생성
+        if (!userData.characters) {
+            userData.characters = [];
+        }
 
-    // 도감 문자열 생성
-    let dexText = `📖 ${message.author.username}의 도감\n\n`;
+        // 배열 강제 변환
+        if (!Array.isArray(userData.characters)) {
+            userData.characters = [];
+        }
 
-    ownedCharacters.forEach((charName, index) => {
+        // 보유 캐릭터
+        const owned = userData.characters;
 
-        // 캐릭터 데이터 체크
-        const charData = characters[charName];
+        // 없을 경우
+        if (owned.length <= 0) {
+            return message.reply("보유 캐릭터가 없습니다.");
+        }
 
-        // 데이터 없으면 스킵
-        if (!charData) return;
+        let text = `📖 ${message.author.username}의 도감\n\n`;
 
-        // 장착 여부
-        const equipped =
-            userData.equippedCharacter === charName
-            ? " [장착중]"
-            : "";
+        for (const charName of owned) {
 
-        // 희귀도
-        const rarity = charData.rarity || "일반";
+            // 캐릭터 데이터 없을 경우
+            if (!characters[charName]) continue;
 
-        // 스탯
-        const hp = charData.hp || 100;
-        const atk = charData.atk || 10;
-        const def = charData.def || 5;
-        const crit = charData.crit || 0;
+            const charData = characters[charName];
 
-        dexText +=
-`${index + 1}. ${charName}${equipped}
-등급: ${rarity}
-HP: ${hp}
-ATK: ${atk}
-DEF: ${def}
-CRIT: ${crit}%
+            const equipped =
+                userData.equippedCharacter === charName
+                ? " [장착중]"
+                : "";
+
+            text +=
+`◆ ${charName}${equipped}
+HP: ${charData.hp || 100}
+ATK: ${charData.atk || 10}
+DEF: ${charData.def || 5}
+CRIT: ${charData.crit || 0}%
 
 `;
-    });
+        }
 
-    // 너무 길면 자르기
-    if (dexText.length > 1900) {
-        dexText = dexText.slice(0, 1900);
+        return message.reply(text);
+
+    } catch (err) {
+
+        console.error("도감 오류:", err);
+
+        return message.reply("도감 실행 중 오류 발생");
     }
-
-    return message.reply(dexText);
 }
-
     // ── !술식
     if (cmd === "술식") {
       return message.reply({ embeds:[buildSkillEmbed(player)] });
