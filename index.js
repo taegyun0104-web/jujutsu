@@ -1490,13 +1490,76 @@ client.on("messageCreate", async (message) => {
       }
     }
 
-    // ── !도감
-    if (cmd === "도감") {
-      const owned=player.owned||["itadori"];
-      const lines=owned.map(id=>{ const ch=CHARACTERS[id]; if (!ch) return ""; const ri=GACHA_RARITY[ch.grade]||GACHA_RARITY["3급"]; const mastery=getMastery(player,id); const isActive=id===player.active; const tmpStats=getPlayerStats({...player,active:id}); return `${isActive?"▶️ **[활성]**":"　"}${ch.emoji} **${ch.name}** \`[${ch.grade}]\` ${ri.stars}\n> ATK ${tmpStats.atk} · DEF ${tmpStats.def} · HP ${tmpStats.maxHp} · 숙련 \`${mastery}\`${ch.domain?` · 영역: ${ch.domain}`:""}`;}).join("\n\n");
-      const embed=new EmbedBuilder().setTitle(`🎴 ${player.name}의 주술사 도감`).setColor(0x7C5CFC).setDescription(lines||"> 보유 캐릭터 없음").setFooter({text:`총 ${owned.length}명 보유`});
-      return message.reply({ embeds:[embed] });
+// =====================================
+// !도감 버그 수정 코드
+// 기존 !도감 부분 교체
+// =====================================
+if (message.content === "!도감") {
+
+    // 유저 체크
+    if (!users[message.author.id]) {
+        return message.reply("먼저 !가입 해주세요.");
     }
+
+    const userData = users[message.author.id];
+
+    // 캐릭터 배열 없으면 생성
+    if (!Array.isArray(userData.characters)) {
+        userData.characters = [];
+    }
+
+    // 캐릭터 목록
+    const ownedCharacters = userData.characters;
+
+    // 도감 비었을 경우
+    if (ownedCharacters.length === 0) {
+        return message.reply("보유한 캐릭터가 없습니다.");
+    }
+
+    // 도감 문자열 생성
+    let dexText = `📖 ${message.author.username}의 도감\n\n`;
+
+    ownedCharacters.forEach((charName, index) => {
+
+        // 캐릭터 데이터 체크
+        const charData = characters[charName];
+
+        // 데이터 없으면 스킵
+        if (!charData) return;
+
+        // 장착 여부
+        const equipped =
+            userData.equippedCharacter === charName
+            ? " [장착중]"
+            : "";
+
+        // 희귀도
+        const rarity = charData.rarity || "일반";
+
+        // 스탯
+        const hp = charData.hp || 100;
+        const atk = charData.atk || 10;
+        const def = charData.def || 5;
+        const crit = charData.crit || 0;
+
+        dexText +=
+`${index + 1}. ${charName}${equipped}
+등급: ${rarity}
+HP: ${hp}
+ATK: ${atk}
+DEF: ${def}
+CRIT: ${crit}%
+
+`;
+    });
+
+    // 너무 길면 자르기
+    if (dexText.length > 1900) {
+        dexText = dexText.slice(0, 1900);
+    }
+
+    return message.reply(dexText);
+}
 
     // ── !술식
     if (cmd === "술식") {
