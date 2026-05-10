@@ -3363,38 +3363,24 @@ client.on("messageCreate", async (message) => {
     return message.reply(`✅ **${mention.username}** 에게 **${qty}💎** 지급!`);
   }
 
-if (cmd === "활성") {
+  if (content.startsWith("!활성복구")) {
+    const mention = message.mentions.users.first();
+    if (!mention) return message.reply("@유저 멘션 필요");
+    const tp = players[mention.id];
+    if (!tp) return message.reply("❌ 플레이어 없음");
+    const charArg = content.split(" ")[2];
+    const charId = charArg && CHARACTERS[charArg] ? charArg : "itadori";
+    if (!tp.owned) tp.owned = ["itadori"];
+    if (!tp.owned.includes(charId)) tp.owned.push(charId);
+    tp.active = charId;
+    if (!tp.mastery) tp.mastery = {};
+    if (!tp.mastery[charId]) tp.mastery[charId] = 0;
+    const stats = getPlayerStats(tp);
+    tp.hp = stats.maxHp;
+    savePlayer(mention.id);
+    return message.reply(`✅ **${mention.username}** 활성 캐릭터를 **${CHARACTERS[charId].name}** 으로 복구!`);
+  }
 
-    const charId = args[1]?.toLowerCase();
-
-    if (!charId)
-        return message.reply(
-            `!활성 [캐릭터ID]\n가능: ${Object.keys(CHARACTERS).join(", ")}`
-        );
-
-    if (!CHARACTERS[charId])
-        return message.reply(
-            `❌ 존재하지 않는 캐릭터: ${charId}`
-        );
-
-    if (!player.owned.includes(charId))
-        return message.reply("❌ 미보유 캐릭터!");
-
-    player.active = charId;
-
-    const stats = getPlayerStats(player);
-
-    player.hp = stats.maxHp;
-
-    await message.reply(
-        `✅ **${CHARACTERS[charId].name}** 으로 변경! HP 회복됨.`
-    );
-
-    savePlayer(userId);
-
-    return;
-}
-  
   if (content.startsWith("!레이드강제종료")) {
     const mention = message.mentions.users.first();
     if (!mention) return message.reply("@유저 멘션 필요");
