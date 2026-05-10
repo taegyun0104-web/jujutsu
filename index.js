@@ -808,7 +808,7 @@ async function processBattleWin(player, enemy) {
   return new EmbedBuilder()
     .setTitle(enemy.isSukuna?"👹 스쿠나 격파!!":"🏆 전투 승리!")
     .setColor(enemy.isSukuna?0x8b0000:0xF5C842)
-    .setDescription([enemy.isSukuna?"```ansi\n\u001b[1;31m╔═══════════════════════════════╗\n║  👹  스쿠나를 쓰러뜨렸다!  👹  ║\n╚═══════════════════════════════╝\n```":"```ansi\n\u001b[1;33m╔═══════════════════════════════╗\n║       ✨  VICTORY  ✨         ║\n╚═══════════════════════════════╝\n```",`> **${enemy.name}** 처치!`,`> ⭐ XP **+${xpGain}** | 💎 **+${crystalGain}** | 📈 숙련 **+${masteryGain}**`,dropText,potionMsg,fingerMsg,unlockMsg,questDone].filter(Boolean).join("\n"))
+    .setDescription([enemy.isSukuna?"```ansi\n\u001b[1;31m╔═══════════════════════════════╗\n║  👹  스쿠나를 쓰러뜨렸다!  👹  ║\n╚═══════════════════════════════╝\n```":"```ansi\n\u001b[1;33m╔═══════════════════════════════╗\n║       ✨  VICTORY  ✨         ║\n╚═══════════════════════════════╝\n```",`> **${enemy.name}** 처치!`,`> ⭐ XP **+${xpGain}** | 💎 **+${crystalGain}** | 📈 숙련 **+${masteryGain}`,dropText,potionMsg,fingerMsg,unlockMsg,questDone].filter(Boolean).join("\n"))
     .addFields({name:"📊 현재 상태",value:`> 💚 HP: **${Math.max(0,player.hp||0)}** | 💎 **${player.crystals}** | 🧪 **${player.potion||0}개**\n> ⚔️ 전적: **${player.wins}승 ${player.losses||0}패**`})
     .setFooter({text:`LV.${getLevel(player.xp||0)}`});
 }
@@ -1942,7 +1942,7 @@ async function handleCullingAction(interaction, player, session, customId) {
   if (customId === "c_attack") {
     const hitRoll = rollHit(player.statusEffects, enemy.statusEffects || []);
     if (!hitRoll) {
-      log.push(`> 💨 **공격 빗나감!**`);
+      log.push(`> 💨 **공격 빗나감!`);
     } else {
       const { dmg, isCrit } = calcDmgForPlayer(player, enemy.def);
       const bf = isBlackFlash();
@@ -2118,7 +2118,7 @@ async function handleJujutsuAction(interaction, player, session, customId) {
   if (customId === "j_attack") {
     const hitRoll = rollHit(player.statusEffects, enemy.statusEffects || []);
     if (!hitRoll) {
-      log.push(`> 💨 **공격 빗나감!**`);
+      log.push(`> 💨 **공격 빗나감!`);
     } else {
       const { dmg, isCrit } = calcDmgForPlayer(player, enemy.def);
       const bf = isBlackFlash();
@@ -2503,7 +2503,7 @@ async function handleRaidAction(interaction, player, raidSession, customId) {
   }
 
   // 마허라가라 적응 시스템
-  if (boss.adaptationSkill && commandId === "r_skill") {
+  if (boss.adaptationSkill && customId === "r_skill") {
     const skill = getCurrentSkill(player, player.active);
     if (skill && raidSession.adaptedSkills?.includes(skill.name)) {
       log.push(`> 🔄 **[적응]** 마허라가라가 **${skill.name}**에 이미 적응! 데미지 무효!`);
@@ -3260,7 +3260,7 @@ async function handleSlashCommand(interaction, commandName, player, userId, user
 }
 
 // ════════════════════════════════════════════════════════
-// 레거시 메시지 명령어 (! 접두사 — 개발자 + 퀘보상)
+// 레거시 메시지 명령어 (! 접두사 — 개발자 + 퀘보상 + 활성)
 // ════════════════════════════════════════════════════════
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
@@ -3294,6 +3294,19 @@ client.on("messageCreate", async (message) => {
       embeds: [new EmbedBuilder().setColor(0xF5C842).setTitle("🎁 퀘스트 보상 수령!")
         .setDescription([`> 📋 **${def.name}** 완료!`, `> 💎 **+${reward.crystals || 0}** | ⭐ **+${reward.xp || 0}** XP`, matStr].filter(Boolean).join("\n"))],
     });
+  }
+
+  // ── !활성 (레거시 명령어 처리)
+  if (content.startsWith("!활성")) {
+    if (!(player.owned || []).length || player.owned.every(id => !CHARACTERS[id])) {
+      return message.reply("❌ 보유한 캐릭터가 없습니다.");
+    }
+    const embed = new EmbedBuilder().setColor(0x7C5CFC)
+      .setTitle("🎭 캐릭터 선택")
+      .setDescription("> 아래 메뉴에서 장착할 캐릭터를 선택하세요.\n> 선택 시 HP 완전 회복 + 상태이상 초기화됩니다.")
+      .addFields({ name: "현재 장착", value: `> ${CHARACTERS[player.active]?.emoji || ""} **${CHARACTERS[player.active]?.name || "없음"}**`, inline: false });
+    const row = mkCharSelectMenu(player, "char_select");
+    return message.reply({ embeds: [embed], components: [row] });
   }
 
   // ── 개발자 명령어
