@@ -1490,14 +1490,40 @@ client.on("messageCreate", async (message) => {
       }
     }
 
-    // ── !도감
-    if (cmd === "도감") {
-      const owned=player.owned||["itadori"];
-      const lines=owned.map(id=>{ const ch=CHARACTERS[id]; if (!ch) return ""; const ri=GACHA_RARITY[ch.grade]||GACHA_RARITY["3급"]; const mastery=getMastery(player,id); const isActive=id===player.active; const tmpStats=getPlayerStats({...player,active:id}); return `${isActive?"▶️ **[활성]**":"　"}${ch.emoji} **${ch.name}** \`[${ch.grade}]\` ${ri.stars}\n> ATK ${tmpStats.atk} · DEF ${tmpStats.def} · HP ${tmpStats.maxHp} · 숙련 \`${mastery}\`${ch.domain?` · 영역: ${ch.domain}`:""}`;}).join("\n\n");
-      const embed=new EmbedBuilder().setTitle(`🎴 ${player.name}의 주술사 도감`).setColor(0x7C5CFC).setDescription(lines||"> 보유 캐릭터 없음").setFooter({text:`총 ${owned.length}명 보유`});
-      return message.reply({ embeds:[embed] });
-    }
+  if (cmd === "도감") {
+  // 보유 캐릭터 목록 (없으면 기본)
+  const owned = player.owned || ["itadori"];
+  // 활성 캐릭터가 보유 목록에 없으면 첫 번째로 보정
+  let activeId = player.active;
+  if (!owned.includes(activeId)) {
+    activeId = owned[0];
+    player.active = activeId;
+    savePlayer(userId);
+  }
 
+  const lines = owned.map(id => {
+    const ch = CHARACTERS[id];
+    if (!ch) return "";
+    const ri = GACHA_RARITY[ch.grade] || GACHA_RARITY["3급"];
+    const mastery = getMastery(player, id);
+    const isActive = (id === activeId);
+    // 임시 플레이어 객체로 스탯 계산 (안전하게)
+    const tmpPlayer = { ...player, active: id };
+    const tmpStats = getPlayerStats(tmpPlayer);
+    const atk = tmpStats.atk ?? 0;
+    const def = tmpStats.def ?? 0;
+    const maxHp = tmpStats.maxHp ?? 1000;
+    return `${isActive ? "▶️ **[활성]**" : "　"}${ch.emoji} **${ch.name}** \`[${ch.grade}]\` ${ri.stars}
+> ATK ${atk} · DEF ${def} · HP ${maxHp} · 숙련 \`${mastery}\`${ch.domain ? ` · 영역: ${ch.domain}` : ""}`;
+  }).filter(Boolean).join("\n\n");
+
+  const embed = new EmbedBuilder()
+    .setTitle(`🎴 ${player.name}의 주술사 도감`)
+    .setColor(0x7C5CFC)
+    .setDescription(lines || "> 보유 캐릭터 없음")
+    .setFooter({ text: `총 ${owned.length}명 보유 · 활성: ${CHARACTERS[activeId]?.name || "??"}` });
+  return message.reply({ embeds: [embed] });
+}
     // ── !술식
     if (cmd === "술식") {
       return message.reply({ embeds:[buildSkillEmbed(player)] });
